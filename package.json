@@ -1,0 +1,21 @@
+{
+  "name": "devcareer-ai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DevCareer AI monorepo for a Vue 3 web client and NestJS API server.",
+  "workspaces": [
+    "web",
+    "server"
+  ],
+  "scripts": {
+    "dev:web": "npm --prefix web run dev",
+    "dev:server": "npm --prefix server run start:dev",
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:server\"",
+    "build": "npm --prefix web run build && npm --prefix server run build",
+    "prisma:migrate": "npm --prefix server run prisma:migrate",
+    "prisma:generate": "npm --prefix server run prisma:generate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

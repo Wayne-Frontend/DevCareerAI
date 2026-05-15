@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Resume {
+  id              String   @id @default(cuid())
+  title           String
+  content         String
+  fileName        String?
+  fileType        String?
+  targetRole      String?
+  experienceLevel String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  analyses        ResumeAnalysis[]
+  jobMatches      JobMatchAnalysis[]
+  interviews      InterviewSession[]
+}
+
+model ResumeAnalysis {
+  id        String   @id @default(cuid())
+  resumeId  String
+  score     Int
+  resultJson Json
+  createdAt DateTime @default(now())
+
+  resume    Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+}
+
+model ProjectOptimization {
+  id         String   @id @default(cuid())
+  rawContent String
+  targetRole String?
+  techStack  Json?
+  style      String?
+  resultJson Json
+  createdAt  DateTime @default(now())
+}
+
+model JobDescription {
+  id          String   @id @default(cuid())
+  jobTitle    String
+  companyName String?
+  content     String
+  createdAt   DateTime @default(now())
+
+  matches     JobMatchAnalysis[]
+  interviews  InterviewSession[]
+}
+
+model JobMatchAnalysis {
+  id               String   @id @default(cuid())
+  resumeId         String
+  jobDescriptionId String
+  matchScore       Int
+  resultJson       Json
+  createdAt        DateTime @default(now())
+
+  resume           Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  jobDescription   JobDescription @relation(fields: [jobDescriptionId], references: [id], onDelete: Cascade)
+}
+
+model InterviewSession {
+  id               String   @id @default(cuid())
+  resumeId         String?
+  jobDescriptionId String?
+  title            String
+  targetRole       String?
+  interviewType    String
+  difficulty       String
+  status           String   @default("ongoing")
+  summaryJson      Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  resume           Resume? @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  jobDescription   JobDescription? @relation(fields: [jobDescriptionId], references: [id], onDelete: SetNull)
+  messages         InterviewMessage[]
+}
+
+model InterviewMessage {
+  id           String   @id @default(cuid())
+  sessionId    String
+  role         String
+  content      String
+  feedbackJson Json?
+  createdAt    DateTime @default(now())
+
+  session      InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
