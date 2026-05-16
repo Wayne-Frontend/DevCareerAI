@@ -1,75 +1,28 @@
 <script setup lang="ts">
-import { MagicStick, Setting } from '@element-plus/icons-vue'
+import { Bell, ChevronDown, Sun, UserRound } from 'lucide-vue-next'
 </script>
 
 <template>
-  <header class="app-header">
-    <div class="header-title">
-      <span class="soft-tag">
-        <el-icon><MagicStick /></el-icon>
-        AI Resume Workspace
-      </span>
-      <strong>DevCareer AI</strong>
-    </div>
+  <header
+    class="relative mb-2 flex h-[80px] items-center justify-end overflow-hidden rounded-[16px] border border-white/70 bg-white/58 px-[18px] shadow-[0_18px_50px_rgba(43,55,96,0.08),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl"
+  >
+    <div
+      class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_32%,rgba(99,102,241,0.11),transparent_28%),radial-gradient(circle_at_94%_18%,rgba(56,189,248,0.08),transparent_22%)]"
+    />
 
-    <div class="header-actions">
-      <RouterLink to="/settings" class="settings-link" aria-label="打开设置">
-        <el-icon><Setting /></el-icon>
+    <div class="relative z-10 flex items-center gap-3">
+      <button class="grid h-12 w-12 place-items-center rounded-full border border-white/80 bg-white/62 text-[#475569] shadow-[0_12px_26px_rgba(43,55,96,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] transition hover:-translate-y-0.5 hover:text-[#4f46e5]" aria-label="切换主题">
+        <Sun :size="22" stroke-width="1.75" />
+      </button>
+      <button class="grid h-12 w-12 place-items-center rounded-full border border-white/80 bg-white/62 text-[#475569] shadow-[0_12px_26px_rgba(43,55,96,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] transition hover:-translate-y-0.5 hover:text-[#4f46e5]" aria-label="通知">
+        <Bell :size="22" stroke-width="1.75" />
+      </button>
+      <RouterLink to="/settings" class="flex h-12 items-center gap-3 rounded-full text-[#475569]" aria-label="打开设置">
+        <span class="grid h-11 w-11 place-items-center overflow-hidden rounded-full border border-white/80 bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500 shadow-[0_10px_24px_rgba(43,55,96,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]">
+          <UserRound :size="22" stroke-width="1.8" />
+        </span>
+        <ChevronDown :size="18" stroke-width="1.9" />
       </RouterLink>
-      <div class="avatar">DC</div>
     </div>
   </header>
 </template>
-
-<style scoped lang="scss">
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 54px;
-  margin-bottom: 22px;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  strong {
-    color: var(--color-text);
-    font-size: 15px;
-    font-weight: 760;
-  }
-}
-
-.soft-tag {
-  gap: 6px;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.settings-link,
-.avatar {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.58);
-  color: var(--color-text);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-  backdrop-filter: blur(18px);
-}
-
-.avatar {
-  background: var(--gradient-primary);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 850;
-}
-</style>

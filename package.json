@@ -11,6 +11,8 @@
     "dev:web": "npm --prefix web run dev",
     "dev:server": "npm --prefix server run start:dev",
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:server\"",
+    "dev:log": "node scripts/dev-log.mjs",
+    "clean:logs": "node scripts/clean-logs.mjs",
     "build": "npm --prefix web run build && npm --prefix server run build",
     "prisma:migrate": "npm --prefix server run prisma:migrate",
     "prisma:generate": "npm --prefix server run prisma:generate"

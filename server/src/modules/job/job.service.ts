@@ -1,23 +1,106 @@
 import { Injectable } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
+import { safeParseJson } from '../../common/utils/json-response.util'
+import { AiService } from '../ai/ai.service'
+import type { JobMatchResult } from '../ai/ai.types'
+import { PrismaService } from '../../prisma/prisma.service'
+import { buildJobMatchPrompt } from '../../prompts/job.prompt'
+import { CAREER_ASSISTANT_SYSTEM_PROMPT } from '../../prompts/resume.prompt'
 import { MatchJobDto } from './dto/match-job.dto'
 
 @Injectable()
 export class JobService {
-  match(dto: MatchJobDto) {
-    const result = {
-      matchScore: 72,
-      summary: `这是 ${dto.jobTitle} 的占位匹配结果，后续会接入 AI 对简历和 JD 做真实对比。`,
-      matchedKeywords: ['TypeScript', 'Vue', '工程化'],
-      missingKeywords: ['性能优化', '组件库建设'],
-      advantages: ['简历内容已具备基础匹配分析入口'],
-      risks: ['当前结果为占位数据，不能作为真实求职判断'],
-      resumeSuggestions: ['补充和岗位要求直接相关的项目证据'],
-      interviewPreparation: ['准备项目难点、性能优化、团队协作相关问题'],
-    }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly aiService: AiService,
+  ) {}
+
+  async match(dto: MatchJobDto) {
+    const resume = dto.resumeId
+      ? await this.prisma.resume.findUnique({ where: { id: dto.resumeId } })
+      : await this.prisma.resume.create({
+          data: {
+            title: `${dto.jobTitle} 匹配分析简历`,
+            content: dto.resumeContent,
+            targetRole: dto.jobTitle,
+          },
+        })
+
+    const resumeRecord =
+      resume ||
+      (await this.prisma.resume.create({
+        data: {
+          title: `${dto.jobTitle} 匹配分析简历`,
+          content: dto.resumeContent,
+          targetRole: dto.jobTitle,
+        },
+      }))
+
+    const jobDescription = await this.prisma.jobDescription.create({
+      data: {
+        jobTitle: dto.jobTitle,
+        companyName: dto.companyName,
+        content: dto.jobDescription,
+      },
+    })
+
+    const aiText = await this.aiService.chat({
+      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
+      userPrompt: buildJobMatchPrompt(dto),
+      temperature: 0.2,
+      maxTokens: 2400,
+    })
+    const parsed = safeParseJson<JobMatchResult>(aiText)
+    const result = normalizeJobMatchResult(parsed)
+
+    await this.prisma.jobMatchAnalysis.create({
+      data: {
+        resumeId: resumeRecord.id,
+        jobDescriptionId: jobDescription.id,
+        matchScore: result.matchScore,
+        resultJson: result as unknown as Prisma.InputJsonValue,
+      },
+    })
 
     return {
       matchScore: result.matchScore,
       result,
     }
   }
+}
+
+function normalizeJobMatchResult(value: JobMatchResult | { rawText: string; parseError: true }): JobMatchResult {
+  if ('parseError' in value) {
+    return {
+      matchScore: 0,
+      summary: value.rawText,
+      matchedKeywords: [],
+      missingKeywords: [],
+      advantages: [],
+      risks: ['AI 返回内容不是合法 JSON，已保留原文。'],
+      resumeSuggestions: [],
+      interviewPreparation: [],
+    }
+  }
+
+  return {
+    matchScore: clampScore(value.matchScore),
+    summary: String(value.summary || 'AI 已完成岗位匹配分析。'),
+    matchedKeywords: toStringList(value.matchedKeywords),
+    missingKeywords: toStringList(value.missingKeywords),
+    advantages: toStringList(value.advantages),
+    risks: toStringList(value.risks),
+    resumeSuggestions: toStringList(value.resumeSuggestions),
+    interviewPreparation: toStringList(value.interviewPreparation),
+  }
+}
+
+function clampScore(value: unknown) {
+  const score = Number(value)
+  if (!Number.isFinite(score)) return 0
+  return Math.max(0, Math.min(100, Math.round(score)))
+}
+
+function toStringList(value: unknown) {
+  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : []
 }

@@ -44,7 +44,6 @@ Avoid:
 - Heavy dark sidebar
 - Dense tables
 - Sharp borders
-- Default Element Plus visual appearance
 - Overly saturated colors
 
 Preferred layout:

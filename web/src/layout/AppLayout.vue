@@ -4,33 +4,13 @@ import AppSidebar from './AppSidebar.vue'
 </script>
 
 <template>
-  <div class="app-layout">
+  <div class="app-bg flex min-h-screen gap-3 p-3">
     <AppSidebar />
-    <div class="layout-main">
+    <div class="min-w-0 flex-1">
       <AppHeader />
-      <main class="content-shell">
+      <main class="mx-auto w-full max-w-[calc(100vw-280px)] pb-3">
         <RouterView />
       </main>
     </div>
   </div>
 </template>
-
-<style scoped lang="scss">
-.app-layout {
-  display: flex;
-  min-height: 100vh;
-  gap: 24px;
-  padding: 24px;
-}
-
-.layout-main {
-  min-width: 0;
-  flex: 1;
-}
-
-.content-shell {
-  width: min(100%, 1440px);
-  margin: 0 auto;
-  padding-bottom: 32px;
-}
-</style>

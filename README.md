@@ -1,95 +1,94 @@
 # DevCareer AI
 
-DevCareer AI is a PC web MVP for developer resume analysis, project experience optimization, job JD matching, mock interviews, and history review.
+DevCareer AI 是一个面向开发者的 PC Web MVP，用 AI 辅助完成简历诊断、项目经历优化、岗位 JD 匹配、模拟面试和历史复盘。
 
-## Tech Stack
+## 技术栈
 
-- Frontend: Vue 3, Vite, TypeScript, Vue Router, Pinia, Element Plus, Axios, ECharts, markdown-it
-- Backend: NestJS, TypeScript, Prisma, SQLite, class-validator, multer
-- AI provider: DeepSeek-compatible API through a backend `AiService`
+- 前端：Vue 3、Vite、TypeScript、Vue Router、Pinia、Axios、Tailwind CSS、lucide-vue-next
+- 后端：NestJS、TypeScript、Prisma、SQLite、class-validator、multer、pdf-parse、mammoth
+- AI：后端 `AiService` 封装 DeepSeek Chat Completions API
 
-## Structure
+## 目录结构
 
 ```txt
 DevCareerAI
-|-- web
-|-- server
-|-- docs
+|-- web        # Vue 3 + Vite 前端
+|-- server     # NestJS + Prisma API
+|-- docs       # 产品与实现文档
 |-- AGENTS.md
 `-- README.md
 ```
 
-## UI Style
+## 环境变量
 
-The web client uses a modern AI workspace style inspired by Apple, Raycast, Linear, Notion AI, and ChatGPT Web:
-
-- Light radial gradient background
-- Glassmorphism sidebar and content cards
-- Rounded 24px primary cards and 12px controls
-- Soft borders, subtle shadows, and gradient primary actions
-- Card-based history and AI chat-style interview page
-
-Main frontend areas:
-
-- `web/src/layout`: app shell, sidebar, and header
-- `web/src/styles`: design tokens, global theme, and Element Plus visual overrides
-- `web/src/components`: reusable UI components such as glass cards, page headers, empty states, score cards, chat messages, and feedback cards
-- `web/src/views`: route pages for home, resume analysis, project optimization, job matching, interview, history, and settings
-
-## Environment
-
-Frontend: `web/.env.development`
+前端：`web/.env.development`
 
 ```env
 VITE_API_BASE_URL=http://localhost:3000/api
 ```
 
-Backend: `server/.env`
+后端：复制 `server/.env.example` 为 `server/.env` 并填写：
 
 ```env
 DATABASE_URL="file:./dev.db"
 DEEPSEEK_API_KEY="your_api_key_here"
 DEEPSEEK_BASE_URL="https://api.deepseek.com"
-DEEPSEEK_MODEL="deepseek-v4-flash"
+DEEPSEEK_MODEL="deepseek-v4-pro"
 PORT=3000
 ```
 
-DeepSeek API keys must only be configured on the server.
+真实 DeepSeek API Key 只应放在 `server/.env`，不要写入前端代码或提交到 Git。
 
-## Install
+## 安装
 
 ```bash
 npm install
 ```
 
-## Database
+## 数据库初始化
 
 ```bash
 npm run prisma:migrate
 ```
 
-This creates the SQLite database under `server/prisma/dev.db`.
+SQLite 数据库会创建在 `server/prisma/dev.db`。
 
-## Start
+## 启动
 
-Start both apps:
+同时启动前后端：
 
 ```bash
 npm run dev
 ```
 
-Start separately:
+默认开发命令不会写入日志文件。如果需要保留启动日志，请使用统一入口：
+
+```bash
+npm run dev:log
+```
+
+该命令只会写入 `logs/dev.log`，并关闭彩色控制字符，避免 Windows 下出现大量零散乱码日志。清理日志：
+
+```bash
+npm run clean:logs
+```
+
+单独启动：
 
 ```bash
 npm run dev:web
 npm run dev:server
 ```
 
-Default URLs:
+默认地址：
 
 - Web: http://localhost:5173
 - API: http://localhost:3000/api
 
-## MVP Scope
+## MVP 功能
 
-This initial foundation provides monorepo setup, frontend routing/layout/components, request wrappers, backend module structure, CORS, environment config, Prisma schema, and placeholder pages/APIs. Complex AI business logic is intentionally left for the next implementation stage.
+- 简历诊断：保存简历，调用 AI 生成评分、维度评分、优势、问题、建议和优化示例。
+- 项目经历优化：根据原始项目描述生成项目名称、描述、技术栈、职责、亮点、难点和面试追问。
+- 岗位 JD 匹配：分析简历与 JD 的匹配度，输出关键词、风险点、简历修改建议和面试准备建议。
+- 模拟面试：创建面试会话，生成首题，提交回答后获得点评、参考回答和追问，结束时生成总结。
+- 历史记录：保存并展示四类业务记录，支持查看详情和删除。

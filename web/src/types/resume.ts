@@ -42,4 +42,5 @@ export interface ResumeUploadResponse {
   fileName: string
   fileType: string
   content: string
+  truncated?: boolean
 }

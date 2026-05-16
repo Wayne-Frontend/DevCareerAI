@@ -11,47 +11,20 @@ withDefaults(
 </script>
 
 <template>
-  <div class="keyword-tags">
-    <span v-for="tag in tags" :key="tag" class="keyword-tag" :class="type">{{ tag }}</span>
-    <el-empty v-if="tags.length === 0" description="暂无关键词" :image-size="80" />
+  <div class="flex flex-wrap gap-2">
+    <span
+      v-for="tag in tags"
+      :key="tag"
+      class="inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-extrabold"
+      :class="{
+        'border-emerald-200 bg-emerald-50 text-emerald-700': type === 'success',
+        'border-amber-200 bg-amber-50 text-amber-700': type === 'warning',
+        'border-red-200 bg-red-50 text-red-600': type === 'danger',
+        'border-indigo-200 bg-indigo-50 text-indigo-600': type === 'info',
+      }"
+    >
+      {{ tag }}
+    </span>
+    <p v-if="tags.length === 0" class="m-0 text-sm text-[#94a3b8]">暂无关键词</p>
   </div>
 </template>
-
-<style scoped lang="scss">
-.keyword-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.keyword-tag {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  border: 1px solid rgba(99, 102, 241, 0.14);
-  border-radius: 999px;
-  background: rgba(99, 102, 241, 0.08);
-  color: #4f46e5;
-  padding: 0 12px;
-  font-size: 12px;
-  font-weight: 760;
-
-  &.success {
-    border-color: rgba(34, 197, 94, 0.16);
-    background: rgba(34, 197, 94, 0.1);
-    color: #15803d;
-  }
-
-  &.warning {
-    border-color: rgba(245, 158, 11, 0.18);
-    background: rgba(245, 158, 11, 0.11);
-    color: #b45309;
-  }
-
-  &.danger {
-    border-color: rgba(239, 68, 68, 0.16);
-    background: rgba(239, 68, 68, 0.09);
-    color: #dc2626;
-  }
-}
-</style>

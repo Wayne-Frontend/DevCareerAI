@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MagicStick } from '@element-plus/icons-vue'
+import { Sparkles } from 'lucide-vue-next'
 
 withDefaults(
   defineProps<{
@@ -8,56 +8,17 @@ withDefaults(
   }>(),
   {
     title: '等待开始',
-    description: '填写左侧信息后，这里会展示 AI 生成的结构化结果。',
+    description: '填写信息后，这里会展示 AI 生成的结构化结果。',
   },
 )
 </script>
 
 <template>
-  <div class="empty-state">
-    <div class="empty-orb">
-      <el-icon><MagicStick /></el-icon>
+  <div class="grid min-h-[240px] place-items-center content-center gap-3 rounded-3xl border border-dashed border-indigo-200/80 bg-white/45 p-8 text-center">
+    <div class="icon-tile h-[72px] w-[72px] rounded-[22px] text-3xl">
+      <Sparkles :size="32" />
     </div>
-    <h3>{{ title }}</h3>
-    <p>{{ description }}</p>
+    <h3 class="m-0 text-lg font-extrabold text-[#0f172a]">{{ title }}</h3>
+    <p class="m-0 max-w-sm text-sm leading-7 text-[#64748b]">{{ description }}</p>
   </div>
 </template>
-
-<style scoped lang="scss">
-.empty-state {
-  display: grid;
-  min-height: 280px;
-  place-items: center;
-  align-content: center;
-  gap: 12px;
-  border: 1px dashed rgba(99, 102, 241, 0.24);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.42);
-  padding: 34px;
-  text-align: center;
-
-  h3 {
-    margin: 0;
-    color: var(--color-text);
-    font-size: 18px;
-  }
-
-  p {
-    max-width: 360px;
-    margin: 0;
-    color: var(--color-muted);
-    line-height: 1.7;
-  }
-}
-
-.empty-orb {
-  display: grid;
-  width: 72px;
-  height: 72px;
-  place-items: center;
-  border-radius: 22px;
-  background: var(--gradient-soft);
-  color: var(--color-primary);
-  font-size: 30px;
-}
-</style>

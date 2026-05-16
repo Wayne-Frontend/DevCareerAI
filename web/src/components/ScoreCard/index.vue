@@ -5,81 +5,31 @@ const props = withDefaults(
   defineProps<{
     score: number
     title?: string
+    summary?: string
   }>(),
   {
     title: '综合评分',
+    summary: '评分由 AI 基于当前输入生成，仅作为求职准备参考。',
   },
 )
 
-const safeScore = computed(() => Math.max(0, Math.min(100, props.score)))
+const safeScore = computed(() => Math.max(0, Math.min(100, props.score || 0)))
 </script>
 
 <template>
-  <div class="score-card">
-    <div class="score-main">
-      <strong>{{ safeScore }}</strong>
-      <span>/ 100</span>
+  <div class="grid grid-cols-[150px_1fr] items-center gap-7">
+    <div
+      class="grid h-[140px] w-[140px] place-items-center rounded-full p-[11px] shadow-[0_18px_38px_rgba(99,102,241,0.22)]"
+      :style="{ background: `conic-gradient(#6d5dfc 0deg, #2f80ff ${safeScore * 3.6}deg, #edf2ff ${safeScore * 3.6}deg 360deg)` }"
+    >
+      <div class="grid h-full w-full place-items-center content-center rounded-full bg-white">
+        <strong class="text-[42px] font-black leading-none text-[#13214a]">{{ safeScore }}</strong>
+        <span class="mt-1 text-sm font-bold text-[#64748b]">/100</span>
+      </div>
     </div>
-    <div class="score-copy">
-      <h3>{{ title }}</h3>
-      <p>{{ safeScore >= 70 ? '整体基础不错，适合继续打磨细节和表达证据。' : '可以从结构和岗位关键词开始补强。' }}</p>
-      <el-progress :percentage="safeScore" :show-text="false" />
+    <div class="min-w-0">
+      <h3 class="mb-3 mt-0 text-[22px] font-black text-[#0f172a]">{{ title }}</h3>
+      <p class="mb-0 mt-0 text-sm leading-7 text-[#64748b]">{{ summary }}</p>
     </div>
   </div>
 </template>
-
-<style scoped lang="scss">
-.score-card {
-  display: grid;
-  grid-template-columns: 128px 1fr;
-  align-items: center;
-  gap: 20px;
-  border: 1px solid rgba(99, 102, 241, 0.16);
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.16), transparent 38%),
-    rgba(255, 255, 255, 0.66);
-  padding: 18px;
-
-  h3 {
-    margin: 0 0 8px;
-    font-size: 17px;
-  }
-
-  p {
-    margin: 0 0 14px;
-    color: var(--color-muted);
-    line-height: 1.7;
-  }
-}
-
-.score-main {
-  display: grid;
-  width: 128px;
-  height: 128px;
-  place-items: center;
-  align-content: center;
-  border-radius: 50%;
-  background:
-    linear-gradient(#ffffff, #ffffff) padding-box,
-    var(--gradient-primary) border-box;
-  border: 7px solid transparent;
-  box-shadow: 0 18px 42px rgba(99, 102, 241, 0.16);
-
-  strong {
-    color: var(--color-primary);
-    font-size: 38px;
-    line-height: 1;
-  }
-
-  span {
-    color: var(--color-muted);
-    font-size: 12px;
-    font-weight: 700;
-  }
-}
-
-.score-copy {
-  min-width: 0;
-}
-</style>

@@ -19,7 +19,7 @@ const html = computed(() => md.render(props.content || ''))
   <article class="markdown-viewer" v-html="html" />
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .markdown-viewer {
   color: #344054;
   line-height: 1.8;

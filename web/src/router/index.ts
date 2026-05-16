@@ -3,6 +3,12 @@ import MainLayout from '../layout/MainLayout.vue'
 
 export const routes: RouteRecordRaw[] = [
   {
+    path: '/login',
+    name: 'login',
+    component: () => import('../views/Login/index.vue'),
+    meta: { title: '登录' },
+  },
+  {
     path: '/',
     component: MainLayout,
     children: [

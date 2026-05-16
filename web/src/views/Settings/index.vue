@@ -1,123 +1,63 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
-import { ElMessage } from 'element-plus'
-import GlassCard from '../../components/GlassCard/index.vue'
-import PageHeader from '../../components/PageHeader/index.vue'
-
-const settings = reactive({
-  apiKey: '',
-  defaultRole: '前端工程师',
-  resumeStyle: '简洁专业',
-})
-
-function saveSettings() {
-  ElMessage.success('设置已保存到当前页面状态，API Key 仍需在服务端 .env 配置')
-}
+import { Box, LockKeyhole, Settings, Shield } from 'lucide-vue-next'
 </script>
 
 <template>
   <div class="page">
-    <PageHeader title="设置" subtitle="模型密钥仍由服务端环境变量管理，前端只保留偏好型配置入口。" />
+    <header class="flex items-center gap-5">
+      <div class="icon-tile h-[60px] w-[60px] rounded-[18px]">
+        <Settings :size="32" />
+      </div>
+      <div>
+        <h1 class="m-0 text-[34px] font-black text-[#0f172a]">设置</h1>
+        <p class="mt-2 text-base font-semibold text-[#64748b]">MVP 阶段 API Key 只在服务端环境变量中配置，前端不接收密钥输入。</p>
+      </div>
+    </header>
 
-    <div class="settings-grid">
-      <GlassCard>
-        <h2 class="section-title">模型配置</h2>
-        <div class="setting-list">
-          <div class="setting-row">
-            <span>Provider</span>
-            <strong>DeepSeek Compatible</strong>
-          </div>
-          <div class="setting-row">
-            <span>Model</span>
-            <strong>由服务端 DEEPSEEK_MODEL 控制</strong>
-          </div>
-          <div class="setting-row">
-            <span>Base URL</span>
-            <strong>由服务端 DEEPSEEK_BASE_URL 控制</strong>
+    <div class="grid grid-cols-2 gap-4">
+      <section class="glass-card p-5">
+        <div class="mb-5 flex items-start gap-3">
+          <span class="icon-tile h-10 w-10 rounded-xl"><Box :size="22" /></span>
+          <div>
+            <h2 class="m-0 text-xl font-black text-[#0f172a]">模型配置</h2>
+            <p class="mt-1 text-sm font-semibold text-[#64748b]">当前由后端 `AiService` 统一读取环境变量并调用 DeepSeek。</p>
           </div>
         </div>
-      </GlassCard>
 
-      <GlassCard>
-        <h2 class="section-title">DeepSeek API Key 配置说明</h2>
-        <el-alert
-          title="MVP 阶段不在前端保存或展示真实 API Key"
-          type="info"
-          :closable="false"
-          show-icon
-        />
-        <el-form label-position="top" class="settings-form">
-          <el-form-item label="API Key 占位输入">
-            <el-input v-model="settings.apiKey" type="password" show-password placeholder="仅作敏感输入视觉占位" />
-          </el-form-item>
-        </el-form>
-      </GlassCard>
+        <div class="grid gap-4">
+          <label>
+            <span class="field-label">Provider</span>
+            <input class="input-base" value="DeepSeek" readonly />
+          </label>
+          <label>
+            <span class="field-label">Model</span>
+            <input class="input-base" value="deepseek-v4-pro" readonly />
+          </label>
+          <label>
+            <span class="field-label">Base URL</span>
+            <input class="input-base" value="https://api.deepseek.com" readonly />
+          </label>
+        </div>
+        <p class="mt-3 flex items-center gap-2 text-xs font-semibold text-[#64748b]">
+          <LockKeyhole :size="14" />
+          请在 `server/.env` 配置 `DEEPSEEK_API_KEY`，不要把真实 Key 写入前端代码。
+        </p>
+      </section>
 
-      <GlassCard>
-        <h2 class="section-title">默认偏好</h2>
-        <el-form label-position="top" class="settings-form">
-          <el-form-item label="默认岗位方向">
-            <el-input v-model="settings.defaultRole" />
-          </el-form-item>
-          <el-form-item label="默认简历风格">
-            <el-select v-model="settings.resumeStyle">
-              <el-option label="简洁专业" value="简洁专业" />
-              <el-option label="结果导向" value="结果导向" />
-              <el-option label="技术深度" value="技术深度" />
-            </el-select>
-          </el-form-item>
-          <el-button class="primary-gradient-btn" @click="saveSettings">保存设置</el-button>
-        </el-form>
-      </GlassCard>
+      <section class="glass-card p-5">
+        <div class="mb-5 flex items-start gap-3">
+          <span class="icon-tile h-10 w-10 rounded-xl"><Shield :size="22" /></span>
+          <div>
+            <h2 class="m-0 text-xl font-black text-[#0f172a]">数据说明</h2>
+            <p class="mt-1 text-sm font-semibold text-[#64748b]">本地 SQLite 保存分析历史，便于复盘和删除。</p>
+          </div>
+        </div>
+        <ul class="m-0 grid list-disc gap-3 pl-5 text-sm font-semibold leading-7 text-[#475569]">
+          <li>简历诊断、项目优化、JD 匹配和模拟面试会写入历史记录。</li>
+          <li>前端不会直接请求 DeepSeek，所有 AI 调用都经过后端 `AiService`。</li>
+          <li>真实 API Key 只应存在于本地 `.env`，并由 `.gitignore` 排除。</li>
+        </ul>
+      </section>
     </div>
   </div>
 </template>
-
-<style scoped lang="scss">
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-}
-
-.settings-grid :deep(.app-glass-card:last-child) {
-  grid-column: 1 / -1;
-}
-
-.setting-list {
-  display: grid;
-  gap: 12px;
-}
-
-.setting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.58);
-  padding: 15px 16px;
-
-  span {
-    color: var(--color-muted);
-    font-size: 13px;
-    font-weight: 760;
-  }
-
-  strong {
-    color: var(--color-text);
-    font-size: 14px;
-  }
-}
-
-.settings-form {
-  margin-top: 18px;
-}
-
-@media (max-width: 1280px) {
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

@@ -1,171 +1,161 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { Clock3, Code2, FileSearch, History, Mic, RefreshCw, Search, Target, Trash2 } from 'lucide-vue-next'
 import EmptyState from '../../components/EmptyState/index.vue'
-import GlassCard from '../../components/GlassCard/index.vue'
-import PageHeader from '../../components/PageHeader/index.vue'
 import { deleteHistoryRecord, getHistory } from '../../api/history'
 import type { HistoryRecord, HistoryType } from '../../types/history'
 import { formatDateTime } from '../../utils/format'
+import { notify } from '../../utils/notify'
 
-const activeType = ref<HistoryType>('resume-analysis')
+type FilterType = 'all' | HistoryType
+
+const activeType = ref<FilterType>('all')
 const loading = ref(false)
 const records = ref<HistoryRecord[]>([])
+const keyword = ref('')
+const activeDetail = ref<HistoryRecord | null>(null)
 
-const tabs: Array<{ label: string; value: HistoryType }> = [
-  { label: '简历诊断', value: 'resume-analysis' },
-  { label: '项目优化', value: 'project-optimization' },
-  { label: '岗位匹配', value: 'job-match' },
-  { label: '模拟面试', value: 'interview' },
+const tabs: Array<{ label: string; value: FilterType; icon?: typeof FileSearch }> = [
+  { label: '全部', value: 'all' },
+  { label: '简历诊断', value: 'resume-analysis', icon: FileSearch },
+  { label: '项目优化', value: 'project-optimization', icon: Code2 },
+  { label: '岗位匹配', value: 'job-match', icon: Target },
+  { label: '模拟面试', value: 'interview', icon: Mic },
 ]
 
-const typeLabelMap: Record<HistoryType, string> = {
-  'resume-analysis': '简历诊断',
-  'project-optimization': '项目优化',
-  'job-match': '岗位匹配',
-  interview: '模拟面试',
+const typeMeta: Record<HistoryType, { label: string; icon: typeof FileSearch; tagClass: string; scoreClass: string }> = {
+  'resume-analysis': {
+    label: '简历诊断',
+    icon: FileSearch,
+    tagClass: 'bg-blue-50 text-blue-600',
+    scoreClass: 'bg-emerald-50 text-emerald-600',
+  },
+  'project-optimization': {
+    label: '项目优化',
+    icon: Code2,
+    tagClass: 'bg-violet-50 text-violet-600',
+    scoreClass: 'bg-blue-50 text-blue-600',
+  },
+  'job-match': {
+    label: '岗位匹配',
+    icon: Target,
+    tagClass: 'bg-emerald-50 text-emerald-600',
+    scoreClass: 'bg-emerald-50 text-emerald-600',
+  },
+  interview: {
+    label: '模拟面试',
+    icon: Mic,
+    tagClass: 'bg-purple-50 text-purple-600',
+    scoreClass: 'bg-blue-50 text-blue-600',
+  },
 }
 
-const currentLabel = computed(() => typeLabelMap[activeType.value])
+const displayRecords = computed(() => {
+  const filtered = activeType.value === 'all' ? records.value : records.value.filter((record) => record.type === activeType.value)
+  if (!keyword.value.trim()) return filtered
+  return filtered.filter((record) => record.title.toLowerCase().includes(keyword.value.toLowerCase()))
+})
 
-async function load() {
+async function load(type: FilterType = activeType.value) {
   loading.value = true
   try {
-    records.value = await getHistory(activeType.value)
+    records.value = await getHistory(type === 'all' ? undefined : type)
   } finally {
     loading.value = false
   }
 }
 
-async function remove(id: string) {
-  await deleteHistoryRecord(id)
-  ElMessage.success('占位删除成功')
-  await load()
+async function changeType(type: FilterType) {
+  activeType.value = type
+  await load(type)
 }
 
-onMounted(load)
+async function remove(record: HistoryRecord) {
+  await deleteHistoryRecord(record.id)
+  notify('记录已删除', 'success')
+  if (activeDetail.value?.id === record.id) activeDetail.value = null
+  await load(activeType.value)
+}
+
+function detailText(record: HistoryRecord) {
+  return JSON.stringify(record.detail || record, null, 2)
+}
+
+onMounted(() => load())
 </script>
 
 <template>
   <div class="page">
-    <PageHeader title="历史记录" subtitle="以卡片方式回看不同类型的分析结果，后续会接入真实持久化数据。" />
-
-    <GlassCard>
-      <div class="history-toolbar">
-        <el-segmented
-          v-model="activeType"
-          :options="tabs.map((tab) => ({ label: tab.label, value: tab.value }))"
-          @change="load"
-        />
-        <span class="soft-tag">{{ currentLabel }}</span>
+    <header class="flex items-center gap-5">
+      <div class="icon-tile h-[60px] w-[60px] rounded-[18px]">
+        <History :size="32" />
       </div>
+      <div>
+        <h1 class="m-0 text-[34px] font-black text-[#0f172a]">历史记录</h1>
+        <p class="mt-2 text-base font-semibold text-[#64748b]">查看和删除简历诊断、项目优化、岗位匹配和模拟面试记录。</p>
+      </div>
+      <button class="btn-secondary ml-auto" :disabled="loading" @click="load(activeType)">
+        <RefreshCw :size="17" />
+        刷新
+      </button>
+    </header>
 
-      <div v-loading="loading" class="history-content">
-        <EmptyState
-          v-if="records.length === 0"
-          title="暂无历史记录"
-          description="完成一次分析或面试后，记录会以卡片形式出现在这里。"
-        />
-        <div v-else class="history-grid">
-          <article v-for="record in records" :key="record.id" class="section-card history-card">
-            <div class="history-card-head">
-              <span class="history-type" :class="record.type">{{ typeLabelMap[record.type] }}</span>
-              <strong v-if="record.score">{{ record.score }}</strong>
-            </div>
-            <h3>{{ record.title }}</h3>
-            <p>{{ formatDateTime(record.createdAt) }}</p>
-            <div class="history-actions">
-              <el-button text type="primary">查看</el-button>
-              <el-button text type="danger" @click="remove(record.id)">删除</el-button>
-            </div>
-          </article>
+    <section class="glass-card p-5">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex flex-wrap gap-3">
+          <button
+            v-for="tab in tabs"
+            :key="tab.value"
+            type="button"
+            class="inline-flex h-10 items-center gap-2 rounded-[13px] px-5 text-sm font-black transition"
+            :class="activeType === tab.value ? 'bg-indigo-100 text-indigo-600' : 'bg-white/70 text-[#64748b] hover:text-indigo-600'"
+            @click="changeType(tab.value)"
+          >
+            <component v-if="tab.icon" :is="tab.icon" :size="16" />
+            {{ tab.label }}
+          </button>
         </div>
+
+        <label class="flex h-11 w-[280px] items-center gap-3 rounded-[13px] border border-[rgba(203,213,225,0.82)] bg-white/68 px-4">
+          <input v-model="keyword" class="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-[#94a3b8]" placeholder="搜索记录标题..." />
+          <Search :size="18" class="text-[#64748b]" />
+        </label>
       </div>
-    </GlassCard>
+    </section>
+
+    <EmptyState v-if="!loading && displayRecords.length === 0" title="暂无历史记录" description="完成一次 AI 分析或模拟面试后，记录会出现在这里。" />
+
+    <section v-else class="grid grid-cols-4 gap-5">
+      <article v-for="record in displayRecords" :key="record.id" class="section-card flex h-[250px] flex-col p-5">
+        <div class="flex items-center justify-between">
+          <span class="inline-flex h-10 items-center gap-2 rounded-[12px] px-3 text-sm font-black" :class="typeMeta[record.type].tagClass">
+            <component :is="typeMeta[record.type].icon" :size="17" />
+            {{ typeMeta[record.type].label }}
+          </span>
+          <strong v-if="record.score !== undefined" class="rounded-[10px] px-3 py-2 text-sm font-black" :class="typeMeta[record.type].scoreClass">{{ record.score }} 分</strong>
+        </div>
+
+        <h2 class="mb-3 mt-5 text-lg font-black text-[#0f172a]">{{ record.title }}</h2>
+        <p class="m-0 flex items-center gap-1.5 text-sm font-semibold text-[#64748b]">
+          <Clock3 :size="15" />
+          {{ formatDateTime(record.createdAt) }}
+        </p>
+        <div class="mt-auto grid grid-cols-2 gap-3 pt-4">
+          <button class="btn-secondary min-h-10 whitespace-nowrap text-sm" @click="activeDetail = record">查看</button>
+          <button class="btn-secondary min-h-10 whitespace-nowrap text-sm text-red-500" @click="remove(record)">
+            <Trash2 :size="16" />
+            删除
+          </button>
+        </div>
+      </article>
+    </section>
+
+    <section v-if="activeDetail" class="glass-card p-5">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="m-0 text-xl font-black text-[#0f172a]">{{ activeDetail.title }}</h2>
+        <button class="btn-secondary" @click="activeDetail = null">关闭</button>
+      </div>
+      <pre class="max-h-[420px] overflow-auto rounded-2xl bg-slate-950 p-5 text-sm leading-7 text-slate-100">{{ detailText(activeDetail) }}</pre>
+    </section>
   </div>
 </template>
-
-<style scoped lang="scss">
-.history-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.history-content {
-  min-height: 300px;
-}
-
-.history-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.history-card {
-  display: grid;
-  gap: 14px;
-
-  h3 {
-    margin: 0;
-    color: var(--color-text);
-    font-size: 17px;
-  }
-
-  p {
-    margin: 0;
-    color: var(--color-muted);
-    font-size: 13px;
-  }
-}
-
-.history-card-head,
-.history-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.history-card-head strong {
-  color: var(--color-primary);
-  font-size: 30px;
-  line-height: 1;
-}
-
-.history-type {
-  display: inline-flex;
-  border-radius: 999px;
-  padding: 7px 11px;
-  font-size: 12px;
-  font-weight: 800;
-
-  &.resume-analysis {
-    background: rgba(99, 102, 241, 0.1);
-    color: #4f46e5;
-  }
-
-  &.project-optimization {
-    background: rgba(56, 189, 248, 0.12);
-    color: #0284c7;
-  }
-
-  &.job-match {
-    background: rgba(34, 197, 94, 0.12);
-    color: #15803d;
-  }
-
-  &.interview {
-    background: rgba(168, 85, 247, 0.12);
-    color: #7e22ce;
-  }
-}
-
-@media (max-width: 1366px) {
-  .history-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-</style>

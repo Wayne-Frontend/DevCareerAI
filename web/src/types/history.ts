@@ -10,4 +10,5 @@ export interface HistoryRecord {
   title: string
   score?: number
   createdAt: string
+  detail?: unknown
 }
