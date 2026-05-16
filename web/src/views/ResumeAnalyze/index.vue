@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
-import { CheckCircle2, FileSearch, Search, UploadCloud } from 'lucide-vue-next'
+import { onBeforeUnmount, reactive, ref } from 'vue'
+import { CheckCircle2, FileSearch, Search, Square, UploadCloud } from 'lucide-vue-next'
 import BeforeAfterCompare from '../../components/BeforeAfterCompare/index.vue'
 import EmptyState from '../../components/EmptyState/index.vue'
 import GlassCard from '../../components/GlassCard/index.vue'
 import ScoreCard from '../../components/ScoreCard/index.vue'
+import StreamPreview from '../../components/StreamPreview/index.vue'
 import SuggestionList from '../../components/SuggestionList/index.vue'
-import { analyzeResume, createResume, uploadResume } from '../../api/resume'
+import { analyzeResumeStream, createResume, uploadResume } from '../../api/resume'
 import { useResumeStore } from '../../stores/resume'
 import type { ResumeAnalysisResult } from '../../types/resume'
 import { notify } from '../../utils/notify'
@@ -16,12 +17,19 @@ const loading = ref(false)
 const uploadLoading = ref(false)
 const selectedFileName = ref('')
 const result = ref<ResumeAnalysisResult | null>(null)
+const streamPreview = ref('')
+const streamStatus = ref('')
+const controller = ref<AbortController | null>(null)
 
 const form = reactive({
   title: '',
   targetRole: '前端开发工程师',
   experienceLevel: '3-5',
   content: '',
+})
+
+onBeforeUnmount(() => {
+  controller.value?.abort()
 })
 
 async function onFileChange(event: Event) {
@@ -35,7 +43,7 @@ async function onFileChange(event: Event) {
     selectedFileName.value = parsed.fileName
     form.title ||= parsed.fileName.replace(/\.[^.]+$/, '')
     form.content = parsed.content
-    notify(parsed.truncated ? '文件已解析，内容较长已自动截断' : '文件已解析', 'success')
+    notify(parsed.truncated ? '文件已解析，内容较长，已自动截断' : '文件已解析', 'success')
   } catch {
     input.value = ''
   } finally {
@@ -49,16 +57,39 @@ async function submit() {
     return
   }
 
+  controller.value = new AbortController()
   loading.value = true
+  streamPreview.value = ''
+  streamStatus.value = 'AI 正在建立连接'
+
   try {
     const resume = await createResume({ ...form })
     resumeStore.setCurrentResume(resume)
-    const analysis = await analyzeResume(resume.id)
+    const analysis = await analyzeResumeStream(resume.id, {
+      signal: controller.value.signal,
+      onStart: () => {
+        streamStatus.value = 'AI 正在分析简历'
+      },
+      onDelta: (delta) => {
+        streamStatus.value = 'AI 正在生成结构化诊断'
+        streamPreview.value += delta
+      },
+    })
     result.value = analysis.result
-    notify('简历诊断结果已生成', 'success')
+    notify(analysis.cached ? '命中缓存，简历诊断结果已生成' : '简历诊断结果已生成', 'success')
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') {
+      notify('已取消本次分析', 'info')
+    }
   } finally {
     loading.value = false
+    controller.value = null
+    streamStatus.value = ''
   }
+}
+
+function cancelStream() {
+  controller.value?.abort()
 }
 </script>
 
@@ -74,8 +105,8 @@ async function submit() {
       </div>
     </header>
 
-    <div class="work-grid">
-      <GlassCard>
+    <div class="feature-workspace">
+      <GlassCard class="feature-pane-left">
         <div class="mb-5 flex items-center gap-3">
           <span class="grid h-8 w-8 place-items-center rounded-full bg-indigo-50 text-sm font-black text-indigo-600">1</span>
           <h2 class="m-0 text-xl font-black text-[#0f172a]">简历输入</h2>
@@ -115,24 +146,32 @@ async function submit() {
           </label>
         </div>
 
-        <button class="btn-primary mt-5 w-full" :disabled="loading || uploadLoading" @click="submit">
-          <Search :size="18" />
-          {{ loading ? '分析中...' : '开始分析' }}
-        </button>
+        <div class="mt-5 grid gap-3">
+          <button class="btn-primary w-full" :disabled="loading || uploadLoading" @click="submit">
+            <Search :size="18" />
+            {{ loading ? '分析中...' : '开始分析' }}
+          </button>
+          <button v-if="loading" class="btn-secondary w-full" @click="cancelStream">
+            <Square :size="16" />
+            取消本次生成
+          </button>
+        </div>
       </GlassCard>
 
-      <GlassCard>
+      <GlassCard class="feature-pane-right soft-scrollbar">
         <div class="mb-5 flex items-center gap-3">
           <span class="grid h-8 w-8 place-items-center rounded-full bg-indigo-50 text-sm font-black text-indigo-600">2</span>
           <h2 class="m-0 text-xl font-black text-[#0f172a]">诊断结果</h2>
         </div>
 
+        <StreamPreview v-if="loading" :status="streamStatus" :content="streamPreview" />
+
         <EmptyState
-          v-if="!result"
+          v-if="!result && !loading"
           title="等待 AI 诊断"
           description="提交简历后，这里会展示评分、优势、问题、建议和优化示例。"
         />
-        <div v-else class="grid gap-4">
+        <div v-else-if="result" class="grid gap-4">
           <section class="section-card">
             <ScoreCard :score="result.score" title="简历综合评分" :summary="result.summary" />
           </section>

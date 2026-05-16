@@ -7,6 +7,7 @@ export function buildInterviewQuestionPrompt(params: {
 }) {
   return `
 你现在是一名技术面试官。请基于候选人的简历和目标岗位生成一个具体面试问题。
+
 候选人简历：
 ${params.resumeContent}
 
@@ -30,6 +31,7 @@ export function buildInterviewFeedbackPrompt(params: {
 }) {
   return `
 请点评候选人的回答，并生成下一道追问。
+
 面试问题：${params.question}
 候选人回答：${params.answer}
 
@@ -54,6 +56,7 @@ export function buildInterviewSummaryPrompt(params: {
 
   return `
 请基于以下模拟面试记录生成总结。
+
 目标岗位：${params.targetRole || '未指定'}
 
 面试记录：

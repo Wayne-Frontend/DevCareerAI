@@ -108,6 +108,71 @@
     grid-template-columns: minmax(430px, 0.38fr) minmax(700px, 0.62fr);
   }
 
+  .feature-workspace,
+  .feature-workspace-balanced,
+  .feature-workspace-compact {
+    @apply grid items-stretch gap-4;
+    height: max(560px, calc(100vh - 210px));
+    min-height: 0;
+  }
+
+  .feature-workspace {
+    grid-template-columns: minmax(420px, 0.38fr) minmax(0, 1fr);
+  }
+
+  .feature-workspace-balanced {
+    grid-template-columns: minmax(420px, 0.48fr) minmax(0, 0.52fr);
+  }
+
+  .feature-workspace-compact {
+    grid-template-columns: minmax(340px, 0.32fr) minmax(0, 1fr);
+  }
+
+  .feature-pane-left {
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+
+  .feature-pane-right {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 18px;
+    scroll-behavior: smooth;
+  }
+
+  .feature-pane-left,
+  .soft-scrollbar {
+    scrollbar-color: rgba(99, 102, 241, 0.32) rgba(226, 232, 240, 0.46);
+    scrollbar-width: thin;
+  }
+
+  .feature-pane-left::-webkit-scrollbar,
+  .soft-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .feature-pane-left::-webkit-scrollbar-track,
+  .soft-scrollbar::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: rgba(226, 232, 240, 0.46);
+  }
+
+  .feature-pane-left::-webkit-scrollbar-thumb,
+  .soft-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.32);
+  }
+
+  .feature-pane-left::-webkit-scrollbar-thumb:hover,
+  .soft-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.46);
+  }
+
   .section-title {
     @apply mb-4 flex items-center justify-between gap-3 text-base font-extrabold text-[#0f172a];
   }
@@ -202,7 +267,19 @@
 }
 
 @media (max-width: 1280px) {
-  .work-grid {
+  .work-grid,
+  .feature-workspace,
+  .feature-workspace-balanced,
+  .feature-workspace-compact {
     grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .feature-pane-left,
+  .feature-pane-right {
+    max-height: none;
+    height: auto;
+    overflow: visible;
+    padding-right: 0;
   }
 }

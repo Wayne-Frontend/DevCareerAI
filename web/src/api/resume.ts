@@ -1,4 +1,5 @@
 import { request } from './request'
+import { streamRequest, type StreamHandlers } from './streamRequest'
 import type {
   ResumeAnalysisResponse,
   ResumePayload,
@@ -31,4 +32,8 @@ export function analyzeResume(id: string) {
     url: `/resumes/${id}/analyze`,
     method: 'POST',
   })
+}
+
+export function analyzeResumeStream(id: string, handlers?: StreamHandlers<ResumeAnalysisResponse & { cached?: boolean }>) {
+  return streamRequest<ResumeAnalysisResponse & { cached?: boolean }>(`/resumes/${id}/analyze/stream`, undefined, handlers)
 }

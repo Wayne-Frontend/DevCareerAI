@@ -1,17 +1,26 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { Prisma } from '@prisma/client'
+import { Prisma, Resume } from '@prisma/client'
 import { safeParseJson } from '../../common/utils/json-response.util'
+import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
+import { AiCacheService } from '../ai/ai-cache.service'
 import { AiService } from '../ai/ai.service'
-import type { ResumeAnalysisResult } from '../ai/ai.types'
+import type { AiUsage, ResumeAnalysisResult } from '../ai/ai.types'
 import { PrismaService } from '../../prisma/prisma.service'
 import { buildResumeAnalyzePrompt, CAREER_ASSISTANT_SYSTEM_PROMPT } from '../../prompts/resume.prompt'
 import { CreateResumeDto } from './dto/create-resume.dto'
+
+interface AiStreamCallbacks {
+  signal?: AbortSignal
+  onDelta?: (delta: string) => void
+  onUsage?: (usage: AiUsage) => void
+}
 
 @Injectable()
 export class ResumeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiService: AiService,
+    private readonly aiCacheService: AiCacheService,
   ) {}
 
   create(dto: CreateResumeDto) {
@@ -21,38 +30,112 @@ export class ResumeService {
   }
 
   async analyze(id: string) {
-    const resume = await this.prisma.resume.findUnique({ where: { id } })
-
-    if (!resume) {
-      throw new NotFoundException('Resume not found')
-    }
-
+    const resume = await this.findResume(id)
     const aiText = await this.aiService.chat({
       systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
-      userPrompt: buildResumeAnalyzePrompt({
-        resumeContent: resume.content,
-        targetRole: resume.targetRole || undefined,
-        experienceLevel: resume.experienceLevel || undefined,
-      }),
+      userPrompt: this.buildPrompt(resume),
       temperature: 0.2,
       maxTokens: 2600,
+      modelTier: 'quality',
     })
-    const parsed = safeParseJson<ResumeAnalysisResult>(aiText)
-    const result = normalizeResumeAnalysisResult(parsed)
-
-    const analysis = await this.prisma.resumeAnalysis.create({
-      data: {
-        resumeId: resume.id,
-        score: result.score,
-        resultJson: result as unknown as Prisma.InputJsonValue,
-      },
-    })
+    const result = normalizeResumeAnalysisResult(safeParseJson<ResumeAnalysisResult>(aiText))
+    const analysis = await this.createAnalysis(resume.id, result)
 
     return {
       analysisId: analysis.id,
       score: result.score,
       result,
     }
+  }
+
+  async analyzeStream(id: string, callbacks: AiStreamCallbacks = {}) {
+    const resume = await this.findResume(id)
+    const model = this.aiService.getModel('quality')
+    const cachePayload = {
+      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
+      userPrompt: this.buildPrompt(resume),
+      temperature: 0.2,
+      maxTokens: 2600,
+    }
+    const cached = await this.aiCacheService.get<ResumeAnalysisResult>({
+      feature: 'resume-analysis',
+      model,
+      payload: cachePayload,
+    })
+
+    const result =
+      cached?.result ||
+      (await this.generateAnalysis({
+        cachePayload,
+        model,
+        callbacks,
+      }))
+    const analysis = await this.createAnalysis(resume.id, result)
+
+    return {
+      analysisId: analysis.id,
+      score: result.score,
+      result,
+      cached: Boolean(cached),
+    }
+  }
+
+  private async findResume(id: string) {
+    const resume = await this.prisma.resume.findUnique({ where: { id } })
+
+    if (!resume) {
+      throw new NotFoundException('Resume not found')
+    }
+
+    return resume
+  }
+
+  private buildPrompt(resume: Resume) {
+    return buildResumeAnalyzePrompt({
+      resumeContent: limitTextForAi(resume.content, AI_TEXT_LIMITS.resume),
+      targetRole: resume.targetRole || undefined,
+      experienceLevel: resume.experienceLevel || undefined,
+    })
+  }
+
+  private async generateAnalysis(params: {
+    cachePayload: {
+      systemPrompt: string
+      userPrompt: string
+      temperature: number
+      maxTokens: number
+    }
+    model: string
+    callbacks: AiStreamCallbacks
+  }) {
+    const stream = await this.aiService.chatStream({
+      ...params.cachePayload,
+      modelTier: 'quality',
+      signal: params.callbacks.signal,
+      onDelta: params.callbacks.onDelta,
+      onUsage: params.callbacks.onUsage,
+    })
+    const result = normalizeResumeAnalysisResult(safeParseJson<ResumeAnalysisResult>(stream.text))
+
+    await this.aiCacheService.set({
+      feature: 'resume-analysis',
+      model: params.model,
+      payload: params.cachePayload,
+      result,
+      rawText: stream.text,
+    })
+
+    return result
+  }
+
+  private createAnalysis(resumeId: string, result: ResumeAnalysisResult) {
+    return this.prisma.resumeAnalysis.create({
+      data: {
+        resumeId,
+        score: result.score,
+        resultJson: result as unknown as Prisma.InputJsonValue,
+      },
+    })
   }
 }
 

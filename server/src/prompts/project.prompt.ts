@@ -6,6 +6,7 @@ export function buildProjectOptimizePrompt(params: {
 }) {
   return `
 请把下面的项目原始描述优化成适合放入程序员简历的项目经历。
+
 目标岗位：${params.targetRole || '未指定'}
 技术栈：${params.techStack?.join('、') || '未指定'}
 表达风格：${params.style || '简洁专业'}

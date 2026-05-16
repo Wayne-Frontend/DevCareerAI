@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
-import { AlertTriangle, Code2, Copy, FileText, HelpCircle, Layers, Shield, Sparkles, Star, UserRound } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
+import { AlertTriangle, Code2, Copy, FileText, HelpCircle, Layers, Shield, Sparkles, Square, Star, UserRound } from 'lucide-vue-next'
 import EmptyState from '../../components/EmptyState/index.vue'
-import { optimizeProject } from '../../api/project'
+import StreamPreview from '../../components/StreamPreview/index.vue'
+import { optimizeProjectStream } from '../../api/project'
 import type { ProjectOptimizationResult } from '../../types/project'
 import { toTagList } from '../../utils/format'
 import { notify } from '../../utils/notify'
 
 const loading = ref(false)
 const result = ref<ProjectOptimizationResult | null>(null)
+const streamPreview = ref('')
+const streamStatus = ref('')
+const controller = ref<AbortController | null>(null)
+
 const form = reactive({
   rawContent: '',
   targetRole: '前端开发工程师',
@@ -27,24 +32,55 @@ const copyText = computed(() => {
   ].join('\n')
 })
 
+onBeforeUnmount(() => {
+  controller.value?.abort()
+})
+
 async function submit() {
   if (!form.rawContent.trim()) {
     notify('请填写原始项目描述', 'warning')
     return
   }
 
+  controller.value = new AbortController()
   loading.value = true
+  streamPreview.value = ''
+  streamStatus.value = 'AI 正在建立连接'
+
   try {
-    result.value = await optimizeProject({
-      rawContent: form.rawContent,
-      targetRole: form.targetRole,
-      techStack: toTagList(form.techStack),
-      style: form.style,
-    })
-    notify('项目优化结果已生成', 'success')
+    const response = await optimizeProjectStream(
+      {
+        rawContent: form.rawContent,
+        targetRole: form.targetRole,
+        techStack: toTagList(form.techStack),
+        style: form.style,
+      },
+      {
+        signal: controller.value.signal,
+        onStart: () => {
+          streamStatus.value = 'AI 正在优化项目表达'
+        },
+        onDelta: (delta) => {
+          streamStatus.value = 'AI 正在生成结构化项目经历'
+          streamPreview.value += delta
+        },
+      },
+    )
+    result.value = response.result
+    notify(response.cached ? '命中缓存，项目优化结果已生成' : '项目优化结果已生成', 'success')
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') {
+      notify('已取消本次优化', 'info')
+    }
   } finally {
     loading.value = false
+    controller.value = null
+    streamStatus.value = ''
   }
+}
+
+function cancelStream() {
+  controller.value?.abort()
 }
 
 async function copyResult() {
@@ -66,8 +102,8 @@ async function copyResult() {
       </div>
     </header>
 
-    <div class="grid grid-cols-[450px_minmax(0,1fr)] items-start gap-4">
-      <section class="glass-card p-5">
+    <div class="feature-workspace">
+      <section class="glass-card feature-pane-left p-5">
         <div class="mb-5 flex items-center gap-3">
           <span class="icon-tile h-10 w-10 rounded-xl"><FileText :size="21" /></span>
           <h2 class="m-0 text-xl font-black text-[#0f172a]">项目信息</h2>
@@ -98,13 +134,19 @@ async function copyResult() {
           </label>
         </div>
 
-        <button class="btn-primary mt-5 w-full" :disabled="loading" @click="submit">
-          <Sparkles :size="18" />
-          {{ loading ? '优化中...' : '开始优化' }}
-        </button>
+        <div class="mt-5 grid gap-3">
+          <button class="btn-primary w-full" :disabled="loading" @click="submit">
+            <Sparkles :size="18" />
+            {{ loading ? '优化中...' : '开始优化' }}
+          </button>
+          <button v-if="loading" class="btn-secondary w-full" @click="cancelStream">
+            <Square :size="16" />
+            取消本次生成
+          </button>
+        </div>
       </section>
 
-      <section class="glass-card p-5">
+      <section class="glass-card feature-pane-right soft-scrollbar p-5">
         <div class="mb-5 flex items-center justify-between">
           <h2 class="m-0 flex items-center gap-3 text-xl font-black text-[#0f172a]">
             <span class="icon-tile h-10 w-10 rounded-xl"><Sparkles :size="20" /></span>
@@ -116,8 +158,10 @@ async function copyResult() {
           </button>
         </div>
 
-        <EmptyState v-if="!result" title="等待项目优化" description="提交原始描述后，这里会展示项目名称、职责、亮点、难点和面试追问。" />
-        <div v-else class="grid gap-4">
+        <StreamPreview v-if="loading" :status="streamStatus" :content="streamPreview" />
+
+        <EmptyState v-if="!result && !loading" title="等待项目优化" description="提交原始描述后，这里会展示项目名称、职责、亮点、难点和面试追问。" />
+        <div v-else-if="result" class="grid gap-4">
           <section class="section-card">
             <h3 class="mb-3 mt-0 flex items-center gap-2 text-lg font-black text-[#0f172a]"><FileText :size="20" class="text-emerald-500" />项目名称建议</h3>
             <span class="inline-flex rounded-[10px] border border-violet-100 bg-violet-50 px-4 py-2 text-sm font-black text-[#26324f]">{{ result.projectName }}</span>

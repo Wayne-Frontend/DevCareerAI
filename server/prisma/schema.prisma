@@ -94,3 +94,17 @@ model InterviewMessage {
 
   session      InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
+
+model AiCache {
+  id         String   @id @default(cuid())
+  cacheKey   String   @unique
+  feature    String
+  model      String
+  promptHash String
+  resultJson Json
+  rawText    String?
+  createdAt  DateTime @default(now())
+
+  @@index([feature, model])
+  @@index([promptHash])
+}

@@ -5,6 +5,7 @@ export function buildJobMatchPrompt(params: {
 }) {
   return `
 请分析下面这份简历和目标岗位 JD 的匹配度。
+
 简历内容：
 ${params.resumeContent}
 

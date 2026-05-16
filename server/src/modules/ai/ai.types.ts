@@ -3,6 +3,29 @@ export interface ChatOptions {
   userPrompt: string
   temperature?: number
   maxTokens?: number
+  responseFormat?: 'json_object' | 'text'
+  thinking?: 'enabled' | 'disabled'
+  modelTier?: 'fast' | 'quality'
+}
+
+export interface AiUsage {
+  completion_tokens?: number
+  prompt_tokens?: number
+  prompt_cache_hit_tokens?: number
+  prompt_cache_miss_tokens?: number
+  total_tokens?: number
+}
+
+export interface ChatStreamOptions extends ChatOptions {
+  signal?: AbortSignal
+  onDelta?: (delta: string) => void
+  onUsage?: (usage: AiUsage) => void
+}
+
+export interface ChatStreamResult {
+  text: string
+  usage?: AiUsage
+  model: string
 }
 
 export interface ResumeAnalysisResult {
