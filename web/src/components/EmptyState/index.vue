@@ -14,11 +14,11 @@ withDefaults(
 </script>
 
 <template>
-  <div class="grid min-h-[240px] place-items-center content-center gap-3 rounded-3xl border border-dashed border-indigo-200/80 bg-white/45 p-8 text-center">
-    <div class="icon-tile h-[72px] w-[72px] rounded-[22px] text-3xl">
-      <Sparkles :size="32" />
+  <div class="grid min-h-[190px] place-items-center content-center gap-2.5 rounded-[20px] border border-dashed border-indigo-200/80 bg-white/45 p-6 text-center">
+    <div class="icon-tile h-[56px] w-[56px] rounded-[18px] text-2xl">
+      <Sparkles :size="26" />
     </div>
-    <h3 class="m-0 text-lg font-extrabold text-[#0f172a]">{{ title }}</h3>
-    <p class="m-0 max-w-sm text-sm leading-7 text-[#64748b]">{{ description }}</p>
+    <h3 class="m-0 text-base font-extrabold text-[#0f172a]">{{ title }}</h3>
+    <p class="m-0 max-w-sm text-[13px] leading-6 text-[#64748b]">{{ description }}</p>
   </div>
 </template>

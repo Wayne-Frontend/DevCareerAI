@@ -5,9 +5,11 @@ import type { ChatMessage } from '../types/interview'
 export const useInterviewStore = defineStore('interview', () => {
   const sessionId = ref('')
   const messages = ref<ChatMessage[]>([])
+  const finished = ref(false)
 
   function startSession(id: string, firstQuestion: string) {
     sessionId.value = id
+    finished.value = false
     messages.value = [{ id: crypto.randomUUID(), role: 'ai', content: firstQuestion }]
   }
 
@@ -15,10 +17,16 @@ export const useInterviewStore = defineStore('interview', () => {
     messages.value.push(message)
   }
 
+  function finishSession() {
+    finished.value = true
+  }
+
   return {
     sessionId,
     messages,
+    finished,
     startSession,
     appendMessage,
+    finishSession,
   }
 })

@@ -9,6 +9,8 @@ export interface ResumeRecord extends ResumePayload {
   id: string
   fileName?: string
   fileType?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface ResumeAnalysisResult {
@@ -36,6 +38,11 @@ export interface ResumeAnalysisResponse {
   analysisId: string
   score: number
   result: ResumeAnalysisResult
+  cached?: boolean
+  meta?: {
+    cached?: boolean
+    status: 'success' | 'parse_error'
+  }
 }
 
 export interface ResumeUploadResponse {

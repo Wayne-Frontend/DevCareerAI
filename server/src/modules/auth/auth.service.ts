@@ -4,6 +4,7 @@ import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'crypto'
 import { PrismaService } from '../../prisma/prisma.service'
 import { LoginDto } from './dto/login.dto'
 import { RegisterDto } from './dto/register.dto'
+import { UpdateProfileDto } from './dto/update-profile.dto'
 import type { AuthUserResponse } from './auth.types'
 
 const PASSWORD_KEY_LENGTH = 64
@@ -78,11 +79,35 @@ export class AuthService {
     return { success: true }
   }
 
-  toUserResponse(user: Pick<User, 'id' | 'username' | 'email' | 'createdAt'>): AuthUserResponse {
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const email = normalizeAccount(dto.email)
+    const duplicatedUser = await this.prisma.user.findFirst({
+      where: {
+        email,
+        NOT: { id: userId },
+      },
+      select: { id: true },
+    })
+
+    if (duplicatedUser) {
+      throw new ConflictException('邮箱已被使用')
+    }
+
+    const avatarUrl = dto.avatarUrl?.trim() || null
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { email, avatarUrl },
+    })
+
+    return this.toUserResponse(user)
+  }
+
+  toUserResponse(user: Pick<User, 'id' | 'username' | 'email' | 'avatarUrl' | 'createdAt'>): AuthUserResponse {
     return {
       id: user.id,
       username: user.username,
       email: user.email,
+      avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
     }
   }

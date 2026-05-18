@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { Box, LockKeyhole, Settings, Shield } from 'lucide-vue-next'
+import { useAuthStore } from '../../stores/auth'
+
+const authStore = useAuthStore()
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 </script>
 
 <template>
@@ -26,16 +30,16 @@ import { Box, LockKeyhole, Settings, Shield } from 'lucide-vue-next'
 
         <div class="grid gap-4">
           <label>
-            <span class="field-label">Provider</span>
-            <input class="input-base" value="DeepSeek" readonly />
+            <span class="field-label">API Base URL</span>
+            <input class="input-base" :value="apiBaseUrl" readonly />
           </label>
           <label>
-            <span class="field-label">Model</span>
-            <input class="input-base" value="deepseek-v4-pro" readonly />
+            <span class="field-label">AI Provider</span>
+            <input class="input-base" value="由后端 AiService 读取环境变量" readonly />
           </label>
           <label>
-            <span class="field-label">Base URL</span>
-            <input class="input-base" value="https://api.deepseek.com" readonly />
+            <span class="field-label">当前账号</span>
+            <input class="input-base" :value="authStore.user?.email || '未登录'" readonly />
           </label>
         </div>
         <p class="mt-3 flex items-center gap-2 text-xs font-semibold text-[#64748b]">

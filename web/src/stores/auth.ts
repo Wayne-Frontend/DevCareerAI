@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { AuthSession } from '../types/auth'
-import { clearStoredAuthSession, getStoredAuthSession, setStoredAuthSession } from '../utils/authSession'
+import type { AuthSession, AuthUser } from '../types/auth'
+import { clearStoredAuthSession, getStoredAuthSession, setStoredAuthSession, updateStoredAuthUser } from '../utils/authSession'
 
 export const useAuthStore = defineStore('auth', () => {
   const session = ref<AuthSession | null>(getStoredAuthSession())
@@ -20,6 +20,16 @@ export const useAuthStore = defineStore('auth', () => {
     clearStoredAuthSession()
   }
 
+  function updateUser(nextUser: AuthUser) {
+    if (!session.value) return
+
+    session.value = {
+      ...session.value,
+      user: nextUser,
+    }
+    updateStoredAuthUser(nextUser)
+  }
+
   return {
     session,
     user,
@@ -27,5 +37,6 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     setSession,
     clearSession,
+    updateUser,
   }
 })

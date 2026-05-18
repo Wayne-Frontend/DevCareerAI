@@ -7,6 +7,7 @@ interface CacheLookupInput {
   feature: string
   model: string
   payload: unknown
+  version?: string
 }
 
 export interface AiCacheHit<T> {
@@ -23,6 +24,8 @@ export class AiCacheService {
     const row = await this.prisma.aiCache.findUnique({ where: { cacheKey } })
 
     if (!row) return null
+    const expiresAt = await this.getExpiresAt(cacheKey)
+    if (expiresAt && expiresAt.getTime() <= Date.now()) return null
 
     return {
       result: row.resultJson as T,
@@ -49,15 +52,39 @@ export class AiCacheService {
         resultJson: input.result as Prisma.InputJsonValue,
       },
     })
+
+    await this.setMetadata(cacheKey, input.version || 'v1', getNextExpiresAt())
   }
 
   getCacheKey(input: CacheLookupInput) {
-    return `${input.feature}:${input.model}:${this.getPromptHash(input.payload)}`
+    return `${input.feature}:${input.model}:${input.version || 'v1'}:${this.getPromptHash(input.payload)}`
   }
 
   private getPromptHash(payload: unknown) {
     return createHash('sha256').update(stableStringify(payload)).digest('hex')
   }
+
+  private async getExpiresAt(cacheKey: string) {
+    const rows = await this.prisma.$queryRaw<Array<{ expiresAt: Date | string | null }>>`
+      SELECT "expiresAt" FROM "AiCache" WHERE "cacheKey" = ${cacheKey} LIMIT 1
+    `
+    const value = rows[0]?.expiresAt
+
+    return value ? new Date(value) : null
+  }
+
+  private async setMetadata(cacheKey: string, version: string, expiresAt: Date) {
+    await this.prisma.$executeRaw`
+      UPDATE "AiCache"
+      SET "version" = ${version}, "expiresAt" = ${expiresAt}
+      WHERE "cacheKey" = ${cacheKey}
+    `
+  }
+}
+
+function getNextExpiresAt() {
+  const ttlMs = 7 * 24 * 60 * 60 * 1000
+  return new Date(Date.now() + ttlMs)
 }
 
 function stableStringify(value: unknown): string {

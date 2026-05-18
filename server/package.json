@@ -6,6 +6,7 @@
   "scripts": {
     "build": "nest build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "ts-node test/run-tests.ts",
     "start": "node dist/main",
     "start:dev": "nest start --watch",
     "prisma:generate": "prisma generate",

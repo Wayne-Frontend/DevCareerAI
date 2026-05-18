@@ -17,6 +17,7 @@ const loading = ref(false)
 const uploadLoading = ref(false)
 const selectedFileName = ref('')
 const result = ref<ResumeAnalysisResult | null>(null)
+const resultStatus = ref<'success' | 'parse_error'>('success')
 const streamPreview = ref('')
 const streamStatus = ref('')
 const controller = ref<AbortController | null>(null)
@@ -76,7 +77,15 @@ async function submit() {
       },
     })
     result.value = analysis.result
-    notify(analysis.cached ? '命中缓存，简历诊断结果已生成' : '简历诊断结果已生成', 'success')
+    resultStatus.value = analysis.meta?.status || 'success'
+    notify(
+      resultStatus.value === 'parse_error'
+        ? 'AI 结果格式异常，已保留原文整理结果'
+        : analysis.cached
+          ? '命中缓存，简历诊断结果已生成'
+          : '简历诊断结果已生成',
+      resultStatus.value === 'parse_error' ? 'warning' : 'success',
+    )
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
       notify('已取消本次分析', 'info')
@@ -96,31 +105,31 @@ function cancelStream() {
 <template>
   <div class="page">
     <header class="flex items-center gap-4">
-      <div class="icon-tile h-[58px] w-[58px] rounded-[18px]">
-        <FileSearch :size="30" />
+      <div class="icon-tile">
+        <FileSearch :size="23" />
       </div>
       <div>
-        <h1 class="m-0 text-[34px] font-black text-[#0f172a]">简历诊断</h1>
-        <p class="mt-2 text-base font-semibold text-[#64748b]">上传或粘贴简历，获得 AI 评分、问题定位和优化建议。</p>
+        <h1 class="m-0 text-[26px] font-black text-[#0f172a]">简历诊断</h1>
+        <p class="mt-1.5 text-sm font-semibold text-[#64748b]">上传或粘贴简历，获得 AI 评分、问题定位和优化建议。</p>
       </div>
     </header>
 
     <div class="feature-workspace">
       <GlassCard class="feature-pane-left">
         <div class="mb-5 flex items-center gap-3">
-          <span class="grid h-8 w-8 place-items-center rounded-full bg-indigo-50 text-sm font-black text-indigo-600">1</span>
-          <h2 class="m-0 text-xl font-black text-[#0f172a]">简历输入</h2>
+          <span class="grid h-7 w-7 place-items-center rounded-full bg-indigo-50 text-xs font-black text-indigo-600">1</span>
+          <h2 class="m-0 text-lg font-black text-[#0f172a]">简历输入</h2>
         </div>
 
         <label class="field-label">上传简历</label>
-        <label class="mb-5 grid min-h-[138px] cursor-pointer place-items-center rounded-[18px] border border-dashed border-indigo-200 bg-white/45 p-6 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40">
+        <label class="mb-4 grid min-h-[110px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40">
           <input class="hidden" type="file" accept=".pdf,.docx,.txt,.md" @change="onFileChange" />
           <UploadCloud :size="40" class="text-indigo-500" />
           <span class="mt-3 block text-sm font-extrabold text-[#26324f]">{{ uploadLoading ? '解析中...' : '点击上传 PDF / DOCX / TXT / MD' }}</span>
           <span v-if="selectedFileName" class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600">{{ selectedFileName }}</span>
         </label>
 
-        <div class="grid gap-4">
+        <div class="grid gap-3">
           <label>
             <span class="field-label">简历标题</span>
             <input v-model="form.title" class="input-base" placeholder="例如：前端开发工程师简历" />
@@ -141,7 +150,7 @@ function cancelStream() {
           </label>
           <label>
             <span class="field-label">简历内容</span>
-            <textarea v-model="form.content" class="textarea-base min-h-[240px]" maxlength="30000" placeholder="将你的简历内容粘贴到这里..." />
+            <textarea v-model="form.content" class="textarea-base min-h-[190px]" maxlength="30000" placeholder="将你的简历内容粘贴到这里..." />
             <span class="mt-1 block text-right text-xs text-[#64748b]">{{ form.content.length }} / 30000</span>
           </label>
         </div>
@@ -160,8 +169,8 @@ function cancelStream() {
 
       <GlassCard class="feature-pane-right soft-scrollbar">
         <div class="mb-5 flex items-center gap-3">
-          <span class="grid h-8 w-8 place-items-center rounded-full bg-indigo-50 text-sm font-black text-indigo-600">2</span>
-          <h2 class="m-0 text-xl font-black text-[#0f172a]">诊断结果</h2>
+          <span class="grid h-7 w-7 place-items-center rounded-full bg-indigo-50 text-xs font-black text-indigo-600">2</span>
+          <h2 class="m-0 text-lg font-black text-[#0f172a]">诊断结果</h2>
         </div>
 
         <StreamPreview v-if="loading" :status="streamStatus" :content="streamPreview" />
@@ -172,6 +181,10 @@ function cancelStream() {
           description="提交简历后，这里会展示评分、优势、问题、建议和优化示例。"
         />
         <div v-else-if="result" class="grid gap-4">
+          <p v-if="resultStatus === 'parse_error'" class="m-0 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-7 text-amber-700">
+            AI 返回内容不是合法 JSON，已保留原文整理结果，建议重试生成。
+          </p>
+
           <section class="section-card">
             <ScoreCard :score="result.score" title="简历综合评分" :summary="result.summary" />
           </section>

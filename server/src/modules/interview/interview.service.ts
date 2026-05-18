@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import { InterviewMessage, InterviewSession, Prisma, Resume } from '@prisma/client'
+import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
 import { AiCacheService } from '../ai/ai-cache.service'
@@ -39,9 +40,9 @@ export class InterviewService {
     private readonly aiCacheService: AiCacheService,
   ) {}
 
-  async create(dto: CreateInterviewDto) {
-    const resumeRecord = await this.resolveResume(dto)
-    const jobDescription = await this.resolveJobDescription(dto)
+  async create(dto: CreateInterviewDto, userId: string) {
+    const resumeRecord = await this.resolveResume(dto, userId)
+    const jobDescription = await this.resolveJobDescription(dto, userId)
     const aiText = await this.aiService.chat({
       systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
       userPrompt: this.buildQuestionPrompt(dto),
@@ -49,14 +50,19 @@ export class InterviewService {
       maxTokens: 1200,
       modelTier: 'fast',
     })
-    const question = normalizeQuestionResult(safeParseJson<InterviewQuestionResult>(aiText), dto)
+    const parsed = safeParseJson<InterviewQuestionResult>(aiText)
+    const status = getAiResultStatus(parsed)
+    const question = normalizeQuestionResult(parsed, dto)
 
-    return this.createSession(dto, resumeRecord.id, jobDescription?.id, question)
+    return {
+      ...(await this.createSession(dto, resumeRecord.id, jobDescription?.id, question, userId)),
+      meta: { status },
+    }
   }
 
-  async createStream(dto: CreateInterviewDto, callbacks: AiStreamCallbacks = {}) {
-    const resumeRecord = await this.resolveResume(dto)
-    const jobDescription = await this.resolveJobDescription(dto)
+  async createStream(dto: CreateInterviewDto, userId: string, callbacks: AiStreamCallbacks = {}) {
+    const resumeRecord = await this.resolveResume(dto, userId)
+    const jobDescription = await this.resolveJobDescription(dto, userId)
     const model = this.aiService.getModel('fast')
     const cachePayload = {
       systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
@@ -67,34 +73,41 @@ export class InterviewService {
     const cached = await this.aiCacheService.get<InterviewQuestionResult>({
       feature: 'interview-question',
       model,
+      version: 'interview-question-v1',
       payload: cachePayload,
     })
-    const question =
-      cached?.result ||
-      (await this.generateQuestion({
-        cachePayload,
-        model,
-        dto,
-        callbacks,
-      }))
-    const response = await this.createSession(dto, resumeRecord.id, jobDescription?.id, question)
+    const generated = cached
+      ? { result: cached.result, status: 'success' as const }
+      : await this.generateQuestion({
+          cachePayload,
+          model,
+          dto,
+          callbacks,
+        })
+    const response = await this.createSession(dto, resumeRecord.id, jobDescription?.id, generated.result, userId)
 
     return {
       ...response,
       cached: Boolean(cached),
+      meta: {
+        cached: Boolean(cached),
+        status: generated.status,
+      },
     }
   }
 
-  async submitAnswer(sessionId: string, dto: SubmitAnswerDto) {
-    const session = await this.findSession(sessionId)
+  async submitAnswer(sessionId: string, dto: SubmitAnswerDto, userId: string) {
+    const session = await this.findSession(sessionId, userId)
+    this.assertOngoingSession(session)
     const feedback = await this.requestFeedback(session, dto)
     await this.createAnswerMessages(sessionId, dto.answer, feedback)
 
     return toMessageResponse(sessionId, feedback)
   }
 
-  async submitAnswerStream(sessionId: string, dto: SubmitAnswerDto, callbacks: AiStreamCallbacks = {}) {
-    const session = await this.findSession(sessionId)
+  async submitAnswerStream(sessionId: string, dto: SubmitAnswerDto, userId: string, callbacks: AiStreamCallbacks = {}) {
+    const session = await this.findSession(sessionId, userId)
+    this.assertOngoingSession(session)
     const lastQuestion = [...session.messages].reverse().find((message) => message.role === 'ai')
     const model = this.aiService.getModel('fast')
     const cachePayload = {
@@ -106,26 +119,33 @@ export class InterviewService {
     const cached = await this.aiCacheService.get<InterviewFeedbackResult>({
       feature: 'interview-feedback',
       model,
+      version: 'interview-feedback-v1',
       payload: cachePayload,
     })
-    const feedback =
-      cached?.result ||
-      (await this.generateFeedback({
-        cachePayload,
-        model,
-        callbacks,
-      }))
+    const generated = cached
+      ? { result: cached.result, status: 'success' as const }
+      : await this.generateFeedback({
+          cachePayload,
+          model,
+          callbacks,
+        })
+    const feedback = generated.result
 
     await this.createAnswerMessages(sessionId, dto.answer, feedback)
 
     return {
       ...toMessageResponse(sessionId, feedback),
       cached: Boolean(cached),
+      meta: {
+        cached: Boolean(cached),
+        status: generated.status,
+      },
     }
   }
 
-  async finish(sessionId: string) {
-    const session = await this.findSession(sessionId, false)
+  async finish(sessionId: string, userId: string) {
+    const session = await this.findSession(sessionId, userId, false)
+    this.assertOngoingSession(session)
     const aiText = await this.aiService.chat({
       systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
       userPrompt: this.buildSummaryPrompt(session),
@@ -133,18 +153,22 @@ export class InterviewService {
       maxTokens: 1800,
       modelTier: 'fast',
     })
-    const summary = normalizeSummaryResult(safeParseJson<InterviewSummaryResult>(aiText))
+    const parsed = safeParseJson<InterviewSummaryResult>(aiText)
+    const status = getAiResultStatus(parsed)
+    const summary = normalizeSummaryResult(parsed)
 
-    await this.finishSession(sessionId, summary)
+    await this.finishSession(sessionId, userId, summary)
 
     return {
       sessionId,
       ...summary,
+      meta: { status },
     }
   }
 
-  async finishStream(sessionId: string, callbacks: AiStreamCallbacks = {}) {
-    const session = await this.findSession(sessionId, false)
+  async finishStream(sessionId: string, userId: string, callbacks: AiStreamCallbacks = {}) {
+    const session = await this.findSession(sessionId, userId, false)
+    this.assertOngoingSession(session)
     const model = this.aiService.getModel('fast')
     const cachePayload = {
       systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
@@ -155,56 +179,67 @@ export class InterviewService {
     const cached = await this.aiCacheService.get<InterviewSummaryResult>({
       feature: 'interview-summary',
       model,
+      version: 'interview-summary-v1',
       payload: cachePayload,
     })
-    const summary =
-      cached?.result ||
-      (await this.generateSummary({
-        cachePayload,
-        model,
-        callbacks,
-      }))
+    const generated = cached
+      ? { result: cached.result, status: 'success' as const }
+      : await this.generateSummary({
+          cachePayload,
+          model,
+          callbacks,
+        })
+    const summary = generated.result
 
-    await this.finishSession(sessionId, summary)
+    await this.finishSession(sessionId, userId, summary)
 
     return {
       sessionId,
       ...summary,
       cached: Boolean(cached),
+      meta: {
+        cached: Boolean(cached),
+        status: generated.status,
+      },
     }
   }
 
-  private async resolveResume(dto: CreateInterviewDto) {
-    const resume = dto.resumeId
-      ? await this.prisma.resume.findUnique({ where: { id: dto.resumeId } })
-      : await this.prisma.resume.create({
-          data: {
-            title: `${dto.targetRole} 模拟面试简历`,
-            content: dto.resumeContent,
-            targetRole: dto.targetRole,
-          },
-        })
+  private async resolveResume(dto: CreateInterviewDto, userId: string) {
+    if (dto.resumeId) {
+      const resume = await this.prisma.resume.findFirst({ where: { id: dto.resumeId, userId } })
 
-    return (
-      resume ||
-      (await this.prisma.resume.create({
-        data: {
-          title: `${dto.targetRole} 模拟面试简历`,
-          content: dto.resumeContent,
-          targetRole: dto.targetRole,
-        },
-      }))
-    )
+      if (!resume) {
+        throw new NotFoundException('Resume not found')
+      }
+
+      return resume
+    }
+
+    return this.prisma.resume.create({
+      data: {
+        userId,
+        title: `${dto.targetRole} 模拟面试简历`,
+        content: dto.resumeContent,
+        targetRole: dto.targetRole,
+      },
+    })
   }
 
-  private resolveJobDescription(dto: CreateInterviewDto) {
+  private async resolveJobDescription(dto: CreateInterviewDto, userId: string) {
     if (dto.jobDescriptionId) {
-      return this.prisma.jobDescription.findUnique({ where: { id: dto.jobDescriptionId } })
+      const jobDescription = await this.prisma.jobDescription.findFirst({ where: { id: dto.jobDescriptionId, userId } })
+
+      if (!jobDescription) {
+        throw new NotFoundException('Job description not found')
+      }
+
+      return jobDescription
     }
 
     if (dto.jobDescription) {
       return this.prisma.jobDescription.create({
         data: {
+          userId,
           jobTitle: dto.targetRole,
           content: dto.jobDescription,
         },
@@ -249,9 +284,11 @@ export class InterviewService {
     resumeId: string,
     jobDescriptionId: string | undefined,
     question: InterviewQuestionResult,
+    userId: string,
   ) {
     const session = await this.prisma.interviewSession.create({
       data: {
+        userId,
         resumeId,
         jobDescriptionId,
         title: `${dto.targetRole} ${dto.interviewType}`,
@@ -278,9 +315,9 @@ export class InterviewService {
     }
   }
 
-  private async findSession(sessionId: string, includeResume = true): Promise<SessionWithMessages> {
-    const session = await this.prisma.interviewSession.findUnique({
-      where: { id: sessionId },
+  private async findSession(sessionId: string, userId: string, includeResume = true): Promise<SessionWithMessages> {
+    const session = await this.prisma.interviewSession.findFirst({
+      where: { id: sessionId, userId },
       include: {
         resume: includeResume,
         messages: { orderBy: { createdAt: 'asc' } },
@@ -325,17 +362,20 @@ export class InterviewService {
       onDelta: params.callbacks.onDelta,
       onUsage: params.callbacks.onUsage,
     })
-    const result = normalizeQuestionResult(safeParseJson<InterviewQuestionResult>(stream.text), params.dto)
+    const parsed = safeParseJson<InterviewQuestionResult>(stream.text)
+    const status = getAiResultStatus(parsed)
+    const result = normalizeQuestionResult(parsed, params.dto)
 
     await this.aiCacheService.set({
       feature: 'interview-question',
       model: params.model,
+      version: 'interview-question-v1',
       payload: params.cachePayload,
       result,
       rawText: stream.text,
     })
 
-    return result
+    return { result, status }
   }
 
   private async generateFeedback(params: {
@@ -355,17 +395,20 @@ export class InterviewService {
       onDelta: params.callbacks.onDelta,
       onUsage: params.callbacks.onUsage,
     })
-    const result = normalizeFeedbackResult(safeParseJson<InterviewFeedbackResult>(stream.text))
+    const parsed = safeParseJson<InterviewFeedbackResult>(stream.text)
+    const status = getAiResultStatus(parsed)
+    const result = normalizeFeedbackResult(parsed)
 
     await this.aiCacheService.set({
       feature: 'interview-feedback',
       model: params.model,
+      version: 'interview-feedback-v1',
       payload: params.cachePayload,
       result,
       rawText: stream.text,
     })
 
-    return result
+    return { result, status }
   }
 
   private async generateSummary(params: {
@@ -385,17 +428,20 @@ export class InterviewService {
       onDelta: params.callbacks.onDelta,
       onUsage: params.callbacks.onUsage,
     })
-    const result = normalizeSummaryResult(safeParseJson<InterviewSummaryResult>(stream.text))
+    const parsed = safeParseJson<InterviewSummaryResult>(stream.text)
+    const status = getAiResultStatus(parsed)
+    const result = normalizeSummaryResult(parsed)
 
     await this.aiCacheService.set({
       feature: 'interview-summary',
       model: params.model,
+      version: 'interview-summary-v1',
       payload: params.cachePayload,
       result,
       rawText: stream.text,
     })
 
-    return result
+    return { result, status }
   }
 
   private async createAnswerMessages(sessionId: string, answer: string, feedback: InterviewFeedbackResult) {
@@ -416,14 +462,20 @@ export class InterviewService {
     })
   }
 
-  private finishSession(sessionId: string, summary: InterviewSummaryResult) {
-    return this.prisma.interviewSession.update({
-      where: { id: sessionId },
+  private finishSession(sessionId: string, userId: string, summary: InterviewSummaryResult) {
+    return this.prisma.interviewSession.updateMany({
+      where: { id: sessionId, userId },
       data: {
         status: 'finished',
         summaryJson: summary as unknown as Prisma.InputJsonValue,
       },
     })
+  }
+
+  private assertOngoingSession(session: Pick<InterviewSession, 'status'>) {
+    if (session.status !== 'ongoing') {
+      throw new ConflictException('面试已结束，不能继续操作')
+    }
   }
 }
 

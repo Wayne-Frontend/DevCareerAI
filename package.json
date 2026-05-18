@@ -15,7 +15,8 @@
     "clean:logs": "node scripts/clean-logs.mjs",
     "typecheck": "npm --prefix web run typecheck && npm --prefix server run typecheck",
     "lint": "npm run typecheck",
-    "check": "npm run typecheck && npm run build",
+    "test": "npm --prefix server run test",
+    "check": "npm run typecheck && npm run test && npm run build",
     "build": "npm --prefix web run build && npm --prefix server run build",
     "prisma:migrate": "npm --prefix server run prisma:migrate",
     "prisma:generate": "npm --prefix server run prisma:generate"

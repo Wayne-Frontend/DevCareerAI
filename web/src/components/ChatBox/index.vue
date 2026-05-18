@@ -8,6 +8,7 @@ import ChatMessageItem from '../ChatMessage/index.vue'
 const props = defineProps<{
   messages: ChatMessage[]
   loading?: boolean
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -108,7 +109,7 @@ onMounted(async () => {
             maxlength="1500"
             placeholder="请输入你的回答..."
             rows="1"
-            :disabled="loading"
+            :disabled="loading || disabled"
             @input="resizeAnswerTextarea"
             @keydown.ctrl.enter.prevent="send"
           />
@@ -116,14 +117,14 @@ onMounted(async () => {
         </div>
         <button
           class="grid h-[58px] w-[58px] place-items-center rounded-full bg-gradient-to-br from-violet-500 to-blue-500 text-white shadow-[0_18px_36px_rgba(99,102,241,0.35)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="loading"
+          :disabled="loading || disabled"
           aria-label="发送回答"
           @click="send"
         >
           <Send :size="18" />
         </button>
       </div>
-      <span class="ml-1 text-xs text-[#94a3b8]">按 Ctrl + Enter 发送</span>
+      <span class="ml-1 text-xs text-[#94a3b8]">{{ disabled ? '当前面试已结束' : '按 Ctrl + Enter 发送' }}</span>
     </div>
   </div>
 </template>

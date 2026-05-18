@@ -28,6 +28,7 @@ const form = reactive({
   username: '',
   email: '',
   password: '',
+  confirmPassword: '',
   remember: true,
 })
 
@@ -37,12 +38,24 @@ const subtitle = computed(() =>
   isRegister.value ? '注册 DevCareer AI，开启你的智能求职工作台。' : '登录 DevCareer AI，开启你的智能求职工作台。',
 )
 const submitLabel = computed(() => (isRegister.value ? '注册' : '登录'))
+const passwordValid = computed(() => form.password.length >= 6)
+const registerPasswordMatched = computed(() => !isRegister.value || form.password === form.confirmPassword)
 
 async function submit() {
   if (loading.value) return
 
   if (isRegister.value && (!form.username.trim() || !form.email.trim() || !form.password.trim())) {
     notify('请填写用户名、邮箱和密码', 'warning')
+    return
+  }
+
+  if (isRegister.value && !registerPasswordMatched.value) {
+    notify('两次输入的密码不一致', 'warning')
+    return
+  }
+
+  if (!passwordValid.value) {
+    notify('密码至少需要 6 位', 'warning')
     return
   }
 
@@ -77,23 +90,26 @@ async function submit() {
 function switchMode(nextMode: 'login' | 'register') {
   mode.value = nextMode
   showPassword.value = false
+  form.password = ''
+  form.confirmPassword = ''
 }
+
 </script>
 
 <template>
-  <main class="login-page min-h-screen overflow-hidden px-8 py-10">
-    <section class="login-shell mx-auto grid min-h-[calc(100vh-80px)] w-full max-w-[1320px] grid-cols-[1.06fr_0.94fr] items-center gap-16 rounded-[24px] border border-white/80 px-[82px] py-[66px]">
-      <div class="relative flex h-full min-h-[720px] flex-col">
+  <main class="login-page grid min-h-screen overflow-hidden px-6 py-6">
+    <section class="login-shell mx-auto grid h-[calc(100vh-48px)] min-h-[680px] w-full max-w-[1180px] grid-cols-[0.98fr_0.9fr] items-center gap-10 rounded-[24px] border border-white/80 px-12 py-10">
+      <div class="relative flex h-full min-h-0 flex-col">
         <span class="login-pill">
-          <Sparkles :size="21" />
+          <Sparkles :size="18" />
           AI 助力 · 智能求职 · 精准匹配
         </span>
 
-        <h1 class="mt-9 max-w-[520px] text-[50px] font-black leading-[1.12] tracking-normal text-[#101828]">
+        <h1 class="mt-7 max-w-[500px] text-[42px] font-black leading-[1.12] tracking-normal text-[#101828]">
           让 <span class="text-[#7657ff]">AI</span> 帮你优化简历，<br />
           匹配理想岗位
         </h1>
-        <p class="mt-6 max-w-[580px] text-[18px] font-extrabold leading-9 text-[#506078]">
+        <p class="mt-4 max-w-[540px] text-[16px] font-extrabold leading-8 text-[#506078]">
           从简历诊断到岗位匹配，从模拟面试到求职建议，DevCareer AI 全程陪伴你的求职之路。
         </p>
 
@@ -114,7 +130,7 @@ function switchMode(nextMode: 'login' | 'register') {
           </div>
         </div>
 
-        <div class="mt-auto grid max-w-[540px] grid-cols-3 gap-6">
+        <div class="mt-auto grid max-w-[500px] grid-cols-3 gap-4">
           <div class="metric-item">
             <span class="metric-icon"><UserRound :size="21" /></span>
             <strong>10万+</strong>
@@ -133,18 +149,18 @@ function switchMode(nextMode: 'login' | 'register') {
         </div>
       </div>
 
-      <section class="auth-card ml-auto w-full max-w-[558px] rounded-[28px] bg-white px-12 py-[64px] shadow-[0_30px_70px_rgba(30,41,59,0.08)]">
-        <div class="mb-10 flex items-center justify-center gap-4">
-          <span class="brand-mark"><Sparkles :size="26" /></span>
-          <strong class="text-[25px] font-black text-[#101828]">DevCareer AI</strong>
+      <section class="auth-card ml-auto w-full max-w-[480px] rounded-[24px] bg-white px-9 py-9 shadow-[0_30px_70px_rgba(30,41,59,0.08)]">
+        <div class="mb-7 flex items-center justify-center gap-3">
+          <span class="brand-mark"><Sparkles :size="22" /></span>
+          <strong class="text-[22px] font-black text-[#101828]">DevCareer AI</strong>
         </div>
 
         <div class="text-center">
-          <h2 class="m-0 text-[42px] font-black tracking-normal text-[#101828]">{{ title }}</h2>
-          <p class="mt-6 text-[17px] font-bold leading-7 text-[#526177]">{{ subtitle }}</p>
+          <h2 class="m-0 text-[32px] font-black tracking-normal text-[#101828]">{{ title }}</h2>
+          <p class="mt-3 text-[14px] font-bold leading-6 text-[#526177]">{{ subtitle }}</p>
         </div>
 
-        <form class="mt-10 grid gap-[22px]" @submit.prevent="submit">
+        <form class="mt-7 grid gap-4" @submit.prevent="submit">
           <label v-if="isRegister" class="auth-field">
             <span>用户名</span>
             <div class="input-wrap">
@@ -183,14 +199,32 @@ function switchMode(nextMode: 'login' | 'register') {
                 <Eye v-else :size="21" />
               </button>
             </div>
+            <span v-if="isRegister" class="helper-text" :class="{ 'text-emerald-600': passwordValid }">
+              {{ passwordValid ? '密码长度符合要求' : '至少 6 位密码' }}
+            </span>
           </label>
 
-          <div v-if="!isRegister" class="flex items-center justify-between text-[16px] font-extrabold text-[#344054]">
+          <label v-if="isRegister" class="auth-field">
+            <span>确认密码</span>
+            <div class="input-wrap">
+              <LockKeyhole :size="19" />
+              <input
+                v-model="form.confirmPassword"
+                autocomplete="new-password"
+                placeholder="请再次输入密码"
+                :type="showPassword ? 'text' : 'password'"
+              />
+            </div>
+            <span v-if="form.confirmPassword" class="helper-text" :class="registerPasswordMatched ? 'text-emerald-600' : 'text-red-500'">
+              {{ registerPasswordMatched ? '两次密码一致' : '两次输入的密码不一致' }}
+            </span>
+          </label>
+
+          <div v-if="!isRegister" class="flex items-center text-[14px] font-extrabold text-[#344054]">
             <label class="flex cursor-pointer items-center gap-3">
               <input v-model="form.remember" class="remember-checkbox" type="checkbox" />
               记住我
             </label>
-            <button type="button" class="text-[#5f43ff] transition hover:text-[#3478ff]">忘记密码?</button>
           </div>
 
           <button class="login-submit" :disabled="loading" type="submit">
@@ -198,13 +232,13 @@ function switchMode(nextMode: 'login' | 'register') {
           </button>
         </form>
 
-        <div class="my-9 flex items-center gap-4 text-sm font-bold text-[#98a2b3]">
+        <div class="my-6 flex items-center gap-4 text-sm font-bold text-[#98a2b3]">
           <span class="h-px flex-1 bg-[#e5e7eb]" />
           或
           <span class="h-px flex-1 bg-[#e5e7eb]" />
         </div>
 
-        <p class="m-0 text-center text-[17px] font-extrabold text-[#344054]">
+        <p class="m-0 text-center text-[15px] font-extrabold text-[#344054]">
           {{ isRegister ? '已有账号?' : '没有账号?' }}
           <button class="ml-3 text-[#5f43ff] transition hover:text-[#3478ff]" @click="switchMode(isRegister ? 'login' : 'register')">
             {{ isRegister ? '立即登录' : '立即注册' }}
@@ -234,31 +268,31 @@ function switchMode(nextMode: 'login' | 'register') {
 .login-pill {
   display: inline-flex;
   width: fit-content;
-  min-height: 44px;
+  min-height: 38px;
   align-items: center;
   gap: 10px;
   border: 1px solid rgba(99, 102, 241, 0.2);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.82);
-  padding: 0 20px;
+  padding: 0 16px;
   color: #5a43ff;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 900;
   box-shadow: 0 14px 36px rgba(99, 102, 241, 0.08);
 }
 
 .hero-visual {
   position: relative;
-  height: 370px;
-  margin-top: 18px;
+  height: 300px;
+  margin-top: 8px;
 }
 
 .orbit-line {
   position: absolute;
-  left: 36px;
-  top: 112px;
-  width: 548px;
-  height: 180px;
+  left: 28px;
+  top: 92px;
+  width: 440px;
+  height: 146px;
   border: 2px solid rgba(110, 231, 183, 0.48);
   border-radius: 50%;
   transform: rotate(-14deg);
@@ -275,11 +309,11 @@ function switchMode(nextMode: 'login' | 'register') {
 
 .resume-card {
   position: absolute;
-  left: 212px;
-  top: 30px;
-  width: 230px;
-  height: 330px;
-  border-radius: 24px;
+  left: 178px;
+  top: 20px;
+  width: 188px;
+  height: 268px;
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 42px 78px rgba(99, 102, 241, 0.13);
   transform: rotate(11deg);
@@ -287,35 +321,35 @@ function switchMode(nextMode: 'login' | 'register') {
 
 .resume-line {
   position: absolute;
-  left: 48px;
-  height: 10px;
+  left: 38px;
+  height: 8px;
   border-radius: 999px;
   background: rgba(112, 128, 255, 0.32);
 }
 
 .line-a {
-  top: 96px;
-  width: 116px;
+  top: 78px;
+  width: 96px;
 }
 
 .line-b {
-  top: 123px;
-  width: 94px;
+  top: 100px;
+  width: 78px;
 }
 
 .line-c {
-  top: 151px;
-  width: 158px;
+  top: 124px;
+  width: 126px;
 }
 
 .line-d {
-  top: 179px;
-  width: 132px;
+  top: 148px;
+  width: 108px;
 }
 
 .line-e {
-  top: 207px;
-  width: 106px;
+  top: 172px;
+  width: 88px;
 }
 
 .code-float,
@@ -323,9 +357,9 @@ function switchMode(nextMode: 'login' | 'register') {
   position: absolute;
   display: grid;
   place-items: center;
-  width: 86px;
-  height: 86px;
-  border-radius: 20px;
+  width: 70px;
+  height: 70px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.78);
   color: #635bff;
   box-shadow: 0 28px 60px rgba(99, 102, 241, 0.14);
@@ -333,53 +367,53 @@ function switchMode(nextMode: 'login' | 'register') {
 }
 
 .code-float {
-  left: 70px;
-  top: 200px;
-  font-size: 38px;
+  left: 60px;
+  top: 164px;
+  font-size: 30px;
   font-weight: 900;
 }
 
 .search-float {
-  left: 420px;
-  top: 186px;
+  left: 342px;
+  top: 154px;
 }
 
 .metric-item {
   display: grid;
-  grid-template-columns: 38px 1fr;
-  column-gap: 12px;
+  grid-template-columns: 34px 1fr;
+  column-gap: 10px;
   align-items: center;
 }
 
 .metric-icon {
   display: grid;
   grid-row: span 2;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.65);
   color: #635bff;
 }
 
 .metric-item strong {
   color: #5a43ff;
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 950;
   line-height: 1;
 }
 
 .metric-item p {
-  margin: 7px 0 0;
+  margin: 5px 0 0;
   color: #64748b;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .brand-mark {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border-radius: 12px;
   background: linear-gradient(135deg, #8344ef 0%, #3b82f6 100%);
@@ -389,23 +423,23 @@ function switchMode(nextMode: 'login' | 'register') {
 
 .auth-field {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .auth-field > span {
   color: #101828;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 900;
 }
 
 .input-wrap {
   display: flex;
-  min-height: 58px;
+  min-height: 48px;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   border: 1px solid #cbd5e1;
   border-radius: 13px;
-  padding: 0 18px;
+  padding: 0 15px;
   color: #64748b;
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
@@ -421,7 +455,7 @@ function switchMode(nextMode: 'login' | 'register') {
   border: 0;
   outline: 0;
   color: #101828;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -439,18 +473,18 @@ function switchMode(nextMode: 'login' | 'register') {
 }
 
 .remember-checkbox {
-  width: 20px;
-  height: 20px;
+  width: 17px;
+  height: 17px;
   accent-color: #635bff;
 }
 
 .login-submit {
-  min-height: 64px;
+  min-height: 52px;
   border: 0;
   border-radius: 11px;
   background: linear-gradient(135deg, #7c3aed 0%, #6366f1 48%, #2386ff 100%);
   color: white;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 950;
   box-shadow: 0 24px 42px rgba(99, 102, 241, 0.24);
   transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
@@ -466,6 +500,12 @@ function switchMode(nextMode: 'login' | 'register') {
   opacity: 0.68;
 }
 
+.helper-text {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 button {
   font: inherit;
 }
@@ -473,11 +513,14 @@ button {
 @media (max-width: 1180px) {
   .login-shell {
     grid-template-columns: 1fr;
-    padding: 44px;
+    height: auto;
+    min-height: calc(100vh - 48px);
+    overflow-y: auto;
+    padding: 36px;
   }
 
   .login-shell > div {
-    min-height: 620px;
+    min-height: 520px;
   }
 
   .auth-card {

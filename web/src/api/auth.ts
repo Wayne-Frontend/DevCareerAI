@@ -1,5 +1,5 @@
 import { request } from './request'
-import type { AuthSession, AuthUser, LoginPayload, RegisterPayload } from '../types/auth'
+import type { AuthSession, AuthUser, LoginPayload, RegisterPayload, UpdateProfilePayload } from '../types/auth'
 
 export function login(data: LoginPayload) {
   return request<AuthSession>({
@@ -21,6 +21,14 @@ export function getCurrentUser() {
   return request<AuthUser>({
     url: '/auth/me',
     method: 'GET',
+  })
+}
+
+export function updateProfile(data: UpdateProfilePayload) {
+  return request<AuthUser>({
+    url: '/auth/me',
+    method: 'PATCH',
+    data,
   })
 }
 

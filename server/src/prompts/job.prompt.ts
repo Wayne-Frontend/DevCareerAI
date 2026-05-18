@@ -18,6 +18,12 @@ ${params.jobDescription}
 {
   "matchScore": number,
   "summary": string,
+  "dimensionScores": {
+    "skillMatch": number,
+    "projectRelevance": number,
+    "engineeringAbility": number,
+    "businessUnderstanding": number
+  },
   "matchedKeywords": string[],
   "missingKeywords": string[],
   "advantages": string[],

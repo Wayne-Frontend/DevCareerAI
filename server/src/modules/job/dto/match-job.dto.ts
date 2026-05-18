@@ -26,4 +26,9 @@ export class MatchJobDto {
   @IsString()
   @MaxLength(120)
   companyName?: string
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^c[a-z0-9]{8,}$/)
+  jobDescriptionId?: string
 }

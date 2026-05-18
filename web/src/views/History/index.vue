@@ -81,6 +81,27 @@ function detailText(record: HistoryRecord) {
   return JSON.stringify(record.detail || record, null, 2)
 }
 
+function detailObject(record: HistoryRecord) {
+  return record.detail && typeof record.detail === 'object' ? (record.detail as Record<string, unknown>) : {}
+}
+
+function detailList(record: HistoryRecord, key: string) {
+  const value = detailObject(record)[key]
+  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : []
+}
+
+function detailString(record: HistoryRecord, key: string) {
+  const value = detailObject(record)[key]
+  return typeof value === 'string' ? value : ''
+}
+
+function detailScore(record: HistoryRecord) {
+  const detail = detailObject(record)
+  const value = detail.score ?? detail.matchScore ?? detail.totalScore ?? record.score
+  const score = Number(value)
+  return Number.isFinite(score) ? Math.round(score) : undefined
+}
+
 onMounted(() => load())
 </script>
 
@@ -155,7 +176,59 @@ onMounted(() => load())
         <h2 class="m-0 text-xl font-black text-[#0f172a]">{{ activeDetail.title }}</h2>
         <button class="btn-secondary" @click="activeDetail = null">关闭</button>
       </div>
-      <pre class="max-h-[420px] overflow-auto rounded-2xl bg-slate-950 p-5 text-sm leading-7 text-slate-100">{{ detailText(activeDetail) }}</pre>
+
+      <div class="grid gap-4">
+        <div class="grid grid-cols-[120px_1fr] gap-4 rounded-2xl border border-slate-200 bg-white/70 p-4">
+          <div v-if="detailScore(activeDetail) !== undefined" class="grid h-[104px] w-[104px] place-items-center rounded-full bg-indigo-50">
+            <strong class="text-3xl font-black text-indigo-600">{{ detailScore(activeDetail) }}</strong>
+            <span class="-mt-7 text-xs font-bold text-[#64748b]">分</span>
+          </div>
+          <div v-else class="icon-tile h-[104px] w-[104px] rounded-[24px]">
+            <component :is="typeMeta[activeDetail.type].icon" :size="42" />
+          </div>
+          <div class="min-w-0">
+            <span class="soft-tag">{{ typeMeta[activeDetail.type].label }}</span>
+            <p class="mb-0 mt-3 text-sm leading-7 text-[#475569]">
+              {{ detailString(activeDetail, 'summary') || detailString(activeDetail, 'projectDescription') || '该记录暂无摘要字段，可查看下方原始结构化结果。' }}
+            </p>
+          </div>
+        </div>
+
+        <div v-if="activeDetail.type === 'resume-analysis'" class="grid grid-cols-2 gap-4">
+          <section class="section-card">
+            <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">优势</h3>
+            <ul class="m-0 grid gap-2 pl-5 text-sm leading-7 text-[#475569]">
+              <li v-for="item in detailList(activeDetail, 'strengths')" :key="item">{{ item }}</li>
+            </ul>
+          </section>
+          <section class="section-card">
+            <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">问题</h3>
+            <ul class="m-0 grid gap-2 pl-5 text-sm leading-7 text-[#475569]">
+              <li v-for="item in detailList(activeDetail, 'weaknesses')" :key="item">{{ item }}</li>
+            </ul>
+          </section>
+        </div>
+
+        <div v-else-if="activeDetail.type === 'job-match'" class="grid grid-cols-2 gap-4">
+          <section class="section-card">
+            <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">匹配关键词</h3>
+            <div class="flex flex-wrap gap-2">
+              <span v-for="item in detailList(activeDetail, 'matchedKeywords')" :key="item" class="success-tag">{{ item }}</span>
+            </div>
+          </section>
+          <section class="section-card">
+            <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">缺失关键词</h3>
+            <div class="flex flex-wrap gap-2">
+              <span v-for="item in detailList(activeDetail, 'missingKeywords')" :key="item" class="danger-tag">{{ item }}</span>
+            </div>
+          </section>
+        </div>
+
+        <section class="section-card">
+          <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">原始结构化结果</h3>
+          <pre class="max-h-[320px] overflow-auto rounded-2xl bg-slate-950 p-5 text-sm leading-7 text-slate-100">{{ detailText(activeDetail) }}</pre>
+        </section>
+      </div>
     </section>
   </div>
 </template>

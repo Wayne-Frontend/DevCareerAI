@@ -32,18 +32,18 @@ const features = [
 
 <template>
   <div class="page">
-    <section class="relative min-h-[360px] overflow-hidden rounded-[24px] border border-[rgba(148,163,184,0.22)] bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(239,244,255,0.72))] p-10 shadow-[0_18px_48px_rgba(43,55,96,0.08)]">
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_84%_45%,rgba(124,58,237,0.24),transparent_32%),radial-gradient(circle_at_70%_70%,rgba(56,189,248,0.16),transparent_24%)]" />
+    <section class="home-hero relative min-h-[280px] overflow-hidden rounded-[18px] border border-[rgba(148,163,184,0.22)] bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(239,244,255,0.72))] p-7 shadow-[0_14px_38px_rgba(43,55,96,0.07)]">
+      <div class="home-hero-aura absolute inset-0 bg-[radial-gradient(circle_at_84%_45%,rgba(124,58,237,0.24),transparent_32%),radial-gradient(circle_at_70%_70%,rgba(56,189,248,0.16),transparent_24%)]" />
       <div class="relative z-10 max-w-[760px]">
         <span class="soft-tag">程序员 AI 简历与面试助手</span>
-        <h1 class="mb-5 mt-7 text-[48px] font-black leading-[1.16] tracking-normal text-[#08112f]">DevCareer AI</h1>
-        <p class="m-0 text-lg font-semibold leading-8 text-[#64748b]">面向开发者的本地 MVP 工作台，支持简历诊断、项目经历优化、岗位匹配、模拟面试和历史复盘。</p>
-        <div class="mt-9 flex gap-4">
-          <RouterLink class="btn-primary min-w-[190px]" to="/resume-analyze">
+        <h1 class="mb-3 mt-5 text-[36px] font-black leading-[1.12] tracking-normal text-[#08112f]">DevCareer AI</h1>
+        <p class="m-0 max-w-[680px] text-[15px] font-semibold leading-7 text-[#64748b]">面向开发者的本地 MVP 工作台，支持简历诊断、项目经历优化、岗位匹配、模拟面试和历史复盘。</p>
+        <div class="mt-7 flex gap-3">
+          <RouterLink class="btn-primary min-w-[150px]" to="/resume-analyze">
             <FileSearch :size="20" />
             开始诊断
           </RouterLink>
-          <RouterLink class="btn-secondary min-w-[176px]" to="/interview">
+          <RouterLink class="btn-secondary min-w-[140px]" to="/interview">
             <Mic :size="20" />
             模拟面试
           </RouterLink>
@@ -51,7 +51,7 @@ const features = [
       </div>
     </section>
 
-    <section class="grid grid-cols-4 gap-3">
+    <section class="grid grid-cols-4 gap-2.5">
       <FeatureCard
         v-for="feature in features"
         :key="feature.path"

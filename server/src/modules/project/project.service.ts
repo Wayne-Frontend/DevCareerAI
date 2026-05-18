@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
+import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
 import { AiCacheService } from '../ai/ai-cache.service'
@@ -24,7 +25,7 @@ export class ProjectService {
     private readonly aiCacheService: AiCacheService,
   ) {}
 
-  async optimize(dto: OptimizeProjectDto) {
+  async optimize(dto: OptimizeProjectDto, userId: string) {
     const aiText = await this.aiService.chat({
       systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
       userPrompt: this.buildPrompt(dto),
@@ -32,14 +33,19 @@ export class ProjectService {
       maxTokens: 2400,
       modelTier: 'quality',
     })
-    const result = normalizeProjectResult(safeParseJson<ProjectOptimizationResult>(aiText), dto)
+    const parsed = safeParseJson<ProjectOptimizationResult>(aiText)
+    const status = getAiResultStatus(parsed)
+    const result = normalizeProjectResult(parsed, dto)
 
-    await this.createOptimization(dto, result)
+    await this.createOptimization(dto, result, userId)
 
-    return result
+    return {
+      result,
+      meta: { status },
+    }
   }
 
-  async optimizeStream(dto: OptimizeProjectDto, callbacks: AiStreamCallbacks = {}) {
+  async optimizeStream(dto: OptimizeProjectDto, userId: string, callbacks: AiStreamCallbacks = {}) {
     const model = this.aiService.getModel('quality')
     const cachePayload = {
       systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
@@ -50,23 +56,64 @@ export class ProjectService {
     const cached = await this.aiCacheService.get<ProjectOptimizationResult>({
       feature: 'project-optimization',
       model,
+      version: 'project-optimization-v1',
       payload: cachePayload,
     })
 
-    const result =
-      cached?.result ||
-      (await this.generateOptimization({
-        cachePayload,
-        model,
-        dto,
-        callbacks,
-      }))
+    const generated = cached
+      ? { result: cached.result, status: 'success' as const }
+      : await this.generateOptimization({
+          cachePayload,
+          model,
+          dto,
+          callbacks,
+        })
+    const result = generated.result
 
-    await this.createOptimization(dto, result)
+    await this.createOptimization(dto, result, userId)
 
     return {
       result,
       cached: Boolean(cached),
+      meta: {
+        cached: Boolean(cached),
+        status: generated.status,
+      },
+    }
+  }
+
+  findOptimizations(userId: string) {
+    return this.prisma.projectOptimization.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        rawContent: true,
+        targetRole: true,
+        techStack: true,
+        style: true,
+        resultJson: true,
+        createdAt: true,
+      },
+    })
+  }
+
+  async findOptimization(id: string, userId: string) {
+    const optimization = await this.prisma.projectOptimization.findFirst({ where: { id, userId } })
+
+    if (!optimization) {
+      throw new NotFoundException('Project optimization not found')
+    }
+
+    return optimization
+  }
+
+  async removeOptimization(id: string, userId: string) {
+    const result = await this.prisma.projectOptimization.deleteMany({ where: { id, userId } })
+
+    return {
+      id,
+      success: result.count > 0,
     }
   }
 
@@ -95,22 +142,26 @@ export class ProjectService {
       onDelta: params.callbacks.onDelta,
       onUsage: params.callbacks.onUsage,
     })
-    const result = normalizeProjectResult(safeParseJson<ProjectOptimizationResult>(stream.text), params.dto)
+    const parsed = safeParseJson<ProjectOptimizationResult>(stream.text)
+    const status = getAiResultStatus(parsed)
+    const result = normalizeProjectResult(parsed, params.dto)
 
     await this.aiCacheService.set({
       feature: 'project-optimization',
       model: params.model,
+      version: 'project-optimization-v1',
       payload: params.cachePayload,
       result,
       rawText: stream.text,
     })
 
-    return result
+    return { result, status }
   }
 
-  private createOptimization(dto: OptimizeProjectDto, result: ProjectOptimizationResult) {
+  private createOptimization(dto: OptimizeProjectDto, result: ProjectOptimizationResult, userId: string) {
     return this.prisma.projectOptimization.create({
       data: {
+        userId,
         rawContent: dto.rawContent,
         targetRole: dto.targetRole,
         techStack: dto.techStack as unknown as Prisma.InputJsonValue,

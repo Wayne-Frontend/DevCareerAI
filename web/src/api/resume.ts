@@ -15,6 +15,27 @@ export function createResume(data: ResumePayload) {
   })
 }
 
+export function getResumes() {
+  return request<ResumeRecord[]>({
+    url: '/resumes',
+    method: 'GET',
+  })
+}
+
+export function getResume(id: string) {
+  return request<ResumeRecord>({
+    url: `/resumes/${id}`,
+    method: 'GET',
+  })
+}
+
+export function deleteResume(id: string) {
+  return request<{ id: string; success: boolean }>({
+    url: `/resumes/${id}`,
+    method: 'DELETE',
+  })
+}
+
 export function uploadResume(file: File) {
   const data = new FormData()
   data.append('file', file)

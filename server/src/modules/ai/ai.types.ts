@@ -28,6 +28,13 @@ export interface ChatStreamResult {
   model: string
 }
 
+export type AiResultStatus = 'success' | 'parse_error'
+
+export interface AiResponseMeta {
+  cached?: boolean
+  status: AiResultStatus
+}
+
 export interface ResumeAnalysisResult {
   score: number
   summary: string
@@ -62,6 +69,12 @@ export interface ProjectOptimizationResult {
 export interface JobMatchResult {
   matchScore: number
   summary: string
+  dimensionScores: {
+    skillMatch: number
+    projectRelevance: number
+    engineeringAbility: number
+    businessUnderstanding: number
+  }
   matchedKeywords: string[]
   missingKeywords: string[]
   advantages: string[]

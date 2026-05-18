@@ -1,4 +1,4 @@
-import type { AuthSession } from '../types/auth'
+import type { AuthSession, AuthUser } from '../types/auth'
 
 const AUTH_SESSION_KEY = 'devcareer-auth-session'
 
@@ -23,6 +23,21 @@ export function setStoredAuthSession(session: AuthSession, remember: boolean) {
   clearStoredAuthSession()
   const target = remember ? localStorage : sessionStorage
   target.setItem(AUTH_SESSION_KEY, JSON.stringify(session))
+}
+
+export function updateStoredAuthUser(user: AuthUser) {
+  const localSession = readSession(localStorage)
+
+  if (localSession) {
+    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ ...localSession, user }))
+    return
+  }
+
+  const sessionSession = readSession(sessionStorage)
+
+  if (sessionSession) {
+    sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({ ...sessionSession, user }))
+  }
 }
 
 export function clearStoredAuthSession() {

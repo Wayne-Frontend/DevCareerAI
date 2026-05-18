@@ -17,9 +17,9 @@ export function createInterview(data: InterviewCreatePayload) {
 
 export function createInterviewStream(
   data: InterviewCreatePayload,
-  handlers?: StreamHandlers<InterviewCreateResponse & { cached?: boolean }>,
+  handlers?: StreamHandlers<InterviewCreateResponse>,
 ) {
-  return streamRequest<InterviewCreateResponse & { cached?: boolean }>('/interviews/stream', data, handlers)
+  return streamRequest<InterviewCreateResponse>('/interviews/stream', data, handlers)
 }
 
 export function submitInterviewAnswer(sessionId: string, answer: string) {
@@ -33,9 +33,9 @@ export function submitInterviewAnswer(sessionId: string, answer: string) {
 export function submitInterviewAnswerStream(
   sessionId: string,
   answer: string,
-  handlers?: StreamHandlers<InterviewMessageResponse & { cached?: boolean }>,
+  handlers?: StreamHandlers<InterviewMessageResponse>,
 ) {
-  return streamRequest<InterviewMessageResponse & { cached?: boolean }>(
+  return streamRequest<InterviewMessageResponse>(
     `/interviews/${sessionId}/messages/stream`,
     { answer },
     handlers,
@@ -51,9 +51,9 @@ export function finishInterview(sessionId: string) {
 
 export function finishInterviewStream(
   sessionId: string,
-  handlers?: StreamHandlers<InterviewFinishResponse & { sessionId: string; cached?: boolean }>,
+  handlers?: StreamHandlers<InterviewFinishResponse>,
 ) {
-  return streamRequest<InterviewFinishResponse & { sessionId: string; cached?: boolean }>(
+  return streamRequest<InterviewFinishResponse>(
     `/interviews/${sessionId}/finish/stream`,
     undefined,
     handlers,

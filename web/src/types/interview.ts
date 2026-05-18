@@ -12,6 +12,8 @@ export interface InterviewCreateResponse {
   sessionId: string
   firstQuestion: string
   expectedPoints: string[]
+  cached?: boolean
+  meta?: AiResponseMeta
 }
 
 export interface InterviewFeedbackResult {
@@ -30,6 +32,8 @@ export interface InterviewMessageResponse {
     betterAnswer: string
   }
   nextQuestion: string
+  cached?: boolean
+  meta?: AiResponseMeta
 }
 
 export interface InterviewFinishResponse {
@@ -38,6 +42,14 @@ export interface InterviewFinishResponse {
   strengths: string[]
   weaknesses: string[]
   studyPlan: string[]
+  sessionId?: string
+  cached?: boolean
+  meta?: AiResponseMeta
+}
+
+export interface AiResponseMeta {
+  cached?: boolean
+  status: 'success' | 'parse_error'
 }
 
 export interface ChatMessage {

@@ -16,27 +16,27 @@ export interface HistoryRecord {
 export class HistoryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(type?: HistoryType) {
+  async findAll(userId: string, type?: HistoryType) {
     if (type) {
-      return this.findByType(type)
+      return this.findByType(type, userId)
     }
 
     const all = await Promise.all([
-      this.findByType('resume-analysis'),
-      this.findByType('project-optimization'),
-      this.findByType('job-match'),
-      this.findByType('interview'),
+      this.findByType('resume-analysis', userId),
+      this.findByType('project-optimization', userId),
+      this.findByType('job-match', userId),
+      this.findByType('interview', userId),
     ])
 
     return all.flat().sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
   }
 
-  async remove(id: string) {
+  async remove(id: string, userId: string) {
     const [resume, project, job, interview] = await Promise.all([
-      this.prisma.resumeAnalysis.deleteMany({ where: { id } }),
-      this.prisma.projectOptimization.deleteMany({ where: { id } }),
-      this.prisma.jobMatchAnalysis.deleteMany({ where: { id } }),
-      this.prisma.interviewSession.deleteMany({ where: { id } }),
+      this.prisma.resumeAnalysis.deleteMany({ where: { id, resume: { userId } } }),
+      this.prisma.projectOptimization.deleteMany({ where: { id, userId } }),
+      this.prisma.jobMatchAnalysis.deleteMany({ where: { id, resume: { userId }, jobDescription: { userId } } }),
+      this.prisma.interviewSession.deleteMany({ where: { id, userId } }),
     ])
 
     return {
@@ -45,9 +45,10 @@ export class HistoryService {
     }
   }
 
-  private async findByType(type: HistoryType): Promise<HistoryRecord[]> {
+  private async findByType(type: HistoryType, userId: string): Promise<HistoryRecord[]> {
     if (type === 'resume-analysis') {
       const rows = await this.prisma.resumeAnalysis.findMany({
+        where: { resume: { userId } },
         include: { resume: true },
         orderBy: { createdAt: 'desc' },
       })
@@ -63,6 +64,7 @@ export class HistoryService {
 
     if (type === 'project-optimization') {
       const rows = await this.prisma.projectOptimization.findMany({
+        where: { userId },
         orderBy: { createdAt: 'desc' },
       })
       return rows.map((row) => ({
@@ -76,6 +78,10 @@ export class HistoryService {
 
     if (type === 'job-match') {
       const rows = await this.prisma.jobMatchAnalysis.findMany({
+        where: {
+          resume: { userId },
+          jobDescription: { userId },
+        },
         include: { jobDescription: true },
         orderBy: { createdAt: 'desc' },
       })
@@ -90,6 +96,7 @@ export class HistoryService {
     }
 
     const rows = await this.prisma.interviewSession.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' },
     })
     return rows.map((row) => ({

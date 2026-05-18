@@ -1,8 +1,10 @@
-import { BadRequestException, Body, Controller, Param, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import type { Response } from 'express'
 import { createSseSession, getErrorMessage, writeSseEvent } from '../../common/utils/sse.util'
 import { FileService } from '../file/file.service'
+import { CurrentUser } from '../auth/current-user.decorator'
+import type { AuthUserResponse } from '../auth/auth.types'
 import { CreateResumeDto } from './dto/create-resume.dto'
 import { ResumeService } from './resume.service'
 
@@ -16,8 +18,23 @@ export class ResumeController {
   ) {}
 
   @Post()
-  create(@Body() dto: CreateResumeDto) {
-    return this.resumeService.create(dto)
+  create(@Body() dto: CreateResumeDto, @CurrentUser() user: AuthUserResponse) {
+    return this.resumeService.create(dto, user.id)
+  }
+
+  @Get()
+  findAll(@CurrentUser() user: AuthUserResponse) {
+    return this.resumeService.findAll(user.id)
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string, @CurrentUser() user: AuthUserResponse) {
+    return this.resumeService.findOne(id, user.id)
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string, @CurrentUser() user: AuthUserResponse) {
+    return this.resumeService.remove(id, user.id)
   }
 
   @Post('upload')
@@ -40,17 +57,17 @@ export class ResumeController {
   }
 
   @Post(':id/analyze')
-  analyze(@Param('id') id: string) {
-    return this.resumeService.analyze(id)
+  analyze(@Param('id') id: string, @CurrentUser() user: AuthUserResponse) {
+    return this.resumeService.analyze(id, user.id)
   }
 
   @Post(':id/analyze/stream')
-  async analyzeStream(@Param('id') id: string, @Res() res: Response) {
+  async analyzeStream(@Param('id') id: string, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
     const session = createSseSession(res)
     writeSseEvent(res, 'start', { message: 'Resume analysis started' })
 
     try {
-      const result = await this.resumeService.analyzeStream(id, {
+      const result = await this.resumeService.analyzeStream(id, user.id, {
         signal: session.signal,
         onDelta: (delta) => writeSseEvent(res, 'delta', { delta }),
         onUsage: (usage) => writeSseEvent(res, 'usage', usage),

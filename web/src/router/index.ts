@@ -50,6 +50,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: '历史记录' },
       },
       {
+        path: 'profile',
+        name: 'profile',
+        component: () => import('../views/Profile/index.vue'),
+        meta: { title: '个人中心' },
+      },
+      {
         path: 'settings',
         name: 'settings',
         component: () => import('../views/Settings/index.vue'),

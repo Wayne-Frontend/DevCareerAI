@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma, Resume } from '@prisma/client'
+import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
 import { AiCacheService } from '../ai/ai-cache.service'
@@ -23,14 +24,48 @@ export class ResumeService {
     private readonly aiCacheService: AiCacheService,
   ) {}
 
-  create(dto: CreateResumeDto) {
+  create(dto: CreateResumeDto, userId: string) {
     return this.prisma.resume.create({
-      data: dto,
+      data: {
+        ...dto,
+        userId,
+      },
     })
   }
 
-  async analyze(id: string) {
-    const resume = await this.findResume(id)
+  findAll(userId: string) {
+    return this.prisma.resume.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        targetRole: true,
+        experienceLevel: true,
+        fileName: true,
+        fileType: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+  }
+
+  async findOne(id: string, userId: string) {
+    return this.findResume(id, userId)
+  }
+
+  async remove(id: string, userId: string) {
+    const result = await this.prisma.resume.deleteMany({ where: { id, userId } })
+
+    return {
+      id,
+      success: result.count > 0,
+    }
+  }
+
+  async analyze(id: string, userId: string) {
+    const resume = await this.findResume(id, userId)
     const aiText = await this.aiService.chat({
       systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
       userPrompt: this.buildPrompt(resume),
@@ -38,18 +73,21 @@ export class ResumeService {
       maxTokens: 2600,
       modelTier: 'quality',
     })
-    const result = normalizeResumeAnalysisResult(safeParseJson<ResumeAnalysisResult>(aiText))
+    const parsed = safeParseJson<ResumeAnalysisResult>(aiText)
+    const status = getAiResultStatus(parsed)
+    const result = normalizeResumeAnalysisResult(parsed)
     const analysis = await this.createAnalysis(resume.id, result)
 
     return {
       analysisId: analysis.id,
       score: result.score,
       result,
+      meta: { status },
     }
   }
 
-  async analyzeStream(id: string, callbacks: AiStreamCallbacks = {}) {
-    const resume = await this.findResume(id)
+  async analyzeStream(id: string, userId: string, callbacks: AiStreamCallbacks = {}) {
+    const resume = await this.findResume(id, userId)
     const model = this.aiService.getModel('quality')
     const cachePayload = {
       systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
@@ -60,16 +98,18 @@ export class ResumeService {
     const cached = await this.aiCacheService.get<ResumeAnalysisResult>({
       feature: 'resume-analysis',
       model,
+      version: 'resume-analysis-v1',
       payload: cachePayload,
     })
 
-    const result =
-      cached?.result ||
-      (await this.generateAnalysis({
-        cachePayload,
-        model,
-        callbacks,
-      }))
+    const generated = cached
+      ? { result: cached.result, status: 'success' as const }
+      : await this.generateAnalysis({
+          cachePayload,
+          model,
+          callbacks,
+        })
+    const result = generated.result
     const analysis = await this.createAnalysis(resume.id, result)
 
     return {
@@ -77,11 +117,15 @@ export class ResumeService {
       score: result.score,
       result,
       cached: Boolean(cached),
+      meta: {
+        cached: Boolean(cached),
+        status: generated.status,
+      },
     }
   }
 
-  private async findResume(id: string) {
-    const resume = await this.prisma.resume.findUnique({ where: { id } })
+  private async findResume(id: string, userId: string) {
+    const resume = await this.prisma.resume.findFirst({ where: { id, userId } })
 
     if (!resume) {
       throw new NotFoundException('Resume not found')
@@ -115,17 +159,20 @@ export class ResumeService {
       onDelta: params.callbacks.onDelta,
       onUsage: params.callbacks.onUsage,
     })
-    const result = normalizeResumeAnalysisResult(safeParseJson<ResumeAnalysisResult>(stream.text))
+    const parsed = safeParseJson<ResumeAnalysisResult>(stream.text)
+    const status = getAiResultStatus(parsed)
+    const result = normalizeResumeAnalysisResult(parsed)
 
     await this.aiCacheService.set({
       feature: 'resume-analysis',
       model: params.model,
+      version: 'resume-analysis-v1',
       payload: params.cachePayload,
       result,
       rawText: stream.text,
     })
 
-    return result
+    return { result, status }
   }
 
   private createAnalysis(resumeId: string, result: ResumeAnalysisResult) {

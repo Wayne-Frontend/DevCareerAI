@@ -3,12 +3,27 @@ export interface JobMatchPayload {
   resumeId?: string
   jobTitle: string
   jobDescription: string
+  jobDescriptionId?: string
   companyName?: string
+}
+
+export interface JobDescriptionRecord {
+  id: string
+  jobTitle: string
+  companyName?: string
+  content: string
+  createdAt: string
 }
 
 export interface JobMatchResult {
   matchScore: number
   summary: string
+  dimensionScores: {
+    skillMatch: number
+    projectRelevance: number
+    engineeringAbility: number
+    businessUnderstanding: number
+  }
   matchedKeywords: string[]
   missingKeywords: string[]
   advantages: string[]
@@ -20,4 +35,9 @@ export interface JobMatchResult {
 export interface JobMatchResponse {
   matchScore: number
   result: JobMatchResult
+  cached?: boolean
+  meta?: {
+    cached?: boolean
+    status: 'success' | 'parse_error'
+  }
 }
