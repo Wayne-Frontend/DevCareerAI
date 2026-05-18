@@ -1,19 +1,24 @@
-import { IsOptional, IsString, MinLength } from 'class-validator'
+import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator'
+import { MAX_PARSED_TEXT_LENGTH } from '../../../common/utils/text-limit.util'
 
 export class CreateResumeDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(120)
   title: string
 
   @IsString()
   @MinLength(1)
+  @MaxLength(MAX_PARSED_TEXT_LENGTH)
   content: string
 
   @IsOptional()
   @IsString()
+  @MaxLength(80)
   targetRole?: string
 
   @IsOptional()
   @IsString()
+  @IsIn(['', 'junior', '1-3', '3-5', '5+'])
   experienceLevel?: string
 }

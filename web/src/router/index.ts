@@ -1,12 +1,13 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import MainLayout from '../layout/MainLayout.vue'
+import { getAuthToken } from '../utils/authSession'
 
 export const routes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'login',
     component: () => import('../views/Login/index.vue'),
-    meta: { title: '登录' },
+    meta: { title: '登录', public: true },
   },
   {
     path: '/',
@@ -58,7 +59,23 @@ export const routes: RouteRecordRaw[] = [
   },
 ]
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes,
 })
+
+router.beforeEach((to) => {
+  const isAuthenticated = Boolean(getAuthToken())
+
+  if (!to.meta.public && !isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.name === 'login' && isAuthenticated) {
+    return { name: 'home' }
+  }
+
+  return true
+})
+
+export default router

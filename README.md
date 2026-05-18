@@ -33,11 +33,12 @@ VITE_API_BASE_URL=http://localhost:3000/api
 DATABASE_URL="file:./dev.db"
 DEEPSEEK_API_KEY="your_api_key_here"
 DEEPSEEK_BASE_URL="https://api.deepseek.com"
-DEEPSEEK_MODEL="deepseek-v4-pro"
+DEEPSEEK_MODEL_FAST="deepseek-v4-flash"
+DEEPSEEK_MODEL_QUALITY="deepseek-v4-pro"
 PORT=3000
 ```
 
-真实 DeepSeek API Key 只应放在 `server/.env`，不要写入前端代码或提交到 Git。
+真实 DeepSeek API Key 只应放在 `server/.env`，不要写入前端代码或提交到 Git。服务端启动时会校验关键环境变量，`DEEPSEEK_API_KEY` 不应继续使用示例占位值。
 
 ## 安装
 
@@ -85,8 +86,20 @@ npm run dev:server
 - Web: http://localhost:5173
 - API: http://localhost:3000/api
 
+## 工程校验
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+npm run check
+```
+
+当前 `lint` 复用 TypeScript 类型检查，`check` 会先执行类型检查再执行完整构建。
+
 ## MVP 功能
 
+- 登录注册：支持账号注册、邮箱或用户名登录、记住登录状态、退出登录和接口鉴权。
 - 简历诊断：保存简历，调用 AI 生成评分、维度评分、优势、问题、建议和优化示例。
 - 项目经历优化：根据原始项目描述生成项目名称、描述、技术栈、职责、亮点、难点和面试追问。
 - 岗位 JD 匹配：分析简历与 JD 的匹配度，输出关键词、风险点、简历修改建议和面试准备建议。

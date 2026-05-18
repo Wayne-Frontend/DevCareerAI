@@ -1,4 +1,5 @@
 import { notify } from '../utils/notify'
+import { clearStoredAuthSession, getAuthToken } from '../utils/authSession'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
@@ -19,10 +20,12 @@ export async function streamRequest<TDone>(
   let response: Response
 
   try {
+    const token = getAuthToken()
     response = await fetch(`${API_BASE_URL}${url}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: data === undefined ? undefined : JSON.stringify(data),
       signal: handlers.signal,
@@ -39,6 +42,12 @@ export async function streamRequest<TDone>(
   if (!response.ok || !response.body) {
     const message = await readErrorMessage(response)
     notify(message, 'error')
+
+    if (response.status === 401 && window.location.pathname !== '/login') {
+      clearStoredAuthSession()
+      window.location.assign('/login')
+    }
+
     throw new Error(message)
   }
 

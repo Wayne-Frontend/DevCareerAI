@@ -13,6 +13,9 @@
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:server\"",
     "dev:log": "node scripts/dev-log.mjs",
     "clean:logs": "node scripts/clean-logs.mjs",
+    "typecheck": "npm --prefix web run typecheck && npm --prefix server run typecheck",
+    "lint": "npm run typecheck",
+    "check": "npm run typecheck && npm run build",
     "build": "npm --prefix web run build && npm --prefix server run build",
     "prisma:migrate": "npm --prefix server run prisma:migrate",
     "prisma:generate": "npm --prefix server run prisma:generate"

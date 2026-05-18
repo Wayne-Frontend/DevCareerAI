@@ -5,6 +5,7 @@
   "description": "DevCareer AI NestJS API server.",
   "scripts": {
     "build": "nest build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/main",
     "start:dev": "nest start --watch",
     "prisma:generate": "prisma generate",

@@ -15,3 +15,7 @@ export function getStorageItem<T>(key: string, fallback: T): T {
 export function setStorageItem<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value))
 }
+
+export function removeStorageItem(key: string) {
+  localStorage.removeItem(key)
+}

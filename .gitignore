@@ -4,6 +4,7 @@ dist
 .env.local
 .DS_Store
 *.log
+*.tsbuildinfo
 logs/
 server/prisma/dev.db
 server/prisma/dev.db-journal

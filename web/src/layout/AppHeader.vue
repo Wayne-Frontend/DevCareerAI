@@ -1,5 +1,24 @@
 <script setup lang="ts">
-import { Bell, ChevronDown, Sun, UserRound } from 'lucide-vue-next'
+import { Bell, LogOut, Sun, UserRound } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { logout as logoutRequest } from '../api/auth'
+import { useAuthStore } from '../stores/auth'
+import { notify } from '../utils/notify'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+async function logout() {
+  try {
+    await logoutRequest()
+  } catch {
+    // Local logout should still happen if the remote session is already invalid.
+  } finally {
+    authStore.clearSession()
+    notify('已退出登录', 'success')
+    await router.push('/login')
+  }
+}
 </script>
 
 <template>
@@ -21,8 +40,11 @@ import { Bell, ChevronDown, Sun, UserRound } from 'lucide-vue-next'
         <span class="grid h-11 w-11 place-items-center overflow-hidden rounded-full border border-white/80 bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500 shadow-[0_10px_24px_rgba(43,55,96,0.08),inset_0_1px_0_rgba(255,255,255,0.9)]">
           <UserRound :size="22" stroke-width="1.8" />
         </span>
-        <ChevronDown :size="18" stroke-width="1.9" />
+        <span class="max-w-[120px] truncate text-sm font-bold">{{ authStore.user?.username || '用户' }}</span>
       </RouterLink>
+      <button class="grid h-12 w-12 place-items-center rounded-full border border-white/80 bg-white/62 text-[#475569] shadow-[0_12px_26px_rgba(43,55,96,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] transition hover:-translate-y-0.5 hover:text-red-500" aria-label="退出登录" @click="logout">
+        <LogOut :size="21" stroke-width="1.85" />
+      </button>
     </div>
   </header>
 </template>

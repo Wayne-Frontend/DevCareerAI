@@ -1,10 +1,12 @@
-import { Body, Controller, Param, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Param, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import type { Response } from 'express'
 import { createSseSession, getErrorMessage, writeSseEvent } from '../../common/utils/sse.util'
 import { FileService } from '../file/file.service'
 import { CreateResumeDto } from './dto/create-resume.dto'
 import { ResumeService } from './resume.service'
+
+const SUPPORTED_RESUME_EXTENSIONS = new Set(['pdf', 'docx', 'txt', 'md'])
 
 @Controller('resumes')
 export class ResumeController {
@@ -19,7 +21,20 @@ export class ResumeController {
   }
 
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_request, file, callback) => {
+        const extension = file.originalname.split('.').pop()?.toLowerCase() || ''
+        const accepted = SUPPORTED_RESUME_EXTENSIONS.has(extension)
+
+        callback(
+          accepted ? null : new BadRequestException('Only PDF, DOCX, TXT and MD files are supported'),
+          accepted,
+        )
+      },
+    }),
+  )
   upload(@UploadedFile() file: Express.Multer.File) {
     return this.fileService.parse(file)
   }
