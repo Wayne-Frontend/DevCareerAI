@@ -185,7 +185,7 @@ function cancelStream() {
           <span v-if="selectedFileName" class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600">{{ selectedFileName }}</span>
         </label>
 
-        <textarea v-model="form.resumeContent" class="textarea-base min-h-[155px]" :maxlength="MAX_RESUME_LENGTH" placeholder="粘贴或上传简历内容..." @input="selectedResumeId = ''" />
+        <textarea v-model="form.resumeContent" class="textarea-base min-h-[280px]" :maxlength="MAX_RESUME_LENGTH" placeholder="粘贴或上传简历内容..." @input="selectedResumeId = ''" />
         <p class="mt-2 text-right text-xs text-[#94a3b8]">{{ form.resumeContent.length }} / {{ MAX_RESUME_LENGTH }}</p>
 
         <h2 class="mb-3 flex items-center gap-2 text-base font-black text-[#0f172a]">

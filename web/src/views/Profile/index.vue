@@ -1,20 +1,27 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { AtSign, CalendarDays, Camera, Mail, Save, UserRound } from 'lucide-vue-next'
-import { updateProfile } from '../../api/auth'
+import { AtSign, CalendarDays, LogOut, Mail, Save, UploadCloud, UserRound } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import LoadingButton from '../../components/LoadingButton/index.vue'
+import { logout as logoutRequest, updateProfile, uploadAvatar } from '../../api/auth'
 import { useAuthStore } from '../../stores/auth'
 import { notify } from '../../utils/notify'
 
+const AVATAR_MAX_SIZE = 5 * 1024 * 1024
+
+const router = useRouter()
 const authStore = useAuthStore()
 const loading = ref(false)
+const avatarUploading = ref(false)
 const avatarLoadFailed = ref(false)
+const logoutLoading = ref(false)
 
 const form = reactive({
   email: authStore.user?.email || '',
-  avatarUrl: authStore.user?.avatarUrl || '',
 })
 
-const avatarPreview = computed(() => form.avatarUrl.trim())
+const avatarPreview = computed(() => authStore.user?.avatarUrl?.trim() || '')
+const userInitial = computed(() => (authStore.user?.username || authStore.user?.email || 'D').slice(0, 1).toUpperCase())
 const createdAt = computed(() => {
   if (!authStore.user?.createdAt) return '-'
 
@@ -31,55 +38,76 @@ watch(
     if (!user) return
 
     form.email = user.email
-    form.avatarUrl = user.avatarUrl || ''
     avatarLoadFailed.value = false
   },
   { immediate: true },
 )
 
-watch(
-  () => form.avatarUrl,
-  () => {
-    avatarLoadFailed.value = false
-  },
-)
-
-function isValidHttpUrl(value: string) {
-  if (!value) return true
-
-  try {
-    const url = new URL(value)
-    return url.protocol === 'http:' || url.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
+watch(avatarPreview, () => {
+  avatarLoadFailed.value = false
+})
 
 async function saveProfile() {
   const email = form.email.trim()
-  const avatarUrl = form.avatarUrl.trim()
 
   if (!email) {
     notify('请填写邮箱', 'warning')
     return
   }
 
-  if (!isValidHttpUrl(avatarUrl)) {
-    notify('头像地址需要是 http 或 https 开头的图片 URL', 'warning')
-    return
-  }
-
   loading.value = true
 
   try {
-    const user = await updateProfile({
-      email,
-      avatarUrl: avatarUrl || null,
-    })
+    const user = await updateProfile({ email })
     authStore.updateUser(user)
     notify('个人信息已更新', 'success')
   } finally {
     loading.value = false
+  }
+}
+
+async function onAvatarFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    notify('请选择图片文件作为头像', 'warning')
+    input.value = ''
+    return
+  }
+
+  if (file.size > AVATAR_MAX_SIZE) {
+    notify('头像图片不能超过 5MB', 'warning')
+    input.value = ''
+    return
+  }
+
+  avatarUploading.value = true
+  try {
+    const user = await uploadAvatar(file)
+    authStore.updateUser(user)
+    notify('头像已上传', 'success')
+  } finally {
+    avatarUploading.value = false
+    input.value = ''
+  }
+}
+
+async function logout() {
+  const confirmed = window.confirm('确认退出登录？')
+  if (!confirmed) return
+
+  logoutLoading.value = true
+  try {
+    await logoutRequest()
+  } catch {
+    // 即使远端会话已失效，也要清理本地登录态。
+  } finally {
+    authStore.clearSession()
+    notify('已退出登录', 'success')
+    logoutLoading.value = false
+    await router.push('/login')
   }
 }
 </script>
@@ -88,9 +116,8 @@ async function saveProfile() {
   <div class="page">
     <header class="page-header">
       <div>
-        <span class="soft-tag">账户资料</span>
-        <h1 class="page-title mt-3">个人中心</h1>
-        <p class="page-subtitle">管理当前账号的基础资料，用户名暂不支持修改。</p>
+        <h1 class="page-title">个人中心</h1>
+        <p class="page-subtitle">管理当前账号的基础资料，头像仅支持上传图片文件。</p>
       </div>
     </header>
 
@@ -103,8 +130,16 @@ async function saveProfile() {
             alt="用户头像"
             @error="avatarLoadFailed = true"
           />
-          <UserRound v-else :size="38" stroke-width="1.75" />
+          <span v-else>{{ userInitial }}</span>
         </div>
+
+        <label class="avatar-upload" :class="{ disabled: avatarUploading }">
+          <span v-if="avatarUploading" class="mini-spinner" />
+          <UploadCloud v-else :size="17" />
+          <span>{{ avatarUploading ? '上传中...' : '上传头像' }}</span>
+          <input type="file" accept="image/*" :disabled="avatarUploading" @change="onAvatarFileChange" />
+        </label>
+        <p class="avatar-tip">支持 JPG、PNG、WebP、GIF，最大 5MB。</p>
 
         <div class="min-w-0 text-center">
           <h2 class="m-0 truncate text-[22px] font-black text-[#0f172a]">{{ authStore.user?.username || '用户' }}</h2>
@@ -138,10 +173,12 @@ async function saveProfile() {
 
       <section class="glass-card profile-form-card">
         <div class="mb-5 flex items-start gap-3">
-          <span class="icon-tile h-10 w-10 rounded-xl"><Camera :size="21" /></span>
+          <span class="icon-tile h-10 w-10 rounded-xl"><UserRound :size="21" /></span>
           <div>
             <h2 class="m-0 text-xl font-black text-[#0f172a]">资料编辑</h2>
-            <p class="mt-1 text-sm font-semibold text-[#64748b]">头像使用图片 URL，邮箱保存后会同步到当前登录状态。</p>
+            <p class="mt-1 text-sm font-semibold text-[#64748b]">
+              邮箱保存后会同步到当前登录状态；头像请通过左侧上传按钮设置。
+            </p>
           </div>
         </div>
 
@@ -155,17 +192,15 @@ async function saveProfile() {
             <span class="field-label">邮箱</span>
             <input v-model="form.email" class="input-base" type="email" autocomplete="email" placeholder="name@example.com" />
           </label>
-
-          <label>
-            <span class="field-label">头像 URL</span>
-            <input v-model="form.avatarUrl" class="input-base" type="url" placeholder="https://example.com/avatar.png" />
-          </label>
-
           <div class="form-actions">
-            <button class="btn-primary min-w-[132px]" type="submit" :disabled="loading">
-              <Save :size="18" />
-              {{ loading ? '保存中' : '保存修改' }}
-            </button>
+            <LoadingButton class="min-w-[132px]" type="submit" :loading="loading" loading-text="保存中...">
+              <template #icon><Save :size="18" /></template>
+              {{ loading ? '保存中...' : '保存修改' }}
+            </LoadingButton>
+            <LoadingButton variant="danger" class="min-w-[132px]" :loading="logoutLoading" loading-text="退出中..." @click="logout">
+              <template #icon><LogOut :size="18" /></template>
+              {{ logoutLoading ? '退出中...' : '退出登录' }}
+            </LoadingButton>
           </div>
         </form>
       </section>
@@ -191,7 +226,7 @@ async function saveProfile() {
   min-height: 430px;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
 }
 
 .avatar-preview {
@@ -202,8 +237,10 @@ async function saveProfile() {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.86);
   border-radius: 32px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(226, 232, 240, 0.72));
-  color: #64748b;
+  background: linear-gradient(135deg, #74a8ff, #4f7cff 58%, #22d3ee);
+  color: #fff;
+  font-size: 44px;
+  font-weight: 950;
   box-shadow: 0 18px 38px rgba(43, 55, 96, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
@@ -211,6 +248,51 @@ async function saveProfile() {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.avatar-upload {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0 15px;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 850;
+  box-shadow: 0 12px 22px rgba(31, 73, 125, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.avatar-upload:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 16px 28px rgba(31, 73, 125, 0.12);
+}
+
+.avatar-upload.disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.avatar-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.avatar-tip {
+  margin: -6px 0 0;
+  color: #7b8dab;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .summary-list {
@@ -266,7 +348,23 @@ async function saveProfile() {
 .form-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
   padding-top: 2px;
+}
+
+.mini-spinner {
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(37, 99, 235, 0.2);
+  border-top-color: #2563eb;
+  border-radius: 999px;
+  animation: profile-spin 0.8s linear infinite;
+}
+
+@keyframes profile-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1280px) {

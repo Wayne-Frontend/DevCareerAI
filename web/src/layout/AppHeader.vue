@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { LogOut, Moon, Settings, Sun, UserRound } from 'lucide-vue-next'
+﻿<script setup lang="ts">
+import { LogOut, Moon, Sun, UserRound } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { logout as logoutRequest } from '../api/auth'
@@ -46,10 +46,6 @@ async function logout() {
         <Sun v-if="isDarkTheme" :size="19" stroke-width="1.85" />
         <Moon v-else :size="19" stroke-width="1.85" />
       </button>
-
-      <RouterLink class="header-icon-btn" to="/settings" aria-label="打开设置">
-        <Settings :size="19" stroke-width="1.85" />
-      </RouterLink>
 
       <RouterLink to="/profile" class="header-avatar-btn" aria-label="打开个人中心">
         <span class="avatar-shell">

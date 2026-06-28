@@ -1,6 +1,6 @@
-import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
-import { notify } from '../utils/notify'
+﻿import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
 import { clearStoredAuthSession, getAuthToken } from '../utils/authSession'
+import { notifyApiError, resolveApiErrorMessage, type ApiErrorPayload } from './errors'
 
 const service = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
@@ -19,10 +19,9 @@ service.interceptors.request.use((config) => {
 
 service.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ message?: string | string[] }>) => {
-    const rawMessage = error.response?.data?.message || error.message || '请求失败'
-    const message = Array.isArray(rawMessage) ? rawMessage.join('；') : rawMessage
-    notify(message, 'error')
+  (error: AxiosError<ApiErrorPayload>) => {
+    const message = resolveApiErrorMessage(error)
+    notifyApiError(message)
 
     if (error.response?.status === 401 && window.location.pathname !== '/login') {
       clearStoredAuthSession()

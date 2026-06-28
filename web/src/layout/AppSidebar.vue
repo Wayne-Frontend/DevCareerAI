@@ -1,61 +1,273 @@
-<script setup lang="ts">
-import { Boxes, Crosshair, FileSearch, History, Home, Mic, Settings, Sparkles } from 'lucide-vue-next'
+﻿<script setup lang="ts">
+import {
+  BarChart3,
+  Boxes,
+  BriefcaseBusiness,
+  ChevronRight,
+  FileSearch,
+  Home,
+  Mic,
+  Sparkles,
+} from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
 
 const mainMenuItems = [
   { path: '/', label: '首页', icon: Home },
   { path: '/resume-analyze', label: '简历诊断', icon: FileSearch },
   { path: '/project-optimize', label: '项目优化', icon: Boxes },
-  { path: '/job-match', label: '岗位匹配', icon: Crosshair },
+  { path: '/job-match', label: '岗位匹配', icon: BriefcaseBusiness },
   { path: '/interview', label: '模拟面试', icon: Mic },
-  { path: '/history', label: '历史记录', icon: History },
+  { path: '/history', label: '复盘中心', icon: BarChart3 },
 ]
 
-const settingsItem = { path: '/settings', label: '设置', icon: Settings }
+const avatarLoadFailed = ref(false)
+const userName = computed(() => authStore.user?.username || authStore.user?.email || 'Dev 同学')
+const avatarUrl = computed(() => authStore.user?.avatarUrl?.trim() || '')
+
+watch(avatarUrl, () => {
+  avatarLoadFailed.value = false
+})
 </script>
 
 <template>
-  <aside
-    class="app-sidebar sticky top-2 flex h-[calc(100vh-16px)] w-[220px] shrink-0 flex-col rounded-[16px] border border-white/70 bg-white/62 px-3 py-4 shadow-[0_14px_42px_rgba(43,55,96,0.07),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-2xl"
-  >
-    <RouterLink class="flex h-11 items-center gap-2.5 px-2" to="/">
-      <span
-        class="grid h-7 w-7 place-items-center rounded-[8px] bg-gradient-to-br from-violet-500 via-indigo-500 to-blue-500 text-white shadow-[0_10px_20px_rgba(99,102,241,0.24)]"
-      >
-        <Sparkles :size="16" stroke-width="2.4" />
+  <aside class="app-sidebar" aria-label="主导航">
+    <RouterLink class="brand-link" to="/">
+      <span class="brand-mark">
+        <Sparkles :size="30" stroke-width="1.7" />
       </span>
-      <strong class="text-[18px] font-black tracking-normal text-[#0f172a]">DevCareer AI</strong>
+      <strong>DevCareer AI</strong>
     </RouterLink>
 
-    <nav class="mt-7 grid gap-1.5" aria-label="主导航">
+    <nav class="main-menu">
       <RouterLink
         v-for="item in mainMenuItems"
         :key="item.path"
         :to="item.path"
-        class="flex h-11 items-center gap-2.5 rounded-[11px] px-3.5 text-[15px] font-bold text-[#475569] transition duration-200 hover:bg-white/75 hover:text-[#0f172a]"
-        :class="
-          $route.path === item.path
-            ? 'bg-gradient-to-r from-violet-500/18 to-sky-400/16 text-[#5a35ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]'
-            : ''
-        "
+        class="menu-item"
+        :class="{ active: $route.path === item.path }"
       >
-        <component :is="item.icon" :size="19" stroke-width="1.9" />
+        <component :is="item.icon" :size="23" stroke-width="1.9" />
         <span>{{ item.label }}</span>
       </RouterLink>
     </nav>
 
-    <div class="mx-3 mb-3 mt-4 h-px bg-slate-200/70" />
-
-    <RouterLink
-      :to="settingsItem.path"
-      class="flex h-11 items-center gap-2.5 rounded-[11px] px-3.5 text-[15px] font-bold text-[#475569] transition duration-200 hover:bg-white/75 hover:text-[#0f172a]"
-      :class="
-        $route.path === settingsItem.path
-          ? 'bg-gradient-to-r from-violet-500/18 to-sky-400/16 text-[#5a35ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]'
-          : ''
-      "
-    >
-      <component :is="settingsItem.icon" :size="19" stroke-width="1.9" />
-      <span>{{ settingsItem.label }}</span>
+    <RouterLink class="user-card" to="/profile">
+      <span class="user-avatar">
+        <img
+          v-if="avatarUrl && !avatarLoadFailed"
+          :src="avatarUrl"
+          alt="用户头像"
+          @error="avatarLoadFailed = true"
+        />
+        <span v-else>{{ userName.slice(0, 1).toUpperCase() }}</span>
+      </span>
+      <span class="user-copy">
+        <strong>{{ userName }}</strong>
+        <small>高级软件工程师</small>
+      </span>
+      <ChevronRight :size="20" />
     </RouterLink>
   </aside>
 </template>
+
+<style scoped lang="scss">
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  width: 292px;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 0 22px 22px 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(246, 250, 255, 0.25)),
+    rgba(255, 255, 255, 0.34);
+  padding: 34px 20px 38px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 18px 0 52px rgba(64, 104, 164, 0.13);
+  backdrop-filter: blur(26px) saturate(135%);
+}
+
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 0 12px;
+  color: #0b55e8;
+
+  strong {
+    white-space: nowrap;
+    background: linear-gradient(135deg, #0b55e8 0%, #2563eb 45%, #06b6d4 100%);
+    background-clip: text;
+    color: transparent;
+    font-size: 27px;
+    font-weight: 950;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    text-shadow: 0 18px 32px rgba(37, 99, 235, 0.14);
+  }
+}
+
+.brand-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #2563eb;
+  filter: drop-shadow(0 10px 18px rgba(37, 99, 235, 0.2));
+}
+
+.main-menu {
+  display: grid;
+  gap: 12px;
+  margin-top: 40px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  min-height: 60px;
+  border: 1px solid transparent;
+  border-radius: 15px;
+  padding: 0 22px;
+  color: #071b4a;
+  font-size: 18px;
+  font-weight: 820;
+  transition: transform 0.18s ease, color 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+
+  &:hover {
+    transform: translateX(2px);
+    border-color: rgba(255, 255, 255, 0.58);
+    background: rgba(255, 255, 255, 0.36);
+    color: #2563eb;
+  }
+
+  &.active {
+    border-color: rgba(255, 255, 255, 0.82);
+    background: rgba(255, 255, 255, 0.42);
+    color: #0b55e8;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 0 14px 28px rgba(37, 99, 235, 0.08);
+  }
+}
+
+.user-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 12px;
+  min-height: 96px;
+  margin-top: auto;
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.4);
+  padding: 18px;
+  color: #071b4a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 16px 34px rgba(31, 73, 125, 0.09);
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.55);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 20px 42px rgba(31, 73, 125, 0.12);
+  }
+}
+
+.user-avatar {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #74a8ff, #4f7cff);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.2);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.user-copy {
+  min-width: 0;
+
+  strong,
+  small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    color: #071b4a;
+    font-size: 16px;
+    font-weight: 900;
+  }
+
+  small {
+    margin-top: 5px;
+    color: #415982;
+    font-size: 12px;
+    font-weight: 650;
+  }
+}
+
+@media (max-width: 980px) {
+  .app-sidebar {
+    position: sticky;
+    top: 0;
+    width: auto;
+    min-height: 66px;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    border-radius: 0 0 20px 20px;
+    padding: 10px 12px;
+  }
+
+  .brand-link {
+    min-height: 48px;
+    flex: 0 0 auto;
+    padding: 0 6px;
+
+    strong {
+      display: none;
+    }
+  }
+
+  .main-menu {
+    display: flex;
+    gap: 8px;
+    margin-top: 0;
+  }
+
+  .menu-item {
+    min-width: 46px;
+    min-height: 46px;
+    justify-content: center;
+    padding: 0 12px;
+
+    span {
+      display: none;
+    }
+  }
+
+  .user-card {
+    display: none;
+  }
+}
+</style>
+

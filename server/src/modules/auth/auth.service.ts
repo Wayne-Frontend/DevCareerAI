@@ -1,6 +1,8 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common'
+﻿import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common'
 import { Prisma, User } from '@prisma/client'
-import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'crypto'
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'crypto'
+import { extname, join } from 'path'
+import { mkdir, writeFile } from 'fs/promises'
 import { PrismaService } from '../../prisma/prisma.service'
 import { LoginDto } from './dto/login.dto'
 import { RegisterDto } from './dto/register.dto'
@@ -10,6 +12,14 @@ import type { AuthUserResponse } from './auth.types'
 const PASSWORD_KEY_LENGTH = 64
 const TOKEN_BYTES = 32
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
+const AVATAR_MAX_SIZE = 5 * 1024 * 1024
+const AVATAR_UPLOAD_DIR = join(process.cwd(), 'uploads', 'avatars')
+const AVATAR_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+}
 
 @Injectable()
 export class AuthService {
@@ -93,10 +103,37 @@ export class AuthService {
       throw new ConflictException('邮箱已被使用')
     }
 
-    const avatarUrl = dto.avatarUrl?.trim() || null
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: { email, avatarUrl },
+      data: { email },
+    })
+
+    return this.toUserResponse(user)
+  }
+
+  async updateAvatar(userId: string, file: Express.Multer.File | undefined, requestOrigin: string) {
+    if (!file) {
+      throw new BadRequestException('请选择要上传的头像图片')
+    }
+
+    if (!AVATAR_EXTENSIONS[file.mimetype]) {
+      throw new BadRequestException('头像仅支持 JPG、PNG、WebP 或 GIF 图片')
+    }
+
+    if (file.size > AVATAR_MAX_SIZE) {
+      throw new BadRequestException('头像大小不能超过 5MB')
+    }
+
+    await mkdir(AVATAR_UPLOAD_DIR, { recursive: true })
+
+    const extension = AVATAR_EXTENSIONS[file.mimetype] || extname(file.originalname).toLowerCase()
+    const fileName = `${userId}-${Date.now()}-${randomBytes(8).toString('hex')}${extension}`
+    await writeFile(join(AVATAR_UPLOAD_DIR, fileName), file.buffer)
+
+    const avatarUrl = `${requestOrigin}/uploads/avatars/${fileName}`
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl },
     })
 
     return this.toUserResponse(user)
@@ -165,3 +202,4 @@ function hashToken(token: string) {
 function isUniqueConstraintError(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
 }
+

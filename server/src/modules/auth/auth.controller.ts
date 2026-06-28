@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Patch, Post, Req } from '@nestjs/common'
+﻿import { BadRequestException, Body, Controller, Get, Patch, Post, Req, UploadedFile, UseInterceptors } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
 import type { Request } from 'express'
 import { AuthService, extractBearerToken } from './auth.service'
 import type { AuthUserResponse } from './auth.types'
@@ -7,6 +8,8 @@ import { LoginDto } from './dto/login.dto'
 import { RegisterDto } from './dto/register.dto'
 import { UpdateProfileDto } from './dto/update-profile.dto'
 import { Public } from './public.decorator'
+
+const AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
 @Controller('auth')
 export class AuthController {
@@ -34,8 +37,30 @@ export class AuthController {
     return this.authService.updateProfile(user.id, dto)
   }
 
+  @Post('me/avatar')
+  @UseInterceptors(
+    FileInterceptor('avatar', {
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_request, file, callback) => {
+        const accepted = AVATAR_MIME_TYPES.has(file.mimetype)
+        callback(accepted ? null : new BadRequestException('头像仅支持 JPG、PNG、WebP 或 GIF 图片'), accepted)
+      },
+    }),
+  )
+  uploadAvatar(
+    @CurrentUser() user: AuthUserResponse,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() request: Request,
+  ) {
+    return this.authService.updateAvatar(user.id, file, getRequestOrigin(request))
+  }
+
   @Post('logout')
   logout(@Req() request: Request) {
     return this.authService.logout(extractBearerToken(request.headers.authorization))
   }
+}
+
+function getRequestOrigin(request: Request) {
+  return `${request.protocol}://${request.get('host')}`
 }

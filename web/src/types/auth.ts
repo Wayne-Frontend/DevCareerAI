@@ -1,4 +1,4 @@
-export interface AuthUser {
+﻿export interface AuthUser {
   id: string
   username: string
   email: string
@@ -26,5 +26,4 @@ export interface RegisterPayload {
 
 export interface UpdateProfilePayload {
   email: string
-  avatarUrl?: string | null
 }

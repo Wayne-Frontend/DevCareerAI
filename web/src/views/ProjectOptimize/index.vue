@@ -1,7 +1,9 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { AlertTriangle, Code2, Copy, FileText, HelpCircle, Layers, Shield, Sparkles, Square, Star, Trash2, UserRound } from 'lucide-vue-next'
 import EmptyState from '../../components/EmptyState/index.vue'
+import InlineStatus from '../../components/InlineStatus/index.vue'
+import LoadingButton from '../../components/LoadingButton/index.vue'
 import StreamPreview from '../../components/StreamPreview/index.vue'
 import { deleteProjectOptimization, getProjectOptimizations, optimizeProjectStream } from '../../api/project'
 import type { ProjectOptimizationRecord, ProjectOptimizationResult } from '../../types/project'
@@ -9,6 +11,8 @@ import { toTagList } from '../../utils/format'
 import { notify } from '../../utils/notify'
 
 const loading = ref(false)
+const recordsLoading = ref(false)
+const deletingId = ref('')
 const result = ref<ProjectOptimizationResult | null>(null)
 const resultStatus = ref<'success' | 'parse_error'>('success')
 const streamPreview = ref('')
@@ -43,7 +47,12 @@ onMounted(() => {
 })
 
 async function loadRecords() {
-  records.value = await getProjectOptimizations()
+  recordsLoading.value = true
+  try {
+    records.value = await getProjectOptimizations()
+  } finally {
+    recordsLoading.value = false
+  }
 }
 
 function applyRecord(record: ProjectOptimizationRecord) {
@@ -108,12 +117,17 @@ async function submit() {
 }
 
 async function removeRecord(record: ProjectOptimizationRecord) {
-  await deleteProjectOptimization(record.id)
-  if (result.value === record.resultJson) {
-    result.value = null
+  deletingId.value = record.id
+  try {
+    await deleteProjectOptimization(record.id)
+    if (result.value === record.resultJson) {
+      result.value = null
+    }
+    await loadRecords()
+    notify('项目优化记录已删除', 'success')
+  } finally {
+    deletingId.value = ''
   }
-  await loadRecords()
-  notify('项目优化记录已删除', 'success')
 }
 
 function cancelStream() {
@@ -149,7 +163,7 @@ async function copyResult() {
         <div class="grid gap-3">
           <label>
             <span class="field-label">原始项目描述</span>
-            <textarea v-model="form.rawContent" class="textarea-base min-h-[170px]" maxlength="8000" placeholder="包含项目背景、功能、技术栈、个人职责、成果或遇到的问题..." />
+            <textarea v-model="form.rawContent" class="textarea-base min-h-[570px]" maxlength="8000" placeholder="包含项目背景、功能、技术栈、个人职责、成果或遇到的问题..." />
             <span class="mt-1 block text-right text-xs font-semibold text-[#64748b]">{{ form.rawContent.length }} / 8000</span>
           </label>
           <label>
@@ -172,27 +186,28 @@ async function copyResult() {
         </div>
 
         <div class="mt-5 grid gap-3">
-          <button class="btn-primary w-full" :disabled="loading" @click="submit">
-            <Sparkles :size="18" />
+          <LoadingButton class="w-full" :loading="loading" loading-text="优化中..." @click="submit">
+            <template #icon><Sparkles :size="18" /></template>
             {{ loading ? '优化中...' : '开始优化' }}
-          </button>
+          </LoadingButton>
           <button v-if="loading" class="btn-secondary w-full" @click="cancelStream">
             <Square :size="16" />
             取消本次生成
           </button>
         </div>
 
-        <section v-if="records.length" class="mt-5 rounded-2xl border border-slate-200 bg-white/55 p-4">
+        <section v-if="recordsLoading || records.length" class="mt-5 rounded-2xl border border-slate-200 bg-white/55 p-4">
           <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">最近优化记录</h3>
-          <div class="grid gap-2">
+          <InlineStatus v-if="recordsLoading" type="loading" title="正在加载记录" description="稍等一下，历史记录马上回来。" />
+          <div v-else class="grid gap-2">
             <article v-for="record in records.slice(0, 5)" :key="record.id" class="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl bg-white/70 p-3">
               <button class="min-w-0 text-left" type="button" @click="applyRecord(record)">
                 <strong class="block truncate text-sm text-[#0f172a]">{{ record.resultJson.projectName || record.targetRole || '项目优化记录' }}</strong>
                 <span class="mt-1 block truncate text-xs font-semibold text-[#64748b]">{{ record.targetRole || '未指定岗位' }}</span>
               </button>
-              <button class="grid h-9 w-9 place-items-center rounded-xl text-red-500 hover:bg-red-50" type="button" @click="removeRecord(record)">
-                <Trash2 :size="16" />
-              </button>
+              <LoadingButton variant="danger" :loading="deletingId === record.id" class="h-9 w-9 !min-h-9 !p-0" @click="removeRecord(record)">
+                <template #icon><Trash2 :size="16" /></template>
+              </LoadingButton>
             </article>
           </div>
         </section>
@@ -210,6 +225,7 @@ async function copyResult() {
           </button>
         </div>
 
+        <InlineStatus v-if="loading" class="mb-4" type="loading" title="AI 正在优化项目表达" :description="streamStatus || '正在连接服务，请稍候。'" />
         <StreamPreview v-if="loading" :status="streamStatus" :content="streamPreview" />
 
         <EmptyState v-if="!result && !loading" title="等待项目优化" description="提交原始描述后，这里会展示项目名称、职责、亮点、难点和面试追问。" />

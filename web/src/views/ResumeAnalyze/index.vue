@@ -1,9 +1,11 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onBeforeUnmount, reactive, ref } from 'vue'
 import { CheckCircle2, FileSearch, Search, Square, UploadCloud } from 'lucide-vue-next'
 import BeforeAfterCompare from '../../components/BeforeAfterCompare/index.vue'
 import EmptyState from '../../components/EmptyState/index.vue'
 import GlassCard from '../../components/GlassCard/index.vue'
+import InlineStatus from '../../components/InlineStatus/index.vue'
+import LoadingButton from '../../components/LoadingButton/index.vue'
 import ScoreCard from '../../components/ScoreCard/index.vue'
 import StreamPreview from '../../components/StreamPreview/index.vue'
 import SuggestionList from '../../components/SuggestionList/index.vue'
@@ -69,7 +71,7 @@ async function submit() {
     const analysis = await analyzeResumeStream(resume.id, {
       signal: controller.value.signal,
       onStart: () => {
-        streamStatus.value = 'AI 正在分析简历'
+        streamStatus.value = 'AI 正在分析简历结构'
       },
       onDelta: (delta) => {
         streamStatus.value = 'AI 正在生成结构化诊断'
@@ -122,10 +124,11 @@ function cancelStream() {
         </div>
 
         <label class="field-label">上传简历</label>
-        <label class="mb-4 grid min-h-[110px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40">
-          <input class="hidden" type="file" accept=".pdf,.docx,.txt,.md" @change="onFileChange" />
+        <label class="mb-4 grid min-h-[110px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40" :class="{ 'is-uploading': uploadLoading }">
+          <input class="hidden" type="file" accept=".pdf,.docx,.txt,.md" :disabled="uploadLoading" @change="onFileChange" />
           <UploadCloud :size="40" class="text-indigo-500" />
           <span class="mt-3 block text-sm font-extrabold text-[#26324f]">{{ uploadLoading ? '解析中...' : '点击上传 PDF / DOCX / TXT / MD' }}</span>
+          <InlineStatus v-if="uploadLoading" class="mt-3" type="loading" title="正在解析文件" description="完成后会自动填入简历正文。" />
           <span v-if="selectedFileName" class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600">{{ selectedFileName }}</span>
         </label>
 
@@ -150,16 +153,16 @@ function cancelStream() {
           </label>
           <label>
             <span class="field-label">简历内容</span>
-            <textarea v-model="form.content" class="textarea-base min-h-[190px]" maxlength="30000" placeholder="将你的简历内容粘贴到这里..." />
+            <textarea v-model="form.content" class="textarea-base min-h-[450px]" maxlength="30000" placeholder="将你的简历内容粘贴到这里..." />
             <span class="mt-1 block text-right text-xs text-[#64748b]">{{ form.content.length }} / 30000</span>
           </label>
         </div>
 
         <div class="mt-5 grid gap-3">
-          <button class="btn-primary w-full" :disabled="loading || uploadLoading" @click="submit">
-            <Search :size="18" />
+          <LoadingButton class="w-full" :loading="loading" :disabled="uploadLoading" loading-text="分析中..." @click="submit">
+            <template #icon><Search :size="18" /></template>
             {{ loading ? '分析中...' : '开始分析' }}
-          </button>
+          </LoadingButton>
           <button v-if="loading" class="btn-secondary w-full" @click="cancelStream">
             <Square :size="16" />
             取消本次生成
@@ -173,6 +176,7 @@ function cancelStream() {
           <h2 class="m-0 text-lg font-black text-[#0f172a]">诊断结果</h2>
         </div>
 
+        <InlineStatus v-if="loading" class="mb-4" type="loading" title="AI 正在生成诊断" :description="streamStatus || '正在连接服务，请稍候。'" />
         <StreamPreview v-if="loading" :status="streamStatus" :content="streamPreview" />
 
         <EmptyState
@@ -228,3 +232,10 @@ function cancelStream() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.is-uploading {
+  background: rgba(239, 246, 255, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08), 0 14px 30px rgba(37, 99, 235, 0.08);
+}
+</style>

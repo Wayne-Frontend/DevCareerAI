@@ -1,5 +1,5 @@
-import { notify } from '../utils/notify'
-import { clearStoredAuthSession, getAuthToken } from '../utils/authSession'
+﻿import { clearStoredAuthSession, getAuthToken } from '../utils/authSession'
+import { notifyApiError, resolveFetchErrorMessage } from './errors'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
@@ -35,13 +35,14 @@ export async function streamRequest<TDone>(
       throw error
     }
 
-    notify('网络连接失败，请确认后端服务是否正在运行', 'error')
-    throw error
+    const message = '网络连接失败，请确认后端服务是否正在运行'
+    notifyApiError(message)
+    throw new Error(message)
   }
 
   if (!response.ok || !response.body) {
-    const message = await readErrorMessage(response)
-    notify(message, 'error')
+    const message = await resolveFetchErrorMessage(response)
+    notifyApiError(message)
 
     if (response.status === 401 && window.location.pathname !== '/login') {
       clearStoredAuthSession()
@@ -89,9 +90,9 @@ export async function streamRequest<TDone>(
 
         if (event.event === 'error') {
           const payload = event.data as { message?: string }
-          const message = payload.message || '请求失败'
+          const message = payload.message || '请求失败，请稍后再试'
           handlers.onError?.(message)
-          notify(message, 'error')
+          notifyApiError(message)
           throw new Error(message)
         }
       }
@@ -106,7 +107,7 @@ export async function streamRequest<TDone>(
 
   if (!donePayload) {
     const message = '流式响应未返回最终结果'
-    notify(message, 'error')
+    notifyApiError(message)
     throw new Error(message)
   }
 
@@ -127,15 +128,5 @@ function parseSseEvent<TDone>(block: string): { event: string; data: unknown | T
     }
   } catch {
     return null
-  }
-}
-
-async function readErrorMessage(response: Response) {
-  try {
-    const payload = (await response.json()) as { message?: string | string[] }
-    const rawMessage = payload.message || response.statusText || '请求失败'
-    return Array.isArray(rawMessage) ? rawMessage.join('，') : rawMessage
-  } catch {
-    return response.statusText || '请求失败'
   }
 }

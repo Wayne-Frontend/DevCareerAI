@@ -1,4 +1,4 @@
-import { request } from './request'
+﻿import { request } from './request'
 import type { AuthSession, AuthUser, LoginPayload, RegisterPayload, UpdateProfilePayload } from '../types/auth'
 
 export function login(data: LoginPayload) {
@@ -28,6 +28,17 @@ export function updateProfile(data: UpdateProfilePayload) {
   return request<AuthUser>({
     url: '/auth/me',
     method: 'PATCH',
+    data,
+  })
+}
+
+export function uploadAvatar(file: File) {
+  const data = new FormData()
+  data.append('avatar', file)
+
+  return request<AuthUser>({
+    url: '/auth/me/avatar',
+    method: 'POST',
     data,
   })
 }

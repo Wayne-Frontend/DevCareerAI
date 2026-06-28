@@ -264,7 +264,7 @@ function cancelStream() {
               <span class="mt-2 block text-sm font-extrabold text-[#26324f]">{{ uploadLoading ? '解析中...' : '上传 PDF / DOCX / TXT / MD' }}</span>
               <span v-if="selectedFileName" class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600">{{ selectedFileName }}</span>
             </label>
-            <textarea v-model="form.resumeContent" class="textarea-base min-h-[128px]" :maxlength="MAX_RESUME_LENGTH" placeholder="粘贴或上传用于面试的简历、项目经历..." @input="selectedResumeId = ''" />
+            <textarea v-model="form.resumeContent" class="textarea-base min-h-[260px]" :maxlength="MAX_RESUME_LENGTH" placeholder="粘贴或上传用于面试的简历、项目经历..." @input="selectedResumeId = ''" />
             <span class="mt-1 block text-right text-xs text-[#64748b]">{{ form.resumeContent.length }} / {{ MAX_RESUME_LENGTH }}</span>
           </div>
           <label>

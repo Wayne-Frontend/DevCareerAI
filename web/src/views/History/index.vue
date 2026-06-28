@@ -1,7 +1,9 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Clock3, Code2, FileSearch, History, Mic, RefreshCw, Search, Target, Trash2 } from 'lucide-vue-next'
 import EmptyState from '../../components/EmptyState/index.vue'
+import LoadingButton from '../../components/LoadingButton/index.vue'
+import SkeletonCard from '../../components/SkeletonCard/index.vue'
 import { deleteHistoryRecord, getHistory } from '../../api/history'
 import type { HistoryRecord, HistoryType } from '../../types/history'
 import { formatDateTime } from '../../utils/format'
@@ -14,6 +16,7 @@ const loading = ref(false)
 const records = ref<HistoryRecord[]>([])
 const keyword = ref('')
 const activeDetail = ref<HistoryRecord | null>(null)
+const deletingId = ref('')
 
 const tabs: Array<{ label: string; value: FilterType; icon?: typeof FileSearch }> = [
   { label: '全部', value: 'all' },
@@ -71,10 +74,15 @@ async function changeType(type: FilterType) {
 }
 
 async function remove(record: HistoryRecord) {
-  await deleteHistoryRecord(record.id)
-  notify('记录已删除', 'success')
-  if (activeDetail.value?.id === record.id) activeDetail.value = null
-  await load(activeType.value)
+  deletingId.value = record.id
+  try {
+    await deleteHistoryRecord(record.id)
+    notify('记录已删除', 'success')
+    if (activeDetail.value?.id === record.id) activeDetail.value = null
+    await load(activeType.value)
+  } finally {
+    deletingId.value = ''
+  }
 }
 
 function detailText(record: HistoryRecord) {
@@ -85,10 +93,6 @@ function detailObject(record: HistoryRecord) {
   return record.detail && typeof record.detail === 'object' ? (record.detail as Record<string, unknown>) : {}
 }
 
-function detailList(record: HistoryRecord, key: string) {
-  const value = detailObject(record)[key]
-  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : []
-}
 
 function detailString(record: HistoryRecord, key: string) {
   const value = detailObject(record)[key]
@@ -115,10 +119,10 @@ onMounted(() => load())
         <h1 class="m-0 text-[34px] font-black text-[#0f172a]">历史记录</h1>
         <p class="mt-2 text-base font-semibold text-[#64748b]">查看和删除简历诊断、项目优化、岗位匹配和模拟面试记录。</p>
       </div>
-      <button class="btn-secondary ml-auto" :disabled="loading" @click="load(activeType)">
-        <RefreshCw :size="17" />
-        刷新
-      </button>
+      <LoadingButton class="ml-auto" variant="secondary" :loading="loading" loading-text="刷新中..." @click="load(activeType)">
+        <template #icon><RefreshCw :size="17" /></template>
+        {{ loading ? '刷新中...' : '刷新' }}
+      </LoadingButton>
     </header>
 
     <section class="glass-card p-5">
@@ -130,6 +134,7 @@ onMounted(() => load())
             type="button"
             class="inline-flex h-10 items-center gap-2 rounded-[13px] px-5 text-sm font-black transition"
             :class="activeType === tab.value ? 'bg-indigo-100 text-indigo-600' : 'bg-white/70 text-[#64748b] hover:text-indigo-600'"
+            :disabled="loading"
             @click="changeType(tab.value)"
           >
             <component v-if="tab.icon" :is="tab.icon" :size="16" />
@@ -144,7 +149,11 @@ onMounted(() => load())
       </div>
     </section>
 
-    <EmptyState v-if="!loading && displayRecords.length === 0" title="暂无历史记录" description="完成一次 AI 分析或模拟面试后，记录会出现在这里。" />
+    <section v-if="loading" class="grid grid-cols-4 gap-5">
+      <SkeletonCard v-for="index in 4" :key="index" />
+    </section>
+
+    <EmptyState v-else-if="displayRecords.length === 0" title="暂无历史记录" description="完成一次 AI 分析或模拟面试后，记录会出现在这里。" />
 
     <section v-else class="grid grid-cols-4 gap-5">
       <article v-for="record in displayRecords" :key="record.id" class="section-card flex h-[250px] flex-col p-5">
@@ -163,10 +172,10 @@ onMounted(() => load())
         </p>
         <div class="mt-auto grid grid-cols-2 gap-3 pt-4">
           <button class="btn-secondary min-h-10 whitespace-nowrap text-sm" @click="activeDetail = record">查看</button>
-          <button class="btn-secondary min-h-10 whitespace-nowrap text-sm text-red-500" @click="remove(record)">
-            <Trash2 :size="16" />
-            删除
-          </button>
+          <LoadingButton variant="danger" class="min-h-10 whitespace-nowrap text-sm" :loading="deletingId === record.id" loading-text="删除中..." @click="remove(record)">
+            <template #icon><Trash2 :size="16" /></template>
+            {{ deletingId === record.id ? '删除中...' : '删除' }}
+          </LoadingButton>
         </div>
       </article>
     </section>
@@ -194,36 +203,6 @@ onMounted(() => load())
           </div>
         </div>
 
-        <div v-if="activeDetail.type === 'resume-analysis'" class="grid grid-cols-2 gap-4">
-          <section class="section-card">
-            <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">优势</h3>
-            <ul class="m-0 grid gap-2 pl-5 text-sm leading-7 text-[#475569]">
-              <li v-for="item in detailList(activeDetail, 'strengths')" :key="item">{{ item }}</li>
-            </ul>
-          </section>
-          <section class="section-card">
-            <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">问题</h3>
-            <ul class="m-0 grid gap-2 pl-5 text-sm leading-7 text-[#475569]">
-              <li v-for="item in detailList(activeDetail, 'weaknesses')" :key="item">{{ item }}</li>
-            </ul>
-          </section>
-        </div>
-
-        <div v-else-if="activeDetail.type === 'job-match'" class="grid grid-cols-2 gap-4">
-          <section class="section-card">
-            <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">匹配关键词</h3>
-            <div class="flex flex-wrap gap-2">
-              <span v-for="item in detailList(activeDetail, 'matchedKeywords')" :key="item" class="success-tag">{{ item }}</span>
-            </div>
-          </section>
-          <section class="section-card">
-            <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">缺失关键词</h3>
-            <div class="flex flex-wrap gap-2">
-              <span v-for="item in detailList(activeDetail, 'missingKeywords')" :key="item" class="danger-tag">{{ item }}</span>
-            </div>
-          </section>
-        </div>
-
         <section class="section-card">
           <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">原始结构化结果</h3>
           <pre class="max-h-[320px] overflow-auto rounded-2xl bg-slate-950 p-5 text-sm leading-7 text-slate-100">{{ detailText(activeDetail) }}</pre>
@@ -232,3 +211,4 @@ onMounted(() => load())
     </section>
   </div>
 </template>
+

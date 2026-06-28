@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+﻿import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import MainLayout from '../layout/MainLayout.vue'
 import { getAuthToken } from '../utils/authSession'
 
@@ -54,12 +54,6 @@ export const routes: RouteRecordRaw[] = [
         name: 'profile',
         component: () => import('../views/Profile/index.vue'),
         meta: { title: '个人中心' },
-      },
-      {
-        path: 'settings',
-        name: 'settings',
-        component: () => import('../views/Settings/index.vue'),
-        meta: { title: '设置' },
       },
     ],
   },
