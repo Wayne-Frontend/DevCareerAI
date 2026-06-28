@@ -1,8 +1,10 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { BriefcaseBusiness, ClipboardList, FileText, Info, Square, Target, UploadCloud, WandSparkles } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { BriefcaseBusiness, ClipboardList, Copy, FileText, Info, Mic, Square, Target, UploadCloud, WandSparkles } from 'lucide-vue-next'
 import EmptyState from '../../components/EmptyState/index.vue'
 import GlassCard from '../../components/GlassCard/index.vue'
+import InlineStatus from '../../components/InlineStatus/index.vue'
 import KeywordTags from '../../components/KeywordTags/index.vue'
 import SuggestionList from '../../components/SuggestionList/index.vue'
 import ScoreCard from '../../components/ScoreCard/index.vue'
@@ -11,16 +13,24 @@ import { getJobDescriptions, matchJobStream } from '../../api/job'
 import { getResumes, uploadResume } from '../../api/resume'
 import type { JobDescriptionRecord, JobMatchResult } from '../../types/job'
 import type { ResumeRecord } from '../../types/resume'
+import { useWorkflowStore } from '../../stores/workflow'
 import { notify } from '../../utils/notify'
+import { buildJobMatchCopy } from '../../utils/resultCopy'
 
 const MAX_RESUME_LENGTH = 20000
+const workflowStore = useWorkflowStore()
+const router = useRouter()
 const loading = ref(false)
 const uploadLoading = ref(false)
+const assetsLoading = ref(false)
 const selectedFileName = ref('')
 const result = ref<JobMatchResult | null>(null)
 const resultStatus = ref<'success' | 'parse_error'>('success')
 const streamPreview = ref('')
 const streamStatus = ref('')
+const errorMessage = ref('')
+const uploadError = ref('')
+const assetsError = ref('')
 const controller = ref<AbortController | null>(null)
 const resumeOptions = ref<ResumeRecord[]>([])
 const jobOptions = ref<JobDescriptionRecord[]>([])
@@ -45,6 +55,8 @@ const dimensionItems = computed(() =>
     : [],
 )
 
+const resumeSuggestionText = computed(() => (result.value ? buildJobMatchCopy(result.value) : ''))
+
 onBeforeUnmount(() => {
   controller.value?.abort()
 })
@@ -54,9 +66,18 @@ onMounted(() => {
 })
 
 async function loadAssets() {
-  const [resumes, jobs] = await Promise.all([getResumes(), getJobDescriptions()])
-  resumeOptions.value = resumes
-  jobOptions.value = jobs
+  assetsLoading.value = true
+  assetsError.value = ''
+  try {
+    const [resumes, jobs] = await Promise.all([getResumes(), getJobDescriptions()])
+    resumeOptions.value = resumes
+    jobOptions.value = jobs
+  } catch {
+    assetsError.value = '已有简历或 JD 加载失败，你仍可以手动输入内容。'
+    notify('已有资料加载失败，可手动填写后继续分析', 'warning')
+  } finally {
+    assetsLoading.value = false
+  }
 }
 
 function applyResume(id: string) {
@@ -65,6 +86,7 @@ function applyResume(id: string) {
   if (!resume) return
   form.resumeContent = resume.content.slice(0, MAX_RESUME_LENGTH)
   form.jobTitle = resume.targetRole || form.jobTitle
+  uploadError.value = ''
 }
 
 function applyJobDescription(id: string) {
@@ -81,7 +103,17 @@ async function onResumeFileChange(event: Event) {
   const file = input.files?.[0]
   if (!file) return
 
+  if (form.resumeContent.trim()) {
+    const confirmed = window.confirm('上传新文件会替换当前简历内容，是否继续？')
+    if (!confirmed) {
+      input.value = ''
+      return
+    }
+  }
+
   uploadLoading.value = true
+  uploadError.value = ''
+  errorMessage.value = ''
   try {
     const parsed = await uploadResume(file)
     selectedResumeId.value = ''
@@ -90,13 +122,17 @@ async function onResumeFileChange(event: Event) {
     notify(parsed.truncated || parsed.content.length > MAX_RESUME_LENGTH ? '文件已解析，内容较长，已自动截断' : '文件已解析', 'success')
   } catch {
     input.value = ''
+    uploadError.value = '文件解析失败，请确认格式为 PDF、DOCX、TXT 或 MD 后重试。'
   } finally {
     uploadLoading.value = false
   }
 }
 
 async function submit() {
+  if (loading.value || uploadLoading.value) return
+
   if (!form.resumeContent.trim() || !form.jobTitle.trim() || !form.jobDescription.trim()) {
+    errorMessage.value = '请填写简历内容、岗位名称和 JD 后再开始匹配。'
     notify('请填写简历内容、岗位名称和 JD', 'warning')
     return
   }
@@ -105,6 +141,7 @@ async function submit() {
   loading.value = true
   streamPreview.value = ''
   streamStatus.value = 'AI 正在建立连接'
+  errorMessage.value = ''
 
   try {
     const response = await matchJobStream(
@@ -138,6 +175,8 @@ async function submit() {
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
       notify('已取消本次匹配分析', 'info')
+    } else {
+      errorMessage.value = '岗位匹配生成失败，请稍后重试。'
     }
   } finally {
     loading.value = false
@@ -148,6 +187,27 @@ async function submit() {
 
 function cancelStream() {
   controller.value?.abort()
+}
+
+async function copyResumeSuggestions() {
+  if (!resumeSuggestionText.value) return
+  try {
+    await navigator.clipboard.writeText(resumeSuggestionText.value)
+    notify('已复制修改建议', 'success')
+  } catch {
+    errorMessage.value = '复制失败，请检查浏览器剪贴板权限后重试。'
+    notify('复制失败', 'error')
+  }
+}
+
+function goInterviewFromJobMatch() {
+  workflowStore.setInterviewContext({
+    targetRole: form.jobTitle,
+    resumeContent: form.resumeContent,
+    jobDescription: form.jobDescription,
+    sourceLabel: '岗位匹配',
+  })
+  void router.push('/interview')
 }
 </script>
 
@@ -163,6 +223,8 @@ function cancelStream() {
       </div>
     </header>
 
+    <InlineStatus v-if="assetsError" type="warning" title="资料加载失败" :description="assetsError" />
+
     <div class="feature-workspace-balanced">
       <GlassCard class="feature-pane-left">
         <h2 class="mb-3 flex items-center gap-2 text-base font-black text-[#0f172a]">
@@ -170,32 +232,35 @@ function cancelStream() {
           简历内容
         </h2>
 
+        <InlineStatus v-if="assetsLoading" class="mb-4" type="loading" title="正在加载已有资料" description="稍等一下，简历和 JD 记录马上回来。" />
+
         <label v-if="resumeOptions.length" class="mb-4 block">
           <span class="field-label">选择已有简历</span>
-          <select v-model="selectedResumeId" class="select-base" @change="applyResume(selectedResumeId)">
+          <select v-model="selectedResumeId" class="select-base" :disabled="loading || uploadLoading" @change="applyResume(selectedResumeId)">
             <option value="">手动输入 / 上传新简历</option>
             <option v-for="resume in resumeOptions" :key="resume.id" :value="resume.id">{{ resume.title }}</option>
           </select>
         </label>
 
-        <label class="mb-4 grid min-h-[96px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40">
-          <input class="hidden" type="file" accept=".pdf,.docx,.txt,.md" @change="onResumeFileChange" />
+        <label class="mb-4 grid min-h-[96px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40" :class="{ 'pointer-events-none opacity-70': uploadLoading || loading }">
+          <input class="hidden" type="file" accept=".pdf,.docx,.txt,.md" :disabled="uploadLoading || loading" @change="onResumeFileChange" />
           <UploadCloud :size="32" class="text-indigo-500" />
           <span class="mt-2 block text-sm font-extrabold text-[#26324f]">{{ uploadLoading ? '解析中...' : '上传 PDF / DOCX / TXT / MD' }}</span>
           <span v-if="selectedFileName" class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600">{{ selectedFileName }}</span>
         </label>
+        <InlineStatus v-if="uploadError" class="mb-4" type="error" title="上传失败" :description="uploadError" />
 
-        <textarea v-model="form.resumeContent" class="textarea-base min-h-[280px]" :maxlength="MAX_RESUME_LENGTH" placeholder="粘贴或上传简历内容..." @input="selectedResumeId = ''" />
+        <textarea v-model="form.resumeContent" class="textarea-base min-h-[280px]" :maxlength="MAX_RESUME_LENGTH" placeholder="粘贴或上传简历内容..." :disabled="loading || uploadLoading" @input="selectedResumeId = ''" />
         <p class="mt-2 text-right text-xs text-[#94a3b8]">{{ form.resumeContent.length }} / {{ MAX_RESUME_LENGTH }}</p>
 
         <h2 class="mb-3 flex items-center gap-2 text-base font-black text-[#0f172a]">
           <BriefcaseBusiness :size="19" class="text-indigo-500" />
           目标岗位
         </h2>
-        <input v-model="form.jobTitle" class="input-base" placeholder="岗位名称" />
-        <input v-model="form.companyName" class="input-base mt-3" placeholder="公司名称（可选）" />
+        <input v-model="form.jobTitle" class="input-base" placeholder="岗位名称" :disabled="loading" />
+        <input v-model="form.companyName" class="input-base mt-3" placeholder="公司名称（可选）" :disabled="loading" />
         <div class="mb-4 mt-5 flex items-center justify-between">
-            <h2 class="m-0 flex items-center gap-2 text-base font-black text-[#0f172a]">
+          <h2 class="m-0 flex items-center gap-2 text-base font-black text-[#0f172a]">
             <ClipboardList :size="19" class="text-indigo-500" />
             职位描述（JD）
           </h2>
@@ -204,14 +269,16 @@ function cancelStream() {
 
         <label v-if="jobOptions.length" class="mb-4 block">
           <span class="field-label">选择已有 JD</span>
-          <select v-model="selectedJobDescriptionId" class="select-base" @change="applyJobDescription(selectedJobDescriptionId)">
+          <select v-model="selectedJobDescriptionId" class="select-base" :disabled="loading" @change="applyJobDescription(selectedJobDescriptionId)">
             <option value="">手动输入新 JD</option>
             <option v-for="job in jobOptions" :key="job.id" :value="job.id">{{ job.companyName ? `${job.companyName} - ${job.jobTitle}` : job.jobTitle }}</option>
           </select>
         </label>
 
-        <textarea v-model="form.jobDescription" class="textarea-base min-h-[130px]" maxlength="10000" placeholder="粘贴岗位 JD..." @input="selectedJobDescriptionId = ''" />
+        <textarea v-model="form.jobDescription" class="textarea-base min-h-[130px]" maxlength="10000" placeholder="粘贴岗位 JD..." :disabled="loading" @input="selectedJobDescriptionId = ''" />
         <p class="mt-2 text-right text-xs text-[#94a3b8]">{{ form.jobDescription.length }} / 10000</p>
+
+        <InlineStatus v-if="errorMessage" class="mt-4" type="error" title="暂时无法开始匹配" :description="errorMessage" />
 
         <div class="mt-5 flex justify-end gap-3">
           <button v-if="loading" class="btn-secondary min-w-[150px]" @click="cancelStream">
@@ -236,6 +303,24 @@ function cancelStream() {
         <EmptyState v-if="!result && !loading" title="等待匹配分析" description="填写简历和 JD 后，这里会展示匹配度、关键词、风险点和面试准备建议。" />
 
         <div v-else-if="result" class="grid gap-4">
+          <section class="section-card">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="m-0 text-base font-black text-[#0f172a]">下一步建议</h3>
+                <p class="mb-0 mt-1 text-sm font-semibold text-[#64748b]">先补齐缺失关键词和风险点，再带着当前 JD 进入模拟面试。</p>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button class="btn-secondary min-h-10" @click="copyResumeSuggestions">
+                  <Copy :size="18" />
+                  复制修改建议
+                </button>
+                <button class="btn-secondary min-h-10" @click="goInterviewFromJobMatch">
+                  <Mic :size="18" />
+                  去模拟面试
+                </button>
+              </div>
+            </div>
+          </section>
           <div class="grid grid-cols-[0.78fr_1fr] gap-4">
             <section class="section-card">
               <ScoreCard :score="result.matchScore" title="综合匹配度" :summary="result.summary" />
@@ -279,3 +364,5 @@ function cancelStream() {
     </div>
   </div>
 </template>
+
+

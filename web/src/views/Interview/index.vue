@@ -1,24 +1,34 @@
-<script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { Clock3, Mic, PlayCircle, Square, UploadCloud } from 'lucide-vue-next'
+﻿<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { Clock3, Copy, Mic, PlayCircle, Square, UploadCloud } from 'lucide-vue-next'
 import ChatBox from '../../components/ChatBox/index.vue'
 import GlassCard from '../../components/GlassCard/index.vue'
+import InlineStatus from '../../components/InlineStatus/index.vue'
 import StreamPreview from '../../components/StreamPreview/index.vue'
 import { createInterviewStream, finishInterviewStream, submitInterviewAnswerStream } from '../../api/interview'
 import { getJobDescriptions } from '../../api/job'
 import { getResumes, uploadResume } from '../../api/resume'
 import { useInterviewStore } from '../../stores/interview'
+import { useWorkflowStore } from '../../stores/workflow'
 import type { JobDescriptionRecord } from '../../types/job'
 import type { ResumeRecord } from '../../types/resume'
 import { notify } from '../../utils/notify'
+import { buildInterviewStudyPlanCopy } from '../../utils/resultCopy'
 
 const MAX_RESUME_LENGTH = 20000
 const interviewStore = useInterviewStore()
+const workflowStore = useWorkflowStore()
 const loading = ref(false)
 const uploadLoading = ref(false)
+const assetsLoading = ref(false)
 const selectedFileName = ref('')
 const streamPreview = ref('')
 const streamStatus = ref('')
+const errorMessage = ref('')
+const uploadError = ref('')
+const assetsError = ref('')
+const workflowMessage = ref('')
+const finalSummary = ref<unknown>(null)
 const controller = ref<AbortController | null>(null)
 const resumeOptions = ref<ResumeRecord[]>([])
 const jobOptions = ref<JobDescriptionRecord[]>([])
@@ -33,18 +43,35 @@ const form = reactive({
   difficulty: '中等',
 })
 
+const interviewStatus = computed(() => {
+  if (interviewStore.finished) return '面试已结束'
+  if (loading.value) return 'AI 思考中'
+  if (interviewStore.sessionId) return '面试进行中'
+  return '等待开始'
+})
+
 onBeforeUnmount(() => {
   controller.value?.abort()
 })
 
-onMounted(() => {
-  void loadAssets()
+onMounted(async () => {
+  await loadAssets()
+  applyWorkflowContext()
 })
 
 async function loadAssets() {
-  const [resumes, jobs] = await Promise.all([getResumes(), getJobDescriptions()])
-  resumeOptions.value = resumes
-  jobOptions.value = jobs
+  assetsLoading.value = true
+  assetsError.value = ''
+  try {
+    const [resumes, jobs] = await Promise.all([getResumes(), getJobDescriptions()])
+    resumeOptions.value = resumes
+    jobOptions.value = jobs
+  } catch {
+    assetsError.value = '已有简历或 JD 加载失败，你仍可以手动输入内容。'
+    notify('已有资料加载失败，可手动填写后继续面试', 'warning')
+  } finally {
+    assetsLoading.value = false
+  }
 }
 
 function applyResume(id: string) {
@@ -53,6 +80,7 @@ function applyResume(id: string) {
   if (!resume) return
   form.resumeContent = resume.content.slice(0, MAX_RESUME_LENGTH)
   form.targetRole = resume.targetRole || form.targetRole
+  uploadError.value = ''
 }
 
 function applyJobDescription(id: string) {
@@ -63,12 +91,54 @@ function applyJobDescription(id: string) {
   form.targetRole = job.jobTitle || form.targetRole
 }
 
+function applyWorkflowContext() {
+  const context = workflowStore.consumeInterviewContext()
+  if (!context) return
+
+  let applied = false
+  if (context.targetRole && (!form.targetRole.trim() || form.targetRole === '前端开发工程师')) {
+    form.targetRole = context.targetRole
+    applied = true
+  }
+  if (context.resumeContent && !form.resumeContent.trim()) {
+    form.resumeContent = context.resumeContent.slice(0, MAX_RESUME_LENGTH)
+    applied = true
+  }
+  if (context.projectContext && !form.resumeContent.trim()) {
+    form.resumeContent = context.projectContext.slice(0, MAX_RESUME_LENGTH)
+    applied = true
+  } else if (context.projectContext && form.resumeContent.trim() && !form.resumeContent.includes(context.projectContext.slice(0, 80))) {
+    form.resumeContent = `${form.resumeContent}\n\n${context.projectContext}`.slice(0, MAX_RESUME_LENGTH)
+    applied = true
+  }
+  if (context.jobDescription && !form.jobDescription.trim()) {
+    form.jobDescription = context.jobDescription
+    applied = true
+  }
+
+  if (applied) {
+    selectedResumeId.value = ''
+    selectedJobDescriptionId.value = ''
+    workflowMessage.value = `已带入${context.sourceLabel || '上一步'}资料，可直接开始模拟面试。`
+  }
+}
+
 async function onResumeFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
 
+  if (form.resumeContent.trim()) {
+    const confirmed = window.confirm('上传新文件会替换当前简历内容，是否继续？')
+    if (!confirmed) {
+      input.value = ''
+      return
+    }
+  }
+
   uploadLoading.value = true
+  uploadError.value = ''
+  errorMessage.value = ''
   try {
     const parsed = await uploadResume(file)
     selectedResumeId.value = ''
@@ -77,17 +147,22 @@ async function onResumeFileChange(event: Event) {
     notify(parsed.truncated || parsed.content.length > MAX_RESUME_LENGTH ? '文件已解析，内容较长，已自动截断' : '文件已解析', 'success')
   } catch {
     input.value = ''
+    uploadError.value = '文件解析失败，请确认格式为 PDF、DOCX、TXT 或 MD 后重试。'
   } finally {
     uploadLoading.value = false
   }
 }
 
 async function start() {
+  if (loading.value || uploadLoading.value) return
+
   if (!form.resumeContent.trim() || !form.targetRole.trim()) {
+    errorMessage.value = '请填写简历内容和目标岗位后再开始面试。'
     notify('请填写简历内容和目标岗位', 'warning')
     return
   }
 
+  errorMessage.value = ''
   await runStream('AI 正在生成第一道面试题', async (signal) => {
     const response = await createInterviewStream(
       {
@@ -117,6 +192,7 @@ async function start() {
 
 async function sendAnswer(answer: string) {
   if (!interviewStore.sessionId) {
+    errorMessage.value = '请先开始面试，再提交回答。'
     notify('请先开始面试', 'warning')
     return
   }
@@ -126,6 +202,7 @@ async function sendAnswer(answer: string) {
     return
   }
 
+  errorMessage.value = ''
   interviewStore.appendMessage({ id: crypto.randomUUID(), role: 'user', content: answer })
 
   await runStream('AI 正在点评回答并生成追问', async (signal) => {
@@ -154,7 +231,7 @@ async function sendAnswer(answer: string) {
 }
 
 async function finish() {
-  if (!interviewStore.sessionId) return
+  if (!interviewStore.sessionId || loading.value) return
 
   await runStream('AI 正在生成面试总结', async (signal) => {
     const response = await finishInterviewStream(interviewStore.sessionId, {
@@ -164,6 +241,7 @@ async function finish() {
       },
       onDelta: appendDelta,
     })
+    finalSummary.value = response
     interviewStore.appendMessage({
       id: crypto.randomUUID(),
       role: 'system',
@@ -186,12 +264,15 @@ async function runStream(initialStatus: string, runner: (signal: AbortSignal) =>
   loading.value = true
   streamPreview.value = ''
   streamStatus.value = initialStatus
+  errorMessage.value = ''
 
   try {
     await runner(controller.value.signal)
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
       notify('已取消本次生成', 'info')
+    } else {
+      errorMessage.value = 'AI 生成失败，请稍后重试。'
     }
   } finally {
     loading.value = false
@@ -205,8 +286,21 @@ function appendDelta(delta: string) {
   streamPreview.value += delta
 }
 
+const studyPlanText = computed(() => (finalSummary.value ? buildInterviewStudyPlanCopy(finalSummary.value) : ''))
+
 function cancelStream() {
   controller.value?.abort()
+}
+
+async function copyStudyPlan() {
+  if (!studyPlanText.value) return
+  try {
+    await navigator.clipboard.writeText(studyPlanText.value)
+    notify('已复制学习计划', 'success')
+  } catch {
+    errorMessage.value = '复制失败，请检查浏览器剪贴板权限后重试。'
+    notify('复制失败', 'error')
+  }
 }
 </script>
 
@@ -226,17 +320,21 @@ function cancelStream() {
       </RouterLink>
     </header>
 
+    <InlineStatus v-if="assetsError" type="warning" title="资料加载失败" :description="assetsError" />
+
     <div class="feature-workspace-compact">
       <GlassCard class="feature-pane-left">
         <h2 class="section-title">面试配置</h2>
+        <InlineStatus v-if="assetsLoading" class="mb-4" type="loading" title="正在加载已有资料" description="稍等一下，简历和 JD 记录马上回来。" />
+        <InlineStatus v-if="workflowMessage" class="mb-4" type="success" title="资料已带入" :description="workflowMessage" />
         <div class="grid gap-3">
           <label>
             <span class="field-label">目标岗位</span>
-            <input v-model="form.targetRole" class="input-base" />
+            <input v-model="form.targetRole" class="input-base" :disabled="loading" />
           </label>
           <label>
             <span class="field-label">面试类型</span>
-            <select v-model="form.interviewType" class="select-base">
+            <select v-model="form.interviewType" class="select-base" :disabled="loading">
               <option>项目面试</option>
               <option>技术面</option>
               <option>综合面</option>
@@ -244,7 +342,7 @@ function cancelStream() {
           </label>
           <label>
             <span class="field-label">难度</span>
-            <select v-model="form.difficulty" class="select-base">
+            <select v-model="form.difficulty" class="select-base" :disabled="loading">
               <option>简单</option>
               <option>中等</option>
               <option>困难</option>
@@ -253,28 +351,30 @@ function cancelStream() {
           <div>
             <span class="field-label">简历内容</span>
             <label v-if="resumeOptions.length" class="mb-3 block">
-              <select v-model="selectedResumeId" class="select-base" @change="applyResume(selectedResumeId)">
+              <select v-model="selectedResumeId" class="select-base" :disabled="loading || uploadLoading" @change="applyResume(selectedResumeId)">
                 <option value="">手动输入 / 上传新简历</option>
                 <option v-for="resume in resumeOptions" :key="resume.id" :value="resume.id">{{ resume.title }}</option>
               </select>
             </label>
-            <label class="mb-3 grid min-h-[90px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-3.5 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40">
-              <input class="hidden" type="file" accept=".pdf,.docx,.txt,.md" @change="onResumeFileChange" />
+            <label class="mb-3 grid min-h-[90px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-3.5 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40" :class="{ 'pointer-events-none opacity-70': uploadLoading || loading }">
+              <input class="hidden" type="file" accept=".pdf,.docx,.txt,.md" :disabled="uploadLoading || loading" @change="onResumeFileChange" />
               <UploadCloud :size="30" class="text-indigo-500" />
               <span class="mt-2 block text-sm font-extrabold text-[#26324f]">{{ uploadLoading ? '解析中...' : '上传 PDF / DOCX / TXT / MD' }}</span>
               <span v-if="selectedFileName" class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600">{{ selectedFileName }}</span>
             </label>
-            <textarea v-model="form.resumeContent" class="textarea-base min-h-[260px]" :maxlength="MAX_RESUME_LENGTH" placeholder="粘贴或上传用于面试的简历、项目经历..." @input="selectedResumeId = ''" />
+            <InlineStatus v-if="uploadError" class="mb-3" type="error" title="上传失败" :description="uploadError" />
+            <textarea v-model="form.resumeContent" class="textarea-base min-h-[260px]" :maxlength="MAX_RESUME_LENGTH" placeholder="粘贴或上传用于面试的简历、项目经历..." :disabled="loading || uploadLoading" @input="selectedResumeId = ''" />
             <span class="mt-1 block text-right text-xs text-[#64748b]">{{ form.resumeContent.length }} / {{ MAX_RESUME_LENGTH }}</span>
           </div>
           <label>
             <span class="field-label">岗位 JD（可选）</span>
-            <select v-if="jobOptions.length" v-model="selectedJobDescriptionId" class="select-base mb-3" @change="applyJobDescription(selectedJobDescriptionId)">
+            <select v-if="jobOptions.length" v-model="selectedJobDescriptionId" class="select-base mb-3" :disabled="loading" @change="applyJobDescription(selectedJobDescriptionId)">
               <option value="">手动输入新 JD</option>
               <option v-for="job in jobOptions" :key="job.id" :value="job.id">{{ job.companyName ? `${job.companyName} - ${job.jobTitle}` : job.jobTitle }}</option>
             </select>
-            <textarea v-model="form.jobDescription" class="textarea-base min-h-[88px]" placeholder="粘贴 JD 后，问题会更贴近岗位要求。" @input="selectedJobDescriptionId = ''" />
+            <textarea v-model="form.jobDescription" class="textarea-base min-h-[88px]" placeholder="粘贴 JD 后，问题会更贴近岗位要求。" :disabled="loading" @input="selectedJobDescriptionId = ''" />
           </label>
+          <InlineStatus v-if="errorMessage" type="error" title="面试暂时无法继续" :description="errorMessage" />
           <button class="btn-primary mt-2 w-full" :disabled="loading || uploadLoading" @click="start">
             <PlayCircle :size="18" />
             {{ loading ? '生成中...' : '开始面试' }}
@@ -287,22 +387,54 @@ function cancelStream() {
         </div>
       </GlassCard>
 
-      <GlassCard class="feature-pane-right soft-scrollbar">
-        <div class="mb-3 flex justify-between gap-4">
-          <div>
-            <h2 class="mb-1.5 mt-0 flex items-center gap-2 text-lg font-black text-[#0f172a]">
-              <Mic :size="18" class="text-indigo-500" />
-              AI 面试官
-            </h2>
-            <p class="m-0 text-xs text-[#64748b]">每次回答后会生成点评、参考回答和下一道追问。</p>
+      <GlassCard class="feature-pane-right flex min-h-0 flex-col overflow-hidden">
+        <div class="shrink-0 border-b border-white/60 bg-white/70 pb-4 backdrop-blur-xl">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 class="mb-1.5 mt-0 flex items-center gap-2 text-lg font-black text-[#0f172a]">
+                <Mic :size="18" class="text-indigo-500" />
+                AI 面试官
+              </h2>
+              <p class="m-0 text-xs text-[#64748b]">每次回答后会生成点评、参考回答和下一道追问。</p>
+            </div>
+            <div class="flex flex-wrap justify-end gap-2">
+              <span class="soft-tag">{{ interviewStatus }}</span>
+              <span class="soft-tag">{{ form.difficulty }}</span>
+              <button v-if="loading" class="btn-secondary min-h-10" @click="cancelStream">
+                <Square :size="16" />
+                取消生成
+              </button>
+              <button v-else-if="interviewStore.sessionId && !interviewStore.finished" class="btn-secondary min-h-10" @click="finish">结束面试</button>
+              <button v-if="interviewStore.finished" class="btn-secondary min-h-10" :disabled="!studyPlanText" @click="copyStudyPlan">
+                <Copy :size="18" />
+                复制学习计划
+              </button>
+              <RouterLink v-if="interviewStore.finished" class="btn-secondary min-h-10" to="/history">
+                <Clock3 :size="18" />
+                查看复盘记录
+              </RouterLink>
+            </div>
           </div>
-          <span class="soft-tag">{{ form.difficulty }}</span>
+
+          <InlineStatus v-if="loading" class="mt-4" type="loading" title="AI 正在生成" :description="streamStatus || '正在连接服务，请稍候。'" />
+          <StreamPreview v-if="loading" class="mt-4" :status="streamStatus" :content="streamPreview" :max-height="140" />
         </div>
 
-        <StreamPreview v-if="loading" :status="streamStatus" :content="streamPreview" :max-height="180" />
+        <section v-if="interviewStore.finished" class="section-card my-4 flex shrink-0 flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="m-0 text-base font-black text-[#0f172a]">面试已结束</h3>
+            <p class="mb-0 mt-1 text-sm font-semibold text-[#64748b]">总结已保存到复盘中心，可以继续查看优势、短板和学习计划。</p>
+          </div>
+        </section>
 
-        <ChatBox :messages="interviewStore.messages" :loading="loading" :disabled="interviewStore.finished" @send-answer="sendAnswer" />
+        <div class="min-h-0 flex-1 pt-4">
+          <ChatBox :messages="interviewStore.messages" :loading="loading" :disabled="interviewStore.finished" @send-answer="sendAnswer" />
+        </div>
       </GlassCard>
     </div>
   </div>
 </template>
+
+
+
+

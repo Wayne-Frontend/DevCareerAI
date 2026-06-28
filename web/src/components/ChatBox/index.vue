@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from 'vue'
+﻿<script setup lang="ts">
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { Send } from 'lucide-vue-next'
 import type { ChatMessage } from '../../types/interview'
 import EmptyState from '../EmptyState/index.vue'
@@ -20,6 +20,7 @@ const answerTextarea = ref<HTMLTextAreaElement | null>(null)
 const messageScroller = ref<HTMLElement | null>(null)
 const pinnedToBottom = ref(true)
 const maxAnswerHeight = 150
+const canSend = computed(() => Boolean(answer.value.trim()) && !props.loading && !props.disabled)
 
 function isNearBottom(element: HTMLElement) {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= 24
@@ -38,9 +39,9 @@ function onMessagesScroll() {
 }
 
 function send() {
-  const value = answer.value.trim()
-  if (!value) return
+  if (!canSend.value) return
 
+  const value = answer.value.trim()
   emit('sendAnswer', value)
   answer.value = ''
   void nextTick(resizeAnswerTextarea)
@@ -82,8 +83,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="grid min-h-[620px] grid-rows-[minmax(420px,1fr)_auto] gap-4">
-    <div ref="messageScroller" class="soft-scrollbar grid min-h-0 content-start gap-4 overflow-auto px-1 pb-2" @scroll="onMessagesScroll">
+  <div class="flex h-full min-h-0 flex-col">
+    <div ref="messageScroller" class="soft-scrollbar grid min-h-0 flex-1 content-start gap-4 overflow-auto px-1 pb-4" @scroll="onMessagesScroll">
       <EmptyState
         v-if="messages.length === 0"
         title="准备开始"
@@ -99,9 +100,9 @@ onMounted(async () => {
       />
     </div>
 
-    <div class="grid gap-3 bg-transparent">
+    <div class="shrink-0 border-t border-white/60 bg-gradient-to-t from-white/95 via-white/82 to-white/20 px-1 pt-4 backdrop-blur-xl">
       <div class="grid grid-cols-[1fr_58px] items-center gap-4">
-        <div class="flex min-h-[64px] max-h-[184px] items-end rounded-[28px] border border-indigo-300/80 bg-white/80 px-7 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-xl">
+        <div class="flex min-h-[64px] max-h-[184px] items-end rounded-[28px] border border-indigo-300/80 bg-white/86 px-7 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_12px_30px_rgba(79,70,229,0.08)] backdrop-blur-xl">
           <textarea
             ref="answerTextarea"
             v-model="answer"
@@ -117,14 +118,14 @@ onMounted(async () => {
         </div>
         <button
           class="grid h-[58px] w-[58px] place-items-center rounded-full bg-gradient-to-br from-violet-500 to-blue-500 text-white shadow-[0_18px_36px_rgba(99,102,241,0.35)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="loading || disabled"
+          :disabled="!canSend"
           aria-label="发送回答"
           @click="send"
         >
           <Send :size="18" />
         </button>
       </div>
-      <span class="ml-1 text-xs text-[#94a3b8]">{{ disabled ? '当前面试已结束' : '按 Ctrl + Enter 发送' }}</span>
+      <span class="ml-1 mt-2 block text-xs text-[#94a3b8]">{{ disabled ? '当前面试已结束' : loading ? 'AI 思考中，请稍候' : '按 Ctrl + Enter 发送' }}</span>
     </div>
   </div>
 </template>

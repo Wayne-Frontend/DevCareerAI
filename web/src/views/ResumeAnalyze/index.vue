@@ -1,6 +1,7 @@
 ﻿<script setup lang="ts">
-import { onBeforeUnmount, reactive, ref } from 'vue'
-import { CheckCircle2, FileSearch, Search, Square, UploadCloud } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { CheckCircle2, Copy, FileSearch, Mic, Search, Square, Target, UploadCloud } from 'lucide-vue-next'
 import BeforeAfterCompare from '../../components/BeforeAfterCompare/index.vue'
 import EmptyState from '../../components/EmptyState/index.vue'
 import GlassCard from '../../components/GlassCard/index.vue'
@@ -11,10 +12,14 @@ import StreamPreview from '../../components/StreamPreview/index.vue'
 import SuggestionList from '../../components/SuggestionList/index.vue'
 import { analyzeResumeStream, createResume, uploadResume } from '../../api/resume'
 import { useResumeStore } from '../../stores/resume'
+import { useWorkflowStore } from '../../stores/workflow'
 import type { ResumeAnalysisResult } from '../../types/resume'
 import { notify } from '../../utils/notify'
+import { buildResumeSuggestionCopy } from '../../utils/resultCopy'
 
 const resumeStore = useResumeStore()
+const workflowStore = useWorkflowStore()
+const router = useRouter()
 const loading = ref(false)
 const uploadLoading = ref(false)
 const selectedFileName = ref('')
@@ -22,7 +27,11 @@ const result = ref<ResumeAnalysisResult | null>(null)
 const resultStatus = ref<'success' | 'parse_error'>('success')
 const streamPreview = ref('')
 const streamStatus = ref('')
+const errorMessage = ref('')
+const uploadError = ref('')
 const controller = ref<AbortController | null>(null)
+
+const suggestionText = computed(() => (result.value ? buildResumeSuggestionCopy(result.value) : ''))
 
 const form = reactive({
   title: '',
@@ -40,7 +49,17 @@ async function onFileChange(event: Event) {
   const file = input.files?.[0]
   if (!file) return
 
+  if (form.content.trim()) {
+    const confirmed = window.confirm('上传新文件会替换当前简历内容，是否继续？')
+    if (!confirmed) {
+      input.value = ''
+      return
+    }
+  }
+
   uploadLoading.value = true
+  uploadError.value = ''
+  errorMessage.value = ''
   try {
     const parsed = await uploadResume(file)
     selectedFileName.value = parsed.fileName
@@ -49,13 +68,17 @@ async function onFileChange(event: Event) {
     notify(parsed.truncated ? '文件已解析，内容较长，已自动截断' : '文件已解析', 'success')
   } catch {
     input.value = ''
+    uploadError.value = '文件解析失败，请确认格式为 PDF、DOCX、TXT 或 MD 后重试。'
   } finally {
     uploadLoading.value = false
   }
 }
 
 async function submit() {
+  if (loading.value || uploadLoading.value) return
+
   if (!form.title.trim() || !form.content.trim()) {
+    errorMessage.value = '请填写简历标题和简历内容后再开始分析。'
     notify('请填写简历标题和简历内容', 'warning')
     return
   }
@@ -64,6 +87,7 @@ async function submit() {
   loading.value = true
   streamPreview.value = ''
   streamStatus.value = 'AI 正在建立连接'
+  errorMessage.value = ''
 
   try {
     const resume = await createResume({ ...form })
@@ -91,6 +115,8 @@ async function submit() {
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
       notify('已取消本次分析', 'info')
+    } else {
+      errorMessage.value = '简历诊断生成失败，请稍后重试。'
     }
   } finally {
     loading.value = false
@@ -101,6 +127,26 @@ async function submit() {
 
 function cancelStream() {
   controller.value?.abort()
+}
+
+async function copySuggestions() {
+  if (!suggestionText.value) return
+  try {
+    await navigator.clipboard.writeText(suggestionText.value)
+    notify('已复制优化建议', 'success')
+  } catch {
+    errorMessage.value = '复制失败，请检查浏览器剪贴板权限后重试。'
+    notify('复制失败', 'error')
+  }
+}
+
+function goInterviewFromResume() {
+  workflowStore.setInterviewContext({
+    targetRole: form.targetRole,
+    resumeContent: form.content,
+    sourceLabel: '简历诊断',
+  })
+  void router.push('/interview')
 }
 </script>
 
@@ -129,6 +175,7 @@ function cancelStream() {
           <UploadCloud :size="40" class="text-indigo-500" />
           <span class="mt-3 block text-sm font-extrabold text-[#26324f]">{{ uploadLoading ? '解析中...' : '点击上传 PDF / DOCX / TXT / MD' }}</span>
           <InlineStatus v-if="uploadLoading" class="mt-3" type="loading" title="正在解析文件" description="完成后会自动填入简历正文。" />
+          <InlineStatus v-if="uploadError" class="mt-3" type="error" title="上传失败" :description="uploadError" />
           <span v-if="selectedFileName" class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600">{{ selectedFileName }}</span>
         </label>
 
@@ -153,10 +200,12 @@ function cancelStream() {
           </label>
           <label>
             <span class="field-label">简历内容</span>
-            <textarea v-model="form.content" class="textarea-base min-h-[450px]" maxlength="30000" placeholder="将你的简历内容粘贴到这里..." />
+            <textarea v-model="form.content" class="textarea-base min-h-[450px]" maxlength="30000" placeholder="将你的简历内容粘贴到这里..." :disabled="loading || uploadLoading" />
             <span class="mt-1 block text-right text-xs text-[#64748b]">{{ form.content.length }} / 30000</span>
           </label>
         </div>
+
+        <InlineStatus v-if="errorMessage" class="mt-4" type="error" title="暂时无法开始分析" :description="errorMessage" />
 
         <div class="mt-5 grid gap-3">
           <LoadingButton class="w-full" :loading="loading" :disabled="uploadLoading" loading-text="分析中..." @click="submit">
@@ -185,6 +234,28 @@ function cancelStream() {
           description="提交简历后，这里会展示评分、优势、问题、建议和优化示例。"
         />
         <div v-else-if="result" class="grid gap-4">
+          <section class="section-card">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="m-0 text-base font-black text-[#0f172a]">下一步建议</h3>
+                <p class="mb-0 mt-1 text-sm font-semibold text-[#64748b]">先吸收优化建议，再做岗位匹配或进入模拟面试检验表达。</p>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button class="btn-secondary min-h-10" @click="copySuggestions">
+                  <Copy :size="18" />
+                  复制优化建议
+                </button>
+                <RouterLink class="btn-secondary min-h-10" to="/job-match">
+                  <Target :size="18" />
+                  继续岗位匹配
+                </RouterLink>
+                <button class="btn-secondary min-h-10" @click="goInterviewFromResume">
+                  <Mic :size="18" />
+                  去模拟面试
+                </button>
+              </div>
+            </div>
+          </section>
           <p v-if="resultStatus === 'parse_error'" class="m-0 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-7 text-amber-700">
             AI 返回内容不是合法 JSON，已保留原文整理结果，建议重试生成。
           </p>
@@ -239,3 +310,7 @@ function cancelStream() {
   box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08), 0 14px 30px rgba(37, 99, 235, 0.08);
 }
 </style>
+
+
+
+

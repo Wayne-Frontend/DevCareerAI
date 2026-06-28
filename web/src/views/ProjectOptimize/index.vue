@@ -1,15 +1,20 @@
 ﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { AlertTriangle, Code2, Copy, FileText, HelpCircle, Layers, Shield, Sparkles, Square, Star, Trash2, UserRound } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { AlertTriangle, Code2, Copy, FileText, HelpCircle, Layers, Mic, Shield, Sparkles, Square, Star, Trash2, UserRound } from 'lucide-vue-next'
 import EmptyState from '../../components/EmptyState/index.vue'
 import InlineStatus from '../../components/InlineStatus/index.vue'
 import LoadingButton from '../../components/LoadingButton/index.vue'
 import StreamPreview from '../../components/StreamPreview/index.vue'
 import { deleteProjectOptimization, getProjectOptimizations, optimizeProjectStream } from '../../api/project'
 import type { ProjectOptimizationRecord, ProjectOptimizationResult } from '../../types/project'
+import { useWorkflowStore } from '../../stores/workflow'
 import { toTagList } from '../../utils/format'
 import { notify } from '../../utils/notify'
+import { buildProjectCopy } from '../../utils/resultCopy'
 
+const workflowStore = useWorkflowStore()
+const router = useRouter()
 const loading = ref(false)
 const recordsLoading = ref(false)
 const deletingId = ref('')
@@ -17,6 +22,8 @@ const result = ref<ProjectOptimizationResult | null>(null)
 const resultStatus = ref<'success' | 'parse_error'>('success')
 const streamPreview = ref('')
 const streamStatus = ref('')
+const errorMessage = ref('')
+const recordsError = ref('')
 const controller = ref<AbortController | null>(null)
 const records = ref<ProjectOptimizationRecord[]>([])
 
@@ -27,16 +34,7 @@ const form = reactive({
   style: '简洁专业',
 })
 
-const copyText = computed(() => {
-  if (!result.value) return ''
-  return [
-    result.value.projectName,
-    result.value.projectDescription,
-    `技术栈：${result.value.techStack.join('、')}`,
-    `个人职责：${result.value.responsibilities.join('；')}`,
-    `技术亮点：${result.value.highlights.join('；')}`,
-  ].join('\n')
-})
+const copyText = computed(() => (result.value ? buildProjectCopy(result.value) : ''))
 
 onBeforeUnmount(() => {
   controller.value?.abort()
@@ -48,8 +46,11 @@ onMounted(() => {
 
 async function loadRecords() {
   recordsLoading.value = true
+  recordsError.value = ''
   try {
     records.value = await getProjectOptimizations()
+  } catch {
+    recordsError.value = '最近优化记录加载失败，不影响本次项目优化。'
   } finally {
     recordsLoading.value = false
   }
@@ -65,7 +66,10 @@ function applyRecord(record: ProjectOptimizationRecord) {
 }
 
 async function submit() {
+  if (loading.value) return
+
   if (!form.rawContent.trim()) {
+    errorMessage.value = '请填写原始项目描述后再开始优化。'
     notify('请填写原始项目描述', 'warning')
     return
   }
@@ -74,6 +78,7 @@ async function submit() {
   loading.value = true
   streamPreview.value = ''
   streamStatus.value = 'AI 正在建立连接'
+  errorMessage.value = ''
 
   try {
     const response = await optimizeProjectStream(
@@ -108,6 +113,8 @@ async function submit() {
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
       notify('已取消本次优化', 'info')
+    } else {
+      errorMessage.value = '项目优化生成失败，请稍后重试。'
     }
   } finally {
     loading.value = false
@@ -136,8 +143,24 @@ function cancelStream() {
 
 async function copyResult() {
   if (!copyText.value) return
-  await navigator.clipboard.writeText(copyText.value)
-  notify('已复制优化结果', 'success')
+  try {
+    await navigator.clipboard.writeText(copyText.value)
+    notify('已复制优化结果', 'success')
+  } catch {
+    errorMessage.value = '复制失败，请检查浏览器剪贴板权限后重试。'
+    notify('复制失败', 'error')
+  }
+}
+
+function goInterviewFromProject() {
+  if (!result.value) return
+  workflowStore.setInterviewContext({
+    targetRole: form.targetRole,
+    resumeContent: form.rawContent,
+    projectContext: buildProjectCopy(result.value),
+    sourceLabel: '项目优化',
+  })
+  void router.push('/interview')
 }
 </script>
 
@@ -163,7 +186,7 @@ async function copyResult() {
         <div class="grid gap-3">
           <label>
             <span class="field-label">原始项目描述</span>
-            <textarea v-model="form.rawContent" class="textarea-base min-h-[570px]" maxlength="8000" placeholder="包含项目背景、功能、技术栈、个人职责、成果或遇到的问题..." />
+            <textarea v-model="form.rawContent" class="textarea-base min-h-[570px]" maxlength="8000" placeholder="包含项目背景、功能、技术栈、个人职责、成果或遇到的问题..." :disabled="loading" />
             <span class="mt-1 block text-right text-xs font-semibold text-[#64748b]">{{ form.rawContent.length }} / 8000</span>
           </label>
           <label>
@@ -185,6 +208,8 @@ async function copyResult() {
           </label>
         </div>
 
+        <InlineStatus v-if="errorMessage" class="mt-4" type="error" title="暂时无法开始优化" :description="errorMessage" />
+
         <div class="mt-5 grid gap-3">
           <LoadingButton class="w-full" :loading="loading" loading-text="优化中..." @click="submit">
             <template #icon><Sparkles :size="18" /></template>
@@ -199,6 +224,7 @@ async function copyResult() {
         <section v-if="recordsLoading || records.length" class="mt-5 rounded-2xl border border-slate-200 bg-white/55 p-4">
           <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">最近优化记录</h3>
           <InlineStatus v-if="recordsLoading" type="loading" title="正在加载记录" description="稍等一下，历史记录马上回来。" />
+          <InlineStatus v-else-if="recordsError" type="warning" title="记录加载失败" :description="recordsError" />
           <div v-else class="grid gap-2">
             <article v-for="record in records.slice(0, 5)" :key="record.id" class="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl bg-white/70 p-3">
               <button class="min-w-0 text-left" type="button" @click="applyRecord(record)">
@@ -230,6 +256,25 @@ async function copyResult() {
 
         <EmptyState v-if="!result && !loading" title="等待项目优化" description="提交原始描述后，这里会展示项目名称、职责、亮点、难点和面试追问。" />
         <div v-else-if="result" class="grid gap-4">
+          <section class="section-card">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="m-0 text-base font-black text-[#0f172a]">下一步建议</h3>
+                <p class="mb-0 mt-1 text-sm font-semibold text-[#64748b]">复制到简历后，围绕难点和追问做一轮模拟面试。</p>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button class="btn-secondary min-h-10" @click="copyResult">
+                  <Copy :size="18" />
+                  复制结果
+                </button>
+                <button class="btn-secondary min-h-10" @click="goInterviewFromProject">
+                  <Mic :size="18" />
+                  去模拟面试
+                </button>
+              </div>
+            </div>
+          </section>
+
           <p v-if="resultStatus === 'parse_error'" class="m-0 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs leading-6 text-amber-700">
             AI 返回内容不是合法 JSON，已保留原文整理结果，建议重试生成。
           </p>
@@ -290,3 +335,7 @@ export default {
   },
 }
 </script>
+
+
+
+
