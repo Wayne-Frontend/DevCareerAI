@@ -150,6 +150,7 @@ async function onResumeFileChange(event: Event) {
     uploadError.value = '文件解析失败，请确认格式为 PDF、DOCX、TXT 或 MD 后重试。'
   } finally {
     uploadLoading.value = false
+    input.value = ''
   }
 }
 
@@ -203,9 +204,10 @@ async function sendAnswer(answer: string) {
   }
 
   errorMessage.value = ''
-  interviewStore.appendMessage({ id: crypto.randomUUID(), role: 'user', content: answer })
+  const userMessageId = crypto.randomUUID()
+  interviewStore.appendMessage({ id: userMessageId, role: 'user', content: answer })
 
-  await runStream('AI 正在点评回答并生成追问', async (signal) => {
+  const succeeded = await runStream('AI 正在点评回答并生成追问', async (signal) => {
     const response = await submitInterviewAnswerStream(interviewStore.sessionId, answer, {
       signal,
       onStart: () => {
@@ -228,6 +230,10 @@ async function sendAnswer(answer: string) {
       notify('AI 结果格式异常，已保留原文整理结果', 'warning')
     }
   })
+
+  if (!succeeded) {
+    interviewStore.removeMessage(userMessageId)
+  }
 }
 
 async function finish() {
@@ -268,12 +274,14 @@ async function runStream(initialStatus: string, runner: (signal: AbortSignal) =>
 
   try {
     await runner(controller.value.signal)
+    return true
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
       notify('已取消本次生成', 'info')
     } else {
       errorMessage.value = 'AI 生成失败，请稍后重试。'
     }
+    return false
   } finally {
     loading.value = false
     controller.value = null

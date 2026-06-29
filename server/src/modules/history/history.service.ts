@@ -72,7 +72,13 @@ export class HistoryService {
         type,
         title: row.targetRole ? `${row.targetRole} 项目优化` : '项目经历优化',
         createdAt: row.createdAt,
-        detail: row.resultJson,
+        detail: {
+          ...toDetailObject(row.resultJson),
+          rawContent: row.rawContent,
+          targetRole: row.targetRole,
+          techStack: row.techStack,
+          style: row.style,
+        },
       }))
     }
 
@@ -82,7 +88,7 @@ export class HistoryService {
           resume: { userId },
           jobDescription: { userId },
         },
-        include: { jobDescription: true },
+        include: { resume: true, jobDescription: true },
         orderBy: { createdAt: 'desc' },
       })
       return rows.map((row) => ({
@@ -91,7 +97,15 @@ export class HistoryService {
         title: row.jobDescription.jobTitle,
         score: row.matchScore,
         createdAt: row.createdAt,
-        detail: row.resultJson,
+        detail: {
+          ...toDetailObject(row.resultJson),
+          resumeContent: row.resume.content,
+          resumeId: row.resumeId,
+          jobTitle: row.jobDescription.jobTitle,
+          companyName: row.jobDescription.companyName,
+          jobDescription: row.jobDescription.content,
+          jobDescriptionId: row.jobDescriptionId,
+        },
       }))
     }
 
@@ -114,4 +128,8 @@ function readTotalScore(value: unknown) {
   if (!value || typeof value !== 'object' || !('totalScore' in value)) return undefined
   const score = Number(value.totalScore)
   return Number.isFinite(score) ? score : undefined
+}
+
+function toDetailObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }

@@ -17,6 +17,10 @@ export const useInterviewStore = defineStore('interview', () => {
     messages.value.push(message)
   }
 
+  function removeMessage(id: string) {
+    messages.value = messages.value.filter((message) => message.id !== id)
+  }
+
   function finishSession() {
     finished.value = true
   }
@@ -27,6 +31,7 @@ export const useInterviewStore = defineStore('interview', () => {
     finished,
     startSession,
     appendMessage,
+    removeMessage,
     finishSession,
   }
 })

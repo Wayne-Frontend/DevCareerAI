@@ -71,6 +71,7 @@ async function onFileChange(event: Event) {
     uploadError.value = '文件解析失败，请确认格式为 PDF、DOCX、TXT 或 MD 后重试。'
   } finally {
     uploadLoading.value = false
+    input.value = ''
   }
 }
 
