@@ -2,13 +2,10 @@
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  CheckCircle2,
   Eye,
   EyeOff,
-  FileText,
   LockKeyhole,
   Mail,
-  Search,
   Sparkles,
   UserRound,
 } from 'lucide-vue-next'
@@ -97,70 +94,53 @@ function switchMode(nextMode: 'login' | 'register') {
 </script>
 
 <template>
-  <main class="login-page grid min-h-screen overflow-hidden px-6 py-6">
-    <section class="login-shell mx-auto grid h-[calc(100vh-48px)] min-h-[680px] w-full max-w-[1180px] grid-cols-[0.98fr_0.9fr] items-center gap-10 rounded-[24px] border border-white/80 px-12 py-10">
-      <div class="relative flex h-full min-h-0 flex-col">
-        <span class="login-pill">
-          <Sparkles :size="18" />
-          AI 助力 · 智能求职 · 精准匹配
-        </span>
+  <main class="login-page">
+    <section class="login-shell" aria-label="DevCareer AI 登录">
+      <aside class="login-brand-panel">
+        <div class="brand-link">
+          <span class="brand-mark"><Sparkles :size="24" stroke-width="1.9" /></span>
+          <strong>DevCareer AI</strong>
+        </div>
 
-        <h1 class="mt-7 max-w-[500px] text-[42px] font-black leading-[1.12] tracking-normal text-[#101828]">
-          让 <span class="text-[#7657ff]">AI</span> 帮你优化简历，<br />
-          匹配理想岗位
-        </h1>
-        <p class="mt-4 max-w-[540px] text-[16px] font-extrabold leading-8 text-[#506078]">
-          从简历诊断到岗位匹配，从模拟面试到求职建议，DevCareer AI 全程陪伴你的求职之路。
-        </p>
+        <div class="brand-copy">
+          <span class="soft-tag">AI 求职工作台</span>
+          <h1>继续进入你的求职工作台</h1>
+          <p>登录后可继续管理简历诊断、项目优化、岗位匹配、模拟面试和历史复盘。</p>
+        </div>
 
-        <div class="hero-visual">
-          <div class="orbit-line" />
-          <div class="code-float">
-            <span>&lt;/&gt;</span>
+        <div class="workspace-preview" aria-hidden="true">
+          <div class="preview-header">
+            <span />
+            <span />
+            <span />
           </div>
-          <div class="search-float">
-            <Search :size="48" stroke-width="2.1" />
+          <div class="preview-score">
+            <strong>78</strong>
+            <span>简历综合评分</span>
           </div>
-          <div class="resume-card">
-            <span class="resume-line line-a" />
-            <span class="resume-line line-b" />
-            <span class="resume-line line-c" />
-            <span class="resume-line line-d" />
-            <span class="resume-line line-e" />
+          <div class="preview-rows">
+            <span class="row-long" />
+            <span class="row-medium" />
+            <span class="row-short" />
+          </div>
+        </div>
+      </aside>
+
+      <section class="auth-card">
+        <div class="auth-heading">
+          <span class="brand-mark auth-brand"><Sparkles :size="22" /></span>
+          <div>
+            <h2>{{ title }}</h2>
+            <p>{{ subtitle }}</p>
           </div>
         </div>
 
-        <div class="mt-auto grid max-w-[500px] grid-cols-3 gap-4">
-          <div class="metric-item">
-            <span class="metric-icon"><UserRound :size="21" /></span>
-            <strong>10万+</strong>
-            <p>求职者的信赖选择</p>
-          </div>
-          <div class="metric-item">
-            <span class="metric-icon"><FileText :size="21" /></span>
-            <strong>500万+</strong>
-            <p>简历智能分析</p>
-          </div>
-          <div class="metric-item">
-            <span class="metric-icon"><CheckCircle2 :size="21" /></span>
-            <strong>98%</strong>
-            <p>用户满意度</p>
-          </div>
-        </div>
-      </div>
-
-      <section class="auth-card ml-auto w-full max-w-[480px] rounded-[24px] bg-white px-9 py-9 shadow-[0_30px_70px_rgba(30,41,59,0.08)]">
-        <div class="mb-7 flex items-center justify-center gap-3">
-          <span class="brand-mark"><Sparkles :size="22" /></span>
-          <strong class="text-[22px] font-black text-[#101828]">DevCareer AI</strong>
+        <div class="mode-switch" role="tablist" aria-label="切换登录或注册">
+          <button type="button" :class="{ active: !isRegister }" @click="switchMode('login')">登录</button>
+          <button type="button" :class="{ active: isRegister }" @click="switchMode('register')">注册</button>
         </div>
 
-        <div class="text-center">
-          <h2 class="m-0 text-[32px] font-black tracking-normal text-[#101828]">{{ title }}</h2>
-          <p class="mt-3 text-[14px] font-bold leading-6 text-[#526177]">{{ subtitle }}</p>
-        </div>
-
-        <form class="mt-7 grid gap-4" @submit.prevent="submit">
+        <form class="auth-form" @submit.prevent="submit">
           <label v-if="isRegister" class="auth-field">
             <span>用户名</span>
             <div class="input-wrap">
@@ -232,15 +212,9 @@ function switchMode(nextMode: 'login' | 'register') {
           </button>
         </form>
 
-        <div class="my-6 flex items-center gap-4 text-sm font-bold text-[#98a2b3]">
-          <span class="h-px flex-1 bg-[#e5e7eb]" />
-          或
-          <span class="h-px flex-1 bg-[#e5e7eb]" />
-        </div>
-
-        <p class="m-0 text-center text-[15px] font-extrabold text-[#344054]">
+        <p class="auth-link-row">
           {{ isRegister ? '已有账号?' : '没有账号?' }}
-          <button class="ml-3 text-[#5f43ff] transition hover:text-[#3478ff]" @click="switchMode(isRegister ? 'login' : 'register')">
+          <button @click="switchMode(isRegister ? 'login' : 'register')">
             {{ isRegister ? '立即登录' : '立即注册' }}
           </button>
         </p>
@@ -251,174 +225,306 @@ function switchMode(nextMode: 'login' | 'register') {
 
 <style scoped>
 .login-page {
+  position: relative;
+  display: grid;
+  min-height: 100vh;
+  overflow: hidden;
+  place-items: center;
+  padding: 28px;
   background:
-    radial-gradient(circle at 10% 5%, rgba(124, 58, 237, 0.2), transparent 30%),
-    radial-gradient(circle at 86% 6%, rgba(56, 189, 248, 0.22), transparent 34%),
-    linear-gradient(135deg, #f1e9ff 0%, #f8fbff 49%, #ddf6ff 100%);
+    linear-gradient(115deg, rgba(255, 255, 255, 0.72) 0 18%, transparent 18% 100%),
+    radial-gradient(circle at 12% 85%, rgba(31, 112, 86, 0.18), transparent 23%),
+    radial-gradient(circle at 91% 12%, rgba(150, 178, 228, 0.38), transparent 31%),
+    radial-gradient(circle at 44% 38%, rgba(255, 255, 255, 0.68), transparent 34%),
+    linear-gradient(135deg, #e8f4ff 0%, #f5f9ff 36%, #e9f4f1 72%, #eef5ff 100%);
+}
+
+.login-page::before,
+.login-page::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  filter: blur(18px);
+}
+
+.login-page::before {
+  top: -5%;
+  right: 7%;
+  width: 520px;
+  height: 680px;
+  border-radius: 80px;
+  background:
+    linear-gradient(122deg, rgba(255, 255, 255, 0.64), rgba(183, 211, 246, 0.18) 48%, transparent 49%),
+    radial-gradient(circle at 60% 20%, rgba(255, 255, 255, 0.72), transparent 36%);
+  opacity: 0.72;
+  transform: rotate(-8deg);
+}
+
+.login-page::after {
+  bottom: -18%;
+  left: 14%;
+  width: 660px;
+  height: 460px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(26, 116, 96, 0.15), transparent 34%),
+    radial-gradient(circle at 75% 55%, rgba(82, 137, 219, 0.14), transparent 40%);
+  opacity: 0.8;
 }
 
 .login-shell {
-  background: rgba(255, 255, 255, 0.43);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    0 36px 100px rgba(99, 102, 241, 0.08);
-  backdrop-filter: blur(26px);
-}
-
-.login-pill {
-  display: inline-flex;
-  width: fit-content;
-  min-height: 38px;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  padding: 0 16px;
-  color: #5a43ff;
-  font-size: 14px;
-  font-weight: 900;
-  box-shadow: 0 14px 36px rgba(99, 102, 241, 0.08);
-}
-
-.hero-visual {
   position: relative;
-  height: 300px;
-  margin-top: 8px;
+  z-index: 1;
+  display: grid;
+  width: min(100%, 1040px);
+  min-height: 620px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(390px, 0.72fr);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.68), rgba(246, 250, 255, 0.4)),
+    rgba(255, 255, 255, 0.52);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 22px 54px rgba(31, 73, 125, 0.1);
+  backdrop-filter: blur(24px) saturate(132%);
 }
 
-.orbit-line {
-  position: absolute;
-  left: 28px;
-  top: 92px;
-  width: 440px;
-  height: 146px;
-  border: 2px solid rgba(110, 231, 183, 0.48);
-  border-radius: 50%;
-  transform: rotate(-14deg);
-  box-shadow: 0 0 60px rgba(110, 231, 183, 0.08);
+.login-brand-panel {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 38px;
 }
 
-.orbit-line::after {
+.login-brand-panel::after {
   content: "";
   position: absolute;
-  inset: 38px 26px;
-  border: 1px solid rgba(255, 255, 255, 0.76);
-  border-radius: 50%;
+  top: 34px;
+  right: 0;
+  bottom: 34px;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(37, 99, 235, 0.14), transparent);
 }
 
-.resume-card {
-  position: absolute;
-  left: 178px;
-  top: 20px;
-  width: 188px;
-  height: 268px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 42px 78px rgba(99, 102, 241, 0.13);
-  transform: rotate(11deg);
-}
-
-.resume-line {
-  position: absolute;
-  left: 38px;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(112, 128, 255, 0.32);
-}
-
-.line-a {
-  top: 78px;
-  width: 96px;
-}
-
-.line-b {
-  top: 100px;
-  width: 78px;
-}
-
-.line-c {
-  top: 124px;
-  width: 126px;
-}
-
-.line-d {
-  top: 148px;
-  width: 108px;
-}
-
-.line-e {
-  top: 172px;
-  width: 88px;
-}
-
-.code-float,
-.search-float {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  width: 70px;
-  height: 70px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
-  color: #635bff;
-  box-shadow: 0 28px 60px rgba(99, 102, 241, 0.14);
-  backdrop-filter: blur(14px);
-}
-
-.code-float {
-  left: 60px;
-  top: 164px;
-  font-size: 30px;
-  font-weight: 900;
-}
-
-.search-float {
-  left: 342px;
-  top: 154px;
-}
-
-.metric-item {
-  display: grid;
-  grid-template-columns: 34px 1fr;
-  column-gap: 10px;
+.brand-link {
+  display: inline-flex;
+  width: fit-content;
   align-items: center;
+  gap: 11px;
+  color: #0b55e8;
 }
 
-.metric-icon {
-  display: grid;
-  grid-row: span 2;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.65);
-  color: #635bff;
-}
-
-.metric-item strong {
-  color: #5a43ff;
-  font-size: 22px;
+.brand-link strong {
+  background: linear-gradient(135deg, #0b55e8 0%, #2563eb 45%, #06b6d4 100%);
+  background-clip: text;
+  color: transparent;
+  font-size: 24px;
   font-weight: 950;
+  letter-spacing: 0;
   line-height: 1;
-}
-
-.metric-item p {
-  margin: 5px 0 0;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .brand-mark {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
   place-items: center;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #8344ef 0%, #3b82f6 100%);
-  color: white;
-  box-shadow: 0 18px 36px rgba(99, 102, 241, 0.3);
+  border-radius: 13px;
+  background: linear-gradient(135deg, #74a8ff, #2563eb);
+  color: #fff;
+  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.2);
+}
+
+.brand-copy {
+  max-width: 430px;
+  margin-top: 58px;
+}
+
+.soft-tag {
+  min-height: 30px;
+  border-color: rgba(37, 99, 235, 0.14);
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+}
+
+.brand-copy h1 {
+  margin: 22px 0 0;
+  background: linear-gradient(135deg, #07163f 0%, #102e6d 58%, #2563eb 100%);
+  background-clip: text;
+  color: transparent;
+  font-size: 38px;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.12;
+}
+
+.brand-copy p {
+  max-width: 390px;
+  margin: 16px 0 0;
+  color: #425b84;
+  font-size: 15px;
+  font-weight: 720;
+  line-height: 1.9;
+}
+
+.workspace-preview {
+  width: min(100%, 430px);
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.46);
+  padding: 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 14px 30px rgba(31, 73, 125, 0.07);
+}
+
+.preview-header {
+  display: flex;
+  gap: 7px;
+}
+
+.preview-header span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(79, 124, 255, 0.3);
+}
+
+.preview-score {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.preview-score strong {
+  color: #2563eb;
+  font-size: 52px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.preview-score span {
+  color: #18345f;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.preview-rows {
+  display: grid;
+  gap: 11px;
+  margin-top: 22px;
+}
+
+.preview-rows span {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(79, 124, 255, 0.16);
+}
+
+.row-long {
+  width: 82%;
+}
+
+.row-medium {
+  width: 66%;
+}
+
+.row-short {
+  width: 48%;
+}
+
+.auth-card {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 42px 46px;
+  scrollbar-color: rgba(99, 102, 241, 0.32) rgba(226, 232, 240, 0.46);
+  scrollbar-width: thin;
+}
+
+.auth-card::-webkit-scrollbar {
+  width: 8px;
+}
+
+.auth-card::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.46);
+}
+
+.auth-card::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.32);
+}
+
+.auth-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.auth-brand {
+  width: 46px;
+  height: 46px;
+}
+
+.auth-heading h2 {
+  margin: 0;
+  color: #07163f;
+  font-size: 31px;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.05;
+}
+
+.auth-heading p {
+  margin: 8px 0 0;
+  color: #425b84;
+  font-size: 14px;
+  font-weight: 720;
+  line-height: 1.6;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.46);
+  padding: 5px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.mode-switch button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #425b84;
+  font-size: 14px;
+  font-weight: 850;
+  transition: background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+
+.mode-switch button.active {
+  background: rgba(255, 255, 255, 0.82);
+  color: #2563eb;
+  box-shadow: 0 10px 22px rgba(31, 73, 125, 0.08);
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
 }
 
 .auth-field {
@@ -427,26 +533,33 @@ function switchMode(nextMode: 'login' | 'register') {
 }
 
 .auth-field > span {
-  color: #101828;
-  font-size: 14px;
-  font-weight: 900;
+  color: #18345f;
+  font-size: 13px;
+  font-weight: 850;
 }
 
 .input-wrap {
   display: flex;
-  min-height: 48px;
+  min-height: 46px;
   align-items: center;
   gap: 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid rgba(171, 190, 218, 0.48);
   border-radius: 13px;
   padding: 0 15px;
-  color: #64748b;
-  transition: border-color 180ms ease, box-shadow 180ms ease;
+  background: rgba(255, 255, 255, 0.58);
+  color: #4f7cff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 8px 20px rgba(31, 73, 125, 0.035);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
 .input-wrap:focus-within {
-  border-color: rgba(99, 102, 241, 0.52);
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
+  border-color: rgba(79, 124, 255, 0.48);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 0 0 4px rgba(79, 124, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .input-wrap input {
@@ -454,7 +567,8 @@ function switchMode(nextMode: 'login' | 'register') {
   flex: 1;
   border: 0;
   outline: 0;
-  color: #101828;
+  background: transparent;
+  color: #10204a;
   font-size: 14px;
   font-weight: 800;
 }
@@ -468,31 +582,32 @@ function switchMode(nextMode: 'login' | 'register') {
   place-items: center;
   border: 0;
   background: transparent;
-  color: #64748b;
+  color: #4b6388;
   cursor: pointer;
 }
 
 .remember-checkbox {
   width: 17px;
   height: 17px;
-  accent-color: #635bff;
+  accent-color: #2563eb;
 }
 
 .login-submit {
-  min-height: 52px;
+  min-height: 48px;
   border: 0;
-  border-radius: 11px;
-  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 48%, #2386ff 100%);
+  border-radius: 13px;
+  background: linear-gradient(135deg, #6ea8ff 0%, #2563eb 100%);
   color: white;
-  font-size: 17px;
-  font-weight: 950;
-  box-shadow: 0 24px 42px rgba(99, 102, 241, 0.24);
-  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+  font-size: 16px;
+  font-weight: 900;
+  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.24);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
 }
 
 .login-submit:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 28px 50px rgba(99, 102, 241, 0.28);
+  filter: brightness(1.04);
+  box-shadow: 0 18px 34px rgba(37, 99, 235, 0.3);
 }
 
 .login-submit:disabled {
@@ -506,6 +621,27 @@ function switchMode(nextMode: 'login' | 'register') {
   font-weight: 800;
 }
 
+.auth-link-row {
+  margin: 24px 0 0;
+  color: #425b84;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.auth-link-row button {
+  margin-left: 10px;
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 900;
+  transition: color 0.18s ease;
+}
+
+.auth-link-row button:hover {
+  color: #0b55e8;
+}
+
 button {
   font: inherit;
 }
@@ -513,18 +649,59 @@ button {
 @media (max-width: 1180px) {
   .login-shell {
     grid-template-columns: 1fr;
-    height: auto;
-    min-height: calc(100vh - 48px);
+    min-height: auto;
+  }
+
+  .login-brand-panel {
+    gap: 34px;
+  }
+
+  .login-brand-panel::after {
+    top: auto;
+    right: 34px;
+    bottom: 0;
+    left: 34px;
+    width: auto;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.14), transparent);
+  }
+
+  .workspace-preview {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .login-page {
+    align-items: stretch;
     overflow-y: auto;
-    padding: 36px;
+    padding: 14px;
   }
 
-  .login-shell > div {
-    min-height: 520px;
+  .login-shell {
+    width: 100%;
+    border-radius: 18px;
   }
 
+  .login-brand-panel,
   .auth-card {
-    margin: 0 auto;
+    padding: 26px 22px;
+  }
+
+  .brand-copy {
+    margin-top: 30px;
+  }
+
+  .brand-copy h1 {
+    font-size: 30px;
+  }
+
+  .auth-heading {
+    align-items: flex-start;
+  }
+
+  .auth-heading h2 {
+    font-size: 28px;
   }
 }
 </style>
