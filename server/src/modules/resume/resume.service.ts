@@ -98,7 +98,7 @@ export class ResumeService {
     const cached = await this.aiCacheService.get<ResumeAnalysisResult>({
       feature: 'resume-analysis',
       model,
-      version: 'resume-analysis-v1',
+      version: 'resume-analysis-v2',
       payload: cachePayload,
     })
 
@@ -166,7 +166,7 @@ export class ResumeService {
     await this.aiCacheService.set({
       feature: 'resume-analysis',
       model: params.model,
-      version: 'resume-analysis-v1',
+      version: 'resume-analysis-v2',
       payload: params.cachePayload,
       result,
       rawText: stream.text,

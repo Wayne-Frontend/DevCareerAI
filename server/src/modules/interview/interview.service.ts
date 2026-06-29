@@ -73,7 +73,7 @@ export class InterviewService {
     const cached = await this.aiCacheService.get<InterviewQuestionResult>({
       feature: 'interview-question',
       model,
-      version: 'interview-question-v1',
+      version: 'interview-question-v2',
       payload: cachePayload,
     })
     const generated = cached
@@ -119,7 +119,7 @@ export class InterviewService {
     const cached = await this.aiCacheService.get<InterviewFeedbackResult>({
       feature: 'interview-feedback',
       model,
-      version: 'interview-feedback-v1',
+      version: 'interview-feedback-v2',
       payload: cachePayload,
     })
     const generated = cached
@@ -179,7 +179,7 @@ export class InterviewService {
     const cached = await this.aiCacheService.get<InterviewSummaryResult>({
       feature: 'interview-summary',
       model,
-      version: 'interview-summary-v1',
+      version: 'interview-summary-v2',
       payload: cachePayload,
     })
     const generated = cached
@@ -369,7 +369,7 @@ export class InterviewService {
     await this.aiCacheService.set({
       feature: 'interview-question',
       model: params.model,
-      version: 'interview-question-v1',
+      version: 'interview-question-v2',
       payload: params.cachePayload,
       result,
       rawText: stream.text,
@@ -402,7 +402,7 @@ export class InterviewService {
     await this.aiCacheService.set({
       feature: 'interview-feedback',
       model: params.model,
-      version: 'interview-feedback-v1',
+      version: 'interview-feedback-v2',
       payload: params.cachePayload,
       result,
       rawText: stream.text,
@@ -435,7 +435,7 @@ export class InterviewService {
     await this.aiCacheService.set({
       feature: 'interview-summary',
       model: params.model,
-      version: 'interview-summary-v1',
+      version: 'interview-summary-v2',
       payload: params.cachePayload,
       result,
       rawText: stream.text,

@@ -56,7 +56,7 @@ export class ProjectService {
     const cached = await this.aiCacheService.get<ProjectOptimizationResult>({
       feature: 'project-optimization',
       model,
-      version: 'project-optimization-v1',
+      version: 'project-optimization-v2',
       payload: cachePayload,
     })
 
@@ -149,7 +149,7 @@ export class ProjectService {
     await this.aiCacheService.set({
       feature: 'project-optimization',
       model: params.model,
-      version: 'project-optimization-v1',
+      version: 'project-optimization-v2',
       payload: params.cachePayload,
       result,
       rawText: stream.text,

@@ -61,7 +61,7 @@ export class JobService {
     const cached = await this.aiCacheService.get<JobMatchResult>({
       feature: 'job-match',
       model,
-      version: 'job-match-v1',
+      version: 'job-match-v2',
       payload: cachePayload,
     })
     const generated = cached
@@ -195,7 +195,7 @@ export class JobService {
     await this.aiCacheService.set({
       feature: 'job-match',
       model: params.model,
-      version: 'job-match-v1',
+      version: 'job-match-v2',
       payload: params.cachePayload,
       result,
       rawText: stream.text,

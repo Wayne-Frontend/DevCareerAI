@@ -15,9 +15,17 @@ export function buildProjectOptimizePrompt(params: {
 ${params.rawContent}
 
 要求：
-1. 不要编造用户未提供的业务数据或不存在的技术。
-2. 可以优化表达、结构和面试追问，但不能虚构经历。
-3. 严格返回如下 JSON：
+1. 不要编造用户未提供的业务数据、性能指标、用户规模、公司背景或不存在的技术。
+2. 可以优化表达、结构、重点和面试追问，但不能虚构经历、职责、成果或技术难点。
+3. projectName 是“简历展示名称建议”，不要凭空创造夸张品牌名或业务名。
+4. projectDescription 使用适合简历的专业表达，突出背景、核心能力、个人贡献和结果；如果缺少结果，只提示可补充的结果类型，不要生成数字。
+5. techStack 优先使用用户提供的技术栈；原文没有依据时不要新增核心技术。
+6. responsibilities 要体现“我做了什么”，避免写成团队整体功能清单。
+7. highlights 只能围绕已有技术、职责和业务场景提炼，不能强行包装高并发、架构重构、性能优化等经历。
+8. difficulties 要生成面试中可能被追问的真实技术难点；如果原文缺少难点，就指出可补充的技术取舍或边界场景。
+9. interviewQuestions 要围绕该项目内容生成，避免通用八股题。
+
+请严格返回如下 JSON：
 {
   "projectName": string,
   "projectDescription": string,
