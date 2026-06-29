@@ -14,6 +14,7 @@ import { analyzeResumeStream, createResume, getResume, getResumes, uploadResume 
 import { useResumeStore } from '../../stores/resume'
 import { useWorkflowStore } from '../../stores/workflow'
 import type { ResumeAnalysisResult, ResumePayload, ResumeRecord } from '../../types/resume'
+import { messageBox } from '../../utils/messageBox'
 import { notify } from '../../utils/notify'
 import { buildResumeSuggestionCopy } from '../../utils/resultCopy'
 
@@ -154,7 +155,12 @@ async function onFileChange(event: Event) {
   if (!file) return
 
   if (form.content.trim()) {
-    const confirmed = window.confirm('上传新文件会替换当前简历内容，是否继续？')
+    const confirmed = await messageBox.confirm({
+      type: 'warning',
+      title: '替换当前简历内容？',
+      message: '上传新文件会覆盖当前输入区内容，已有编辑不会自动保存。',
+      confirmText: '继续上传',
+    })
     if (!confirmed) {
       input.value = ''
       return

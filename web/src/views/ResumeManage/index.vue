@@ -22,6 +22,7 @@ import LoadingButton from '../../components/LoadingButton/index.vue'
 import { createResume, deleteResume, getResumes, updateResume, uploadResume } from '../../api/resume'
 import type { ResumePayload, ResumeRecord } from '../../types/resume'
 import { formatDateTime } from '../../utils/format'
+import { messageBox } from '../../utils/messageBox'
 import { notify } from '../../utils/notify'
 
 type PanelMode = 'view' | 'create' | 'edit'
@@ -114,7 +115,12 @@ async function onFileChange(event: Event) {
   if (!file) return
 
   if (form.content.trim()) {
-    const confirmed = window.confirm('上传新文件会替换当前正文内容，是否继续？')
+    const confirmed = await messageBox.confirm({
+      type: 'warning',
+      title: '替换当前内容？',
+      message: '上传新文件会替换当前正文内容，未保存的修改将丢失。',
+      confirmText: '继续上传',
+    })
     if (!confirmed) {
       input.value = ''
       return
@@ -167,9 +173,12 @@ async function saveResume() {
 async function removeResume() {
   if (!selectedResume.value || deleting.value) return
 
-  const confirmed = window.confirm(
-    '确认删除这份简历？删除后关联的简历诊断和岗位匹配记录可能一并删除，模拟面试记录会保留但不再关联该简历。',
-  )
+  const confirmed = await messageBox.confirm({
+    type: 'danger',
+    title: '确认删除这份简历？',
+    message: '删除后关联的简历诊断和岗位匹配记录可能一并删除，模拟面试记录会保留但不再关联该简历。',
+    confirmText: '删除',
+  })
   if (!confirmed) return
 
   deleting.value = true

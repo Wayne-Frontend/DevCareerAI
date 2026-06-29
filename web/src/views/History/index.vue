@@ -8,6 +8,7 @@ import SkeletonCard from '../../components/SkeletonCard/index.vue'
 import { deleteHistoryRecord, getHistory } from '../../api/history'
 import type { HistoryRecord, HistoryType } from '../../types/history'
 import { formatDateTime } from '../../utils/format'
+import { messageBox } from '../../utils/messageBox'
 import { notify } from '../../utils/notify'
 import { useWorkflowStore } from '../../stores/workflow'
 import { buildInterviewStudyPlanCopy, buildJobMatchCopy, buildProjectCopy, buildResumeSuggestionCopy } from '../../utils/resultCopy'
@@ -87,7 +88,12 @@ async function changeType(type: FilterType) {
 }
 
 async function remove(record: HistoryRecord) {
-  const confirmed = window.confirm(`确认删除「${displayTitle(record)}」？删除后无法恢复。`)
+  const confirmed = await messageBox.confirm({
+    type: 'danger',
+    title: '确认删除这条记录？',
+    message: `「${displayTitle(record)}」删除后无法恢复。`,
+    confirmText: '删除',
+  })
   if (!confirmed) return
 
   deletingId.value = record.id

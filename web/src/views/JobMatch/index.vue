@@ -14,6 +14,7 @@ import { getResumes, uploadResume } from '../../api/resume'
 import type { JobDescriptionRecord, JobMatchResult } from '../../types/job'
 import type { ResumeRecord } from '../../types/resume'
 import { useWorkflowStore } from '../../stores/workflow'
+import { messageBox } from '../../utils/messageBox'
 import { notify } from '../../utils/notify'
 import { buildJobMatchCopy } from '../../utils/resultCopy'
 
@@ -127,7 +128,12 @@ async function onResumeFileChange(event: Event) {
   if (!file) return
 
   if (form.resumeContent.trim()) {
-    const confirmed = window.confirm('上传新文件会替换当前简历内容，是否继续？')
+    const confirmed = await messageBox.confirm({
+      type: 'warning',
+      title: '替换当前简历内容？',
+      message: '上传新文件会覆盖当前简历输入区内容，并清空已选择的已有简历。',
+      confirmText: '继续上传',
+    })
     if (!confirmed) {
       input.value = ''
       return

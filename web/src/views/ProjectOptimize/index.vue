@@ -10,6 +10,7 @@ import { deleteProjectOptimization, getProjectOptimizations, optimizeProjectStre
 import type { ProjectOptimizationRecord, ProjectOptimizationResult } from '../../types/project'
 import { useWorkflowStore } from '../../stores/workflow'
 import { toTagList } from '../../utils/format'
+import { messageBox } from '../../utils/messageBox'
 import { notify } from '../../utils/notify'
 import { buildProjectCopy } from '../../utils/resultCopy'
 
@@ -124,6 +125,14 @@ async function submit() {
 }
 
 async function removeRecord(record: ProjectOptimizationRecord) {
+  const confirmed = await messageBox.confirm({
+    type: 'danger',
+    title: '确认删除项目优化记录？',
+    message: `「${record.resultJson.projectName || record.targetRole || '项目优化记录'}」删除后无法恢复。`,
+    confirmText: '删除',
+  })
+  if (!confirmed) return
+
   deletingId.value = record.id
   try {
     await deleteProjectOptimization(record.id)

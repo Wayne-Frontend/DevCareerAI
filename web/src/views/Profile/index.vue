@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import LoadingButton from '../../components/LoadingButton/index.vue'
 import { logout as logoutRequest, updateProfile, uploadAvatar } from '../../api/auth'
 import { useAuthStore } from '../../stores/auth'
+import { messageBox } from '../../utils/messageBox'
 import { notify } from '../../utils/notify'
 
 const AVATAR_MAX_SIZE = 5 * 1024 * 1024
@@ -95,7 +96,12 @@ async function onAvatarFileChange(event: Event) {
 }
 
 async function logout() {
-  const confirmed = window.confirm('确认退出登录？')
+  const confirmed = await messageBox.confirm({
+    type: 'warning',
+    title: '确认退出登录？',
+    message: '退出后需要重新登录才能继续使用简历诊断、岗位匹配和模拟面试。',
+    confirmText: '退出登录',
+  })
   if (!confirmed) return
 
   logoutLoading.value = true

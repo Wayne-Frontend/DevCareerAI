@@ -13,6 +13,7 @@ import { useInterviewStore } from '../../stores/interview'
 import { useWorkflowStore } from '../../stores/workflow'
 import type { JobDescriptionRecord } from '../../types/job'
 import type { ResumeRecord } from '../../types/resume'
+import { messageBox } from '../../utils/messageBox'
 import { notify } from '../../utils/notify'
 import { buildInterviewStudyPlanCopy } from '../../utils/resultCopy'
 
@@ -153,7 +154,12 @@ async function onResumeFileChange(event: Event) {
   if (!file) return
 
   if (form.resumeContent.trim()) {
-    const confirmed = window.confirm('上传新文件会替换当前简历内容，是否继续？')
+    const confirmed = await messageBox.confirm({
+      type: 'warning',
+      title: '替换当前简历内容？',
+      message: '上传新文件会覆盖当前用于面试的简历或项目经历内容。',
+      confirmText: '继续上传',
+    })
     if (!confirmed) {
       input.value = ''
       return
