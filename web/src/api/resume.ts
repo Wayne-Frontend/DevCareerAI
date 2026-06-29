@@ -4,6 +4,7 @@ import type {
   ResumeAnalysisResponse,
   ResumePayload,
   ResumeRecord,
+  UpdateResumePayload,
   ResumeUploadResponse,
 } from '../types/resume'
 
@@ -26,6 +27,14 @@ export function getResume(id: string) {
   return request<ResumeRecord>({
     url: `/resumes/${id}`,
     method: 'GET',
+  })
+}
+
+export function updateResume(id: string, data: UpdateResumePayload) {
+  return request<ResumeRecord>({
+    url: `/resumes/${id}`,
+    method: 'PATCH',
+    data,
   })
 }
 

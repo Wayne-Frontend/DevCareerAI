@@ -4,6 +4,7 @@ import {
   Boxes,
   BriefcaseBusiness,
   ChevronRight,
+  Files,
   FileSearch,
   Home,
   Mic,
@@ -16,6 +17,7 @@ const authStore = useAuthStore()
 
 const mainMenuItems = [
   { path: '/', label: '首页', icon: Home },
+  { path: '/resumes', label: '简历管理', icon: Files },
   { path: '/resume-analyze', label: '简历诊断', icon: FileSearch },
   { path: '/project-optimize', label: '项目优化', icon: Boxes },
   { path: '/job-match', label: '岗位匹配', icon: BriefcaseBusiness },

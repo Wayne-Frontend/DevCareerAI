@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { CheckCircle2, Copy, FileSearch, Mic, Search, Square, Target, UploadCloud } from 'lucide-vue-next'
 import BeforeAfterCompare from '../../components/BeforeAfterCompare/index.vue'
 import EmptyState from '../../components/EmptyState/index.vue'
@@ -10,18 +10,20 @@ import LoadingButton from '../../components/LoadingButton/index.vue'
 import ScoreCard from '../../components/ScoreCard/index.vue'
 import StreamPreview from '../../components/StreamPreview/index.vue'
 import SuggestionList from '../../components/SuggestionList/index.vue'
-import { analyzeResumeStream, createResume, uploadResume } from '../../api/resume'
+import { analyzeResumeStream, createResume, getResume, getResumes, uploadResume } from '../../api/resume'
 import { useResumeStore } from '../../stores/resume'
 import { useWorkflowStore } from '../../stores/workflow'
-import type { ResumeAnalysisResult } from '../../types/resume'
+import type { ResumeAnalysisResult, ResumePayload, ResumeRecord } from '../../types/resume'
 import { notify } from '../../utils/notify'
 import { buildResumeSuggestionCopy } from '../../utils/resultCopy'
 
 const resumeStore = useResumeStore()
 const workflowStore = useWorkflowStore()
+const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const uploadLoading = ref(false)
+const resumesLoading = ref(false)
 const selectedFileName = ref('')
 const result = ref<ResumeAnalysisResult | null>(null)
 const resultStatus = ref<'success' | 'parse_error'>('success')
@@ -29,7 +31,11 @@ const streamPreview = ref('')
 const streamStatus = ref('')
 const errorMessage = ref('')
 const uploadError = ref('')
+const resumesError = ref('')
 const controller = ref<AbortController | null>(null)
+const selectedResumeId = ref('')
+const selectedResumeSnapshot = ref<ResumePayload | null>(null)
+const resumeOptions = ref<ResumeRecord[]>([])
 
 const suggestionText = computed(() => (result.value ? buildResumeSuggestionCopy(result.value) : ''))
 
@@ -40,9 +46,107 @@ const form = reactive({
   content: '',
 })
 
+const jobMatchTarget = computed(() => ({
+  path: '/job-match',
+  query: selectedResumeId.value ? { resumeId: selectedResumeId.value } : undefined,
+}))
+
+onMounted(() => {
+  void loadResumeOptions()
+})
+
 onBeforeUnmount(() => {
   controller.value?.abort()
 })
+
+function readResumeIdQuery() {
+  const value = route.query.resumeId
+  return typeof value === 'string' ? value : ''
+}
+
+function snapshotForm(): ResumePayload {
+  return {
+    title: form.title,
+    targetRole: form.targetRole,
+    experienceLevel: form.experienceLevel,
+    content: form.content,
+  }
+}
+
+function isUsingSelectedResume() {
+  const snapshot = selectedResumeSnapshot.value
+  if (!selectedResumeId.value || !snapshot) return false
+
+  return (
+    form.title === snapshot.title &&
+    form.targetRole === (snapshot.targetRole || '') &&
+    form.experienceLevel === (snapshot.experienceLevel || '') &&
+    form.content === snapshot.content
+  )
+}
+
+async function applyResumeFromQuery() {
+  const resumeId = readResumeIdQuery()
+  if (!resumeId) return
+
+  try {
+    await applyResume(resumeId, true)
+    notify('已带入简历管理中的简历，可直接开始诊断', 'success')
+  } catch {
+    notify('简历加载失败，可手动填写后继续诊断', 'warning')
+  }
+}
+
+async function loadResumeOptions() {
+  resumesLoading.value = true
+  resumesError.value = ''
+  try {
+    resumeOptions.value = await getResumes()
+    await applyResumeFromQuery()
+  } catch {
+    resumesError.value = '已有简历加载失败，不影响手动上传或粘贴简历。'
+  } finally {
+    resumesLoading.value = false
+  }
+}
+
+async function applyResume(id: string, allowFetch = false) {
+  if (!id) {
+    selectedResumeId.value = ''
+    selectedResumeSnapshot.value = null
+    return
+  }
+
+  const resume = resumeOptions.value.find((item) => item.id === id) || (allowFetch ? await getResume(id) : null)
+  if (!resume) {
+    throw new Error('Resume not found')
+  }
+
+  selectedResumeId.value = resume.id
+  form.title = resume.title
+  form.targetRole = resume.targetRole || ''
+  form.experienceLevel = resume.experienceLevel || ''
+  form.content = resume.content
+  selectedResumeSnapshot.value = snapshotForm()
+  selectedFileName.value = ''
+  uploadError.value = ''
+}
+
+async function onResumeSelect() {
+  if (!selectedResumeId.value) {
+    selectedResumeSnapshot.value = null
+    return
+  }
+
+  try {
+    await applyResume(selectedResumeId.value)
+    notify('已切换为已有简历', 'success')
+  } catch {
+    selectedResumeId.value = ''
+    selectedResumeSnapshot.value = null
+    notify('简历加载失败，请重新选择', 'warning')
+  }
+}
 
 async function onFileChange(event: Event) {
   const input = event.target as HTMLInputElement
@@ -62,6 +166,8 @@ async function onFileChange(event: Event) {
   errorMessage.value = ''
   try {
     const parsed = await uploadResume(file)
+    selectedResumeId.value = ''
+    selectedResumeSnapshot.value = null
     selectedFileName.value = parsed.fileName
     form.title ||= parsed.fileName.replace(/\.[^.]+$/, '')
     form.content = parsed.content
@@ -91,7 +197,14 @@ async function submit() {
   errorMessage.value = ''
 
   try {
-    const resume = await createResume({ ...form })
+    const resume = isUsingSelectedResume() ? await getResume(selectedResumeId.value) : await createResume({ ...form })
+    selectedResumeId.value = resume.id
+    selectedResumeSnapshot.value = {
+      title: resume.title,
+      targetRole: resume.targetRole || '',
+      experienceLevel: resume.experienceLevel || '',
+      content: resume.content,
+    }
     resumeStore.setCurrentResume(resume)
     const analysis = await analyzeResumeStream(resume.id, {
       signal: controller.value.signal,
@@ -170,6 +283,17 @@ function goInterviewFromResume() {
           <h2 class="m-0 text-lg font-black text-[#0f172a]">简历输入</h2>
         </div>
 
+        <InlineStatus v-if="resumesLoading" class="mb-4" type="loading" title="正在加载已有简历" description="稍等一下，简历列表马上回来。" />
+        <InlineStatus v-else-if="resumesError" class="mb-4" type="warning" title="已有简历加载失败" :description="resumesError" />
+
+        <label v-if="resumeOptions.length" class="mb-4 block">
+          <span class="field-label">选择已有简历</span>
+          <select v-model="selectedResumeId" class="select-base" :disabled="loading || uploadLoading" @change="onResumeSelect">
+            <option value="">手动输入 / 上传新简历</option>
+            <option v-for="resume in resumeOptions" :key="resume.id" :value="resume.id">{{ resume.title }}</option>
+          </select>
+        </label>
+
         <label class="field-label">上传简历</label>
         <label class="mb-4 grid min-h-[110px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40" :class="{ 'is-uploading': uploadLoading }">
           <input class="hidden" type="file" accept=".pdf,.docx,.txt,.md" :disabled="uploadLoading" @change="onFileChange" />
@@ -246,7 +370,7 @@ function goInterviewFromResume() {
                   <Copy :size="18" />
                   复制优化建议
                 </button>
-                <RouterLink class="btn-secondary min-h-10" to="/job-match">
+                <RouterLink class="btn-secondary min-h-10" :to="jobMatchTarget">
                   <Target :size="18" />
                   继续岗位匹配
                 </RouterLink>

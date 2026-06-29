@@ -13,6 +13,8 @@ export interface ResumeRecord extends ResumePayload {
   updatedAt?: string
 }
 
+export type UpdateResumePayload = Partial<ResumePayload>
+
 export interface ResumeAnalysisResult {
   score: number
   summary: string

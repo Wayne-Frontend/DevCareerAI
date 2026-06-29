@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import type { Response } from 'express'
 import { createSseSession, getErrorMessage, writeSseEvent } from '../../common/utils/sse.util'
@@ -6,6 +6,7 @@ import { FileService } from '../file/file.service'
 import { CurrentUser } from '../auth/current-user.decorator'
 import type { AuthUserResponse } from '../auth/auth.types'
 import { CreateResumeDto } from './dto/create-resume.dto'
+import { UpdateResumeDto } from './dto/update-resume.dto'
 import { ResumeService } from './resume.service'
 
 const SUPPORTED_RESUME_EXTENSIONS = new Set(['pdf', 'docx', 'txt', 'md'])
@@ -30,6 +31,11 @@ export class ResumeController {
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: AuthUserResponse) {
     return this.resumeService.findOne(id, user.id)
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdateResumeDto, @CurrentUser() user: AuthUserResponse) {
+    return this.resumeService.update(id, dto, user.id)
   }
 
   @Delete(':id')

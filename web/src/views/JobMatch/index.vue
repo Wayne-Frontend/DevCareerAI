@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { BriefcaseBusiness, ClipboardList, Copy, FileText, Info, Mic, Square, Target, UploadCloud, WandSparkles } from 'lucide-vue-next'
 import EmptyState from '../../components/EmptyState/index.vue'
 import GlassCard from '../../components/GlassCard/index.vue'
@@ -19,6 +19,7 @@ import { buildJobMatchCopy } from '../../utils/resultCopy'
 
 const MAX_RESUME_LENGTH = 20000
 const workflowStore = useWorkflowStore()
+const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const uploadLoading = ref(false)
@@ -36,6 +37,7 @@ const resumeOptions = ref<ResumeRecord[]>([])
 const jobOptions = ref<JobDescriptionRecord[]>([])
 const selectedResumeId = ref('')
 const selectedJobDescriptionId = ref('')
+const queryResumeApplied = ref(false)
 
 const form = reactive({
   resumeContent: '',
@@ -72,12 +74,33 @@ async function loadAssets() {
     const [resumes, jobs] = await Promise.all([getResumes(), getJobDescriptions()])
     resumeOptions.value = resumes
     jobOptions.value = jobs
+    applyResumeFromQuery()
   } catch {
     assetsError.value = '已有简历或 JD 加载失败，你仍可以手动输入内容。'
     notify('已有资料加载失败，可手动填写后继续分析', 'warning')
   } finally {
     assetsLoading.value = false
   }
+}
+
+function readResumeIdQuery() {
+  const value = route.query.resumeId
+  return typeof value === 'string' ? value : ''
+}
+
+function applyResumeFromQuery() {
+  const resumeId = readResumeIdQuery()
+  if (!resumeId || queryResumeApplied.value) return
+
+  const resume = resumeOptions.value.find((item) => item.id === resumeId)
+  queryResumeApplied.value = true
+  if (!resume) {
+    notify('指定简历加载失败，可手动选择或填写后继续分析', 'warning')
+    return
+  }
+
+  applyResume(resumeId)
+  notify('已带入简历管理中的简历', 'success')
 }
 
 function applyResume(id: string) {

@@ -9,6 +9,7 @@ import type { AiUsage, ResumeAnalysisResult } from '../ai/ai.types'
 import { PrismaService } from '../../prisma/prisma.service'
 import { buildResumeAnalyzePrompt, CAREER_ASSISTANT_SYSTEM_PROMPT } from '../../prompts/resume.prompt'
 import { CreateResumeDto } from './dto/create-resume.dto'
+import { UpdateResumeDto } from './dto/update-resume.dto'
 
 interface AiStreamCallbacks {
   signal?: AbortSignal
@@ -53,6 +54,15 @@ export class ResumeService {
 
   async findOne(id: string, userId: string) {
     return this.findResume(id, userId)
+  }
+
+  async update(id: string, dto: UpdateResumeDto, userId: string) {
+    await this.findResume(id, userId)
+
+    return this.prisma.resume.update({
+      where: { id },
+      data: dto,
+    })
   }
 
   async remove(id: string, userId: string) {

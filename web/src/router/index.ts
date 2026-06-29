@@ -20,6 +20,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: '首页' },
       },
       {
+        path: 'resumes',
+        name: 'resume-manage',
+        component: () => import('../views/ResumeManage/index.vue'),
+        meta: { title: '简历管理' },
+      },
+      {
         path: 'resume-analyze',
         name: 'resume-analyze',
         component: () => import('../views/ResumeAnalyze/index.vue'),
