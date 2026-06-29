@@ -251,7 +251,7 @@ function goInterviewFromJobMatch() {
         </label>
         <InlineStatus v-if="uploadError" class="mb-4" type="error" title="上传失败" :description="uploadError" />
 
-        <textarea v-model="form.resumeContent" class="textarea-base min-h-[280px]" :maxlength="MAX_RESUME_LENGTH" placeholder="粘贴或上传简历内容..." :disabled="loading || uploadLoading" @input="selectedResumeId = ''" />
+        <textarea v-model="form.resumeContent" class="textarea-base min-h-[130px]" :maxlength="MAX_RESUME_LENGTH" placeholder="粘贴或上传简历内容..." :disabled="loading || uploadLoading" @input="selectedResumeId = ''" />
         <p class="mt-2 text-right text-xs text-[#94a3b8]">{{ form.resumeContent.length }} / {{ MAX_RESUME_LENGTH }}</p>
 
         <h2 class="mb-3 flex items-center gap-2 text-base font-black text-[#0f172a]">
@@ -276,7 +276,7 @@ function goInterviewFromJobMatch() {
           </select>
         </label>
 
-        <textarea v-model="form.jobDescription" class="textarea-base min-h-[130px]" maxlength="10000" placeholder="粘贴岗位 JD..." :disabled="loading" @input="selectedJobDescriptionId = ''" />
+        <textarea v-model="form.jobDescription" class="textarea-base min-h-[100px]" maxlength="10000" placeholder="粘贴岗位 JD..." :disabled="loading" @input="selectedJobDescriptionId = ''" />
         <p class="mt-2 text-right text-xs text-[#94a3b8]">{{ form.jobDescription.length }} / 10000</p>
 
         <InlineStatus v-if="errorMessage" class="mt-4" type="error" title="暂时无法开始匹配" :description="errorMessage" />

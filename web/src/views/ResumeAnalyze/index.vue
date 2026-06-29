@@ -201,7 +201,7 @@ function goInterviewFromResume() {
           </label>
           <label>
             <span class="field-label">简历内容</span>
-            <textarea v-model="form.content" class="textarea-base min-h-[450px]" maxlength="30000" placeholder="将你的简历内容粘贴到这里..." :disabled="loading || uploadLoading" />
+            <textarea v-model="form.content" class="textarea-base min-h-[150px]" maxlength="30000" placeholder="将你的简历内容粘贴到这里..." :disabled="loading || uploadLoading" />
             <span class="mt-1 block text-right text-xs text-[#64748b]">{{ form.content.length }} / 30000</span>
           </label>
         </div>

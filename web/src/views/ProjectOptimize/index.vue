@@ -186,7 +186,7 @@ function goInterviewFromProject() {
         <div class="grid gap-3">
           <label>
             <span class="field-label">原始项目描述</span>
-            <textarea v-model="form.rawContent" class="textarea-base min-h-[570px]" maxlength="8000" placeholder="包含项目背景、功能、技术栈、个人职责、成果或遇到的问题..." :disabled="loading" />
+            <textarea v-model="form.rawContent" class="textarea-base min-h-[270px]" maxlength="8000" placeholder="包含项目背景、功能、技术栈、个人职责、成果或遇到的问题..." :disabled="loading" />
             <span class="mt-1 block text-right text-xs font-semibold text-[#64748b]">{{ form.rawContent.length }} / 8000</span>
           </label>
           <label>

@@ -81,24 +81,24 @@ watch(avatarUrl, () => {
   left: 0;
   z-index: 30;
   display: flex;
-  width: 292px;
+  width: var(--app-sidebar-width);
   flex-direction: column;
   border: 1px solid rgba(255, 255, 255, 0.82);
-  border-radius: 0 22px 22px 0;
+  border-radius: 0 18px 18px 0;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(246, 250, 255, 0.25)),
     rgba(255, 255, 255, 0.34);
-  padding: 34px 20px 38px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 18px 0 52px rgba(64, 104, 164, 0.13);
-  backdrop-filter: blur(26px) saturate(135%);
+  padding: 28px 16px 30px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 14px 0 42px rgba(64, 104, 164, 0.11);
+  backdrop-filter: blur(24px) saturate(132%);
 }
 
 .brand-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 62px;
-  padding: 0 12px;
+  gap: 10px;
+  min-height: 54px;
+  padding: 0 10px;
   color: #0b55e8;
 
   strong {
@@ -106,9 +106,9 @@ watch(avatarUrl, () => {
     background: linear-gradient(135deg, #0b55e8 0%, #2563eb 45%, #06b6d4 100%);
     background-clip: text;
     color: transparent;
-    font-size: 27px;
+    font-size: 23px;
     font-weight: 950;
-    letter-spacing: -0.035em;
+    letter-spacing: -0.02em;
     line-height: 1;
     text-shadow: 0 18px 32px rgba(37, 99, 235, 0.14);
   }
@@ -116,8 +116,8 @@ watch(avatarUrl, () => {
 
 .brand-mark {
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
   place-items: center;
   color: #2563eb;
@@ -126,20 +126,20 @@ watch(avatarUrl, () => {
 
 .main-menu {
   display: grid;
-  gap: 12px;
-  margin-top: 40px;
+  gap: 9px;
+  margin-top: 32px;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 17px;
-  min-height: 60px;
+  gap: 13px;
+  min-height: 50px;
   border: 1px solid transparent;
-  border-radius: 15px;
-  padding: 0 22px;
+  border-radius: 13px;
+  padding: 0 16px;
   color: #071b4a;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 820;
   transition: transform 0.18s ease, color 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 
@@ -160,15 +160,15 @@ watch(avatarUrl, () => {
 
 .user-card {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 20px;
+  grid-template-columns: 42px minmax(0, 1fr) 18px;
   align-items: center;
-  gap: 12px;
-  min-height: 96px;
+  gap: 10px;
+  min-height: 78px;
   margin-top: auto;
   border: 1px solid rgba(255, 255, 255, 0.74);
-  border-radius: 15px;
+  border-radius: 13px;
   background: rgba(255, 255, 255, 0.4);
-  padding: 18px;
+  padding: 14px;
   color: #071b4a;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 16px 34px rgba(31, 73, 125, 0.09);
   transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
@@ -182,14 +182,14 @@ watch(avatarUrl, () => {
 
 .user-avatar {
   display: grid;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   overflow: hidden;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 11px;
   background: linear-gradient(135deg, #74a8ff, #4f7cff);
   color: #fff;
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 900;
   box-shadow: 0 14px 26px rgba(37, 99, 235, 0.2);
 
@@ -213,12 +213,12 @@ watch(avatarUrl, () => {
 
   strong {
     color: #071b4a;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 900;
   }
 
   small {
-    margin-top: 5px;
+    margin-top: 4px;
     color: #415982;
     font-size: 12px;
     font-weight: 650;

@@ -326,9 +326,12 @@ const actionCards = [
 .dashboard-page {
   display: flex;
   min-width: 0;
+  width: 100%;
+  max-width: var(--app-content-max-width);
   flex-direction: column;
-  gap: 18px;
-  padding: 28px 38px 36px;
+  gap: var(--page-gap);
+  margin-inline: auto;
+  padding: var(--page-padding-y) var(--page-padding-x) calc(var(--page-padding-y) + 8px);
   animation: pageIn 0.42s ease both;
 }
 
@@ -336,22 +339,22 @@ const actionCards = [
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 28px;
-  min-height: 112px;
+  gap: 22px;
+  min-height: 88px;
 
   h1 {
     margin: 0;
     color: #07163f;
-    font-size: clamp(40px, 4.2vw, 52px);
+    font-size: clamp(34px, 2.4vw, 40px);
     font-weight: 900;
     letter-spacing: 0;
     line-height: 1.08;
   }
 
   p {
-    margin: 12px 0 0;
+    margin: 9px 0 0;
     color: #415982;
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 650;
     letter-spacing: 0;
   }
@@ -360,8 +363,8 @@ const actionCards = [
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding-top: 20px;
+  gap: 12px;
+  padding-top: 12px;
 }
 
 .status-pill,
@@ -419,44 +422,44 @@ const actionCards = [
   position: relative;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 18px;
+  border-radius: var(--glass-radius);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.64), rgba(247, 251, 255, 0.38)),
     rgba(255, 255, 255, 0.5);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 18px 44px rgba(31, 73, 125, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 14px 34px rgba(31, 73, 125, 0.09);
   backdrop-filter: blur(24px) saturate(132%);
 }
 
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
 
 .metric-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  min-height: 146px;
+  min-height: 118px;
   align-items: center;
-  padding: 24px 22px;
+  padding: 18px 18px;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 
   &:hover {
     transform: translateY(-3px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 24px 54px rgba(31, 73, 125, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 20px 44px rgba(31, 73, 125, 0.12);
   }
 }
 
 .metric-copy {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   min-width: 0;
 
   p {
-    margin: 0 0 8px;
+    margin: 0 0 7px;
     color: #10204a;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 780;
     white-space: nowrap;
   }
@@ -466,7 +469,7 @@ const actionCards = [
     align-items: baseline;
     gap: 3px;
     color: #07163f;
-    font-size: 38px;
+    font-size: 32px;
     font-weight: 900;
     line-height: 1;
   }
@@ -479,7 +482,7 @@ const actionCards = [
 
   em {
     display: block;
-    margin-top: 14px;
+    margin-top: 10px;
     color: #0ca366;
     font-size: 14px;
     font-style: normal;
@@ -490,21 +493,21 @@ const actionCards = [
 
 .icon-block {
   display: grid;
-  width: 55px;
-  height: 55px;
+  width: 46px;
+  height: 46px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 12px;
   color: #fff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 14px 26px rgba(37, 99, 235, 0.22);
 }
 
 .trend-line {
   position: absolute;
-  right: 22px;
-  bottom: 22px;
-  width: 104px;
-  height: 44px;
+  right: 18px;
+  bottom: 18px;
+  width: 92px;
+  height: 38px;
 
   path {
     fill: none;
@@ -520,13 +523,13 @@ const actionCards = [
 
 .trend-bars {
   position: absolute;
-  right: 22px;
-  bottom: 22px;
+  right: 18px;
+  bottom: 18px;
   display: flex;
   align-items: end;
   justify-content: end;
   gap: 8px;
-  height: 58px;
+  height: 48px;
 
   i {
     width: 8px;
@@ -576,20 +579,20 @@ const actionCards = [
 .work-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.66fr) minmax(390px, 1fr);
-  gap: 18px;
+  gap: var(--page-gap);
 }
 
 .diagnosis-card,
 .suggestions-card,
 .action-card {
-  padding: 26px;
+  padding: var(--panel-padding);
 }
 
 .card-heading {
   h2 {
     margin: 0;
     color: #07163f;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 900;
     letter-spacing: 0;
   }
@@ -604,11 +607,11 @@ const actionCards = [
 
 .diagnosis-body {
   display: grid;
-  grid-template-columns: 158px minmax(270px, 0.9fr) minmax(210px, 1fr);
-  gap: 24px;
+  grid-template-columns: 136px minmax(240px, 0.9fr) minmax(180px, 1fr);
+  gap: 20px;
   align-items: center;
-  min-height: 244px;
-  padding: 24px 0 14px;
+  min-height: 206px;
+  padding: 18px 0 10px;
 }
 
 .score-column {
@@ -626,8 +629,8 @@ const actionCards = [
 
 .score-ring {
   position: relative;
-  width: 158px;
-  height: 158px;
+  width: 136px;
+  height: 136px;
 
   svg {
     width: 100%;
@@ -637,7 +640,7 @@ const actionCards = [
 
   circle {
     fill: none;
-    stroke-width: 13;
+    stroke-width: 11;
     stroke-linecap: round;
   }
 
@@ -662,26 +665,26 @@ const actionCards = [
 
   strong {
     color: #07163f;
-    font-size: 52px;
+    font-size: 42px;
     font-weight: 950;
     line-height: 0.95;
   }
 
   span {
     color: #10204a;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
   }
 }
 
 .score-badge {
   display: inline-flex;
-  min-height: 31px;
+  min-height: 28px;
   align-items: center;
   justify-content: center;
   border-radius: 8px;
   background: linear-gradient(135deg, #73a8ff, #4f7cff);
-  padding: 0 18px;
+  padding: 0 14px;
   color: #fff;
   font-size: 15px;
   font-weight: 800;
@@ -690,11 +693,11 @@ const actionCards = [
 
 .dimension-panel {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.5);
-  padding: 15px 16px;
+  padding: 13px 14px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 14px 34px rgba(31, 73, 125, 0.08);
 }
 
@@ -754,7 +757,7 @@ const actionCards = [
 
 .resume-illustration {
   position: relative;
-  min-height: 220px;
+  min-height: 190px;
 }
 
 .resume-illustration::before {
@@ -893,14 +896,14 @@ const actionCards = [
 }
 
 .primary-gradient-btn {
-  min-width: 156px;
-  min-height: 50px;
+  min-width: 140px;
+  min-height: 44px;
   border-radius: 13px;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .suggestions-card {
-  min-height: 404px;
+  min-height: 342px;
 }
 
 .side-heading {
@@ -912,7 +915,7 @@ const actionCards = [
   h2 {
     margin: 0;
     color: #07163f;
-    font-size: 24px;
+    font-size: 21px;
     font-weight: 900;
   }
 
@@ -928,20 +931,20 @@ const actionCards = [
 
 .suggestion-list {
   display: grid;
-  gap: 13px;
-  margin-top: 18px;
+  gap: 11px;
+  margin-top: 14px;
 }
 
 .suggestion-item {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto 18px;
+  grid-template-columns: 38px minmax(0, 1fr) auto 18px;
   align-items: center;
-  gap: 13px;
-  min-height: 72px;
+  gap: 11px;
+  min-height: 62px;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.54);
-  padding: 13px 14px;
+  padding: 11px 12px;
   box-shadow: 0 10px 24px rgba(31, 73, 125, 0.06);
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 
@@ -954,10 +957,10 @@ const actionCards = [
 
 .suggestion-icon {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   place-items: center;
-  border-radius: 11px;
+  border-radius: 10px;
   color: #fff;
 }
 
@@ -1042,22 +1045,22 @@ const actionCards = [
 .action-grid {
   display: grid;
   grid-template-columns: 1.1fr 1fr 1.16fr;
-  gap: 18px;
+  gap: var(--page-gap);
 }
 
 .action-card {
-  min-height: 242px;
+  min-height: 206px;
 }
 
 .action-copy {
   display: flex;
   align-items: flex-start;
-  gap: 18px;
+  gap: 14px;
 
   h2 {
     margin: 0;
     color: #07163f;
-    font-size: 24px;
+    font-size: 21px;
     font-weight: 900;
   }
 
@@ -1071,10 +1074,10 @@ const actionCards = [
 
 .action-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 148px;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 128px;
+  gap: 14px;
   align-items: center;
-  margin-top: 18px;
+  margin-top: 14px;
 
   ul {
     display: grid;
@@ -1096,7 +1099,7 @@ const actionCards = [
 
 .mini-visual {
   position: relative;
-  min-height: 106px;
+  min-height: 92px;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.38);
@@ -1301,8 +1304,8 @@ const actionCards = [
 
 .card-action-btn {
   display: inline-flex;
-  min-width: 140px;
-  min-height: 43px;
+  min-width: 124px;
+  min-height: 39px;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -1311,7 +1314,7 @@ const actionCards = [
   border-radius: 11px;
   background: rgba(255, 255, 255, 0.62);
   color: currentColor;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 850;
   box-shadow: 0 10px 22px rgba(31, 73, 125, 0.08);
   transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
@@ -1364,7 +1367,7 @@ const actionCards = [
 
 @media (max-width: 1360px) {
   .dashboard-page {
-    padding-inline: 28px;
+    padding-inline: var(--page-padding-x);
   }
 
   .metric-card {
@@ -1378,7 +1381,7 @@ const actionCards = [
   }
 
   .diagnosis-body {
-    grid-template-columns: 150px minmax(250px, 1fr);
+    grid-template-columns: 132px minmax(230px, 1fr);
   }
 
   .resume-illustration {
