@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post,
 import { FileInterceptor } from '@nestjs/platform-express'
 import type { Response } from 'express'
 import { AiThrottle } from '../../common/guards/ai-throttle.decorator'
-import { createSseSession, getErrorMessage, writeSseEvent } from '../../common/utils/sse.util'
+import { runSseStream } from '../../common/utils/sse.util'
 import { FileService } from '../file/file.service'
 import { CurrentUser } from '../auth/current-user.decorator'
 import type { AuthUserResponse } from '../auth/auth.types'
@@ -71,21 +71,9 @@ export class ResumeController {
 
   @AiThrottle()
   @Post(':id/analyze/stream')
-  async analyzeStream(@Param('id') id: string, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
-    const session = createSseSession(res)
-    writeSseEvent(res, 'start', { message: 'Resume analysis started' })
-
-    try {
-      const result = await this.resumeService.analyzeStream(id, user.id, {
-        signal: session.signal,
-        onDelta: (delta) => writeSseEvent(res, 'delta', { delta }),
-        onUsage: (usage) => writeSseEvent(res, 'usage', usage),
-      })
-      writeSseEvent(res, 'done', result)
-    } catch (error) {
-      writeSseEvent(res, 'error', { message: getErrorMessage(error) })
-    } finally {
-      session.end()
-    }
+  analyzeStream(@Param('id') id: string, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
+    return runSseStream(res, 'Resume analysis started', (callbacks) =>
+      this.resumeService.analyzeStream(id, user.id, callbacks),
+    )
   }
 }

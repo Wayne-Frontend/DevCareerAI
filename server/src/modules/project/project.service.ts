@@ -2,20 +2,15 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
+import { toStringList } from '../../common/utils/normalize.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
 import { AiCacheService, type AiGeneration } from '../ai/ai-cache.service'
 import { AiService } from '../ai/ai.service'
-import type { AiUsage, ProjectOptimizationResult } from '../ai/ai.types'
+import type { AiStreamCallbacks, ProjectOptimizationResult } from '../ai/ai.types'
 import { PrismaService } from '../../prisma/prisma.service'
 import { CAREER_ASSISTANT_SYSTEM_PROMPT } from '../../prompts/resume.prompt'
 import { buildProjectOptimizePrompt } from '../../prompts/project.prompt'
 import { OptimizeProjectDto } from './dto/optimize-project.dto'
-
-interface AiStreamCallbacks {
-  signal?: AbortSignal
-  onDelta?: (delta: string) => void
-  onUsage?: (usage: AiUsage) => void
-}
 
 interface OptimizePayload {
   systemPrompt: string
@@ -183,8 +178,4 @@ export function normalizeProjectResult(
     difficulties: toStringList(value.difficulties),
     interviewQuestions: toStringList(value.interviewQuestions),
   }
-}
-
-function toStringList(value: unknown) {
-  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : []
 }

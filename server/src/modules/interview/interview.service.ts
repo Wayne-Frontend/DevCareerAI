@@ -2,11 +2,12 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { InterviewMessage, InterviewSession, Prisma, Resume } from '@prisma/client'
 import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
+import { clampScore, toStringList } from '../../common/utils/normalize.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
 import { AiCacheService } from '../ai/ai-cache.service'
 import { AiService } from '../ai/ai.service'
 import type {
-  AiUsage,
+  AiStreamCallbacks,
   InterviewFeedbackResult,
   InterviewQuestionResult,
   InterviewSummaryResult,
@@ -20,12 +21,6 @@ import {
 import { CAREER_ASSISTANT_SYSTEM_PROMPT } from '../../prompts/resume.prompt'
 import { CreateInterviewDto } from './dto/create-interview.dto'
 import { SubmitAnswerDto } from './dto/submit-answer.dto'
-
-interface AiStreamCallbacks {
-  signal?: AbortSignal
-  onDelta?: (delta: string) => void
-  onUsage?: (usage: AiUsage) => void
-}
 
 interface InterviewPayload {
   systemPrompt: string
@@ -419,14 +414,4 @@ export function normalizeSummaryResult(value: InterviewSummaryResult | { rawText
     weaknesses: toStringList(value.weaknesses),
     studyPlan: toStringList(value.studyPlan),
   }
-}
-
-function clampScore(value: unknown) {
-  const score = Number(value)
-  if (!Number.isFinite(score)) return 0
-  return Math.max(0, Math.min(100, Math.round(score)))
-}
-
-function toStringList(value: unknown) {
-  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : []
 }

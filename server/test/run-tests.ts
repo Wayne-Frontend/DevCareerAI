@@ -4,6 +4,7 @@ import 'reflect-metadata'
 
 import './json-response.test'
 import './text-limit.test'
+import './normalize-util.test'
 import './normalize.test'
 import './ai-cache.test'
 import './ai-config.test'

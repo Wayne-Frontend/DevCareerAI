@@ -22,6 +22,13 @@ export interface ChatStreamOptions extends ChatOptions {
   onUsage?: (usage: AiUsage) => void
 }
 
+// 各业务 service 触发流式生成时透传的回调，与 SSE 的 delta/usage 事件对应。
+export interface AiStreamCallbacks {
+  signal?: AbortSignal
+  onDelta?: (delta: string) => void
+  onUsage?: (usage: AiUsage) => void
+}
+
 export interface ChatStreamResult {
   text: string
   usage?: AiUsage

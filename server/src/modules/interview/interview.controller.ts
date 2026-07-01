@@ -1,7 +1,7 @@
 import { Body, Controller, Param, Post, Res } from '@nestjs/common'
 import type { Response } from 'express'
 import { AiThrottle } from '../../common/guards/ai-throttle.decorator'
-import { createSseSession, getErrorMessage, writeSseEvent } from '../../common/utils/sse.util'
+import { runSseStream } from '../../common/utils/sse.util'
 import { CurrentUser } from '../auth/current-user.decorator'
 import type { AuthUserResponse } from '../auth/auth.types'
 import { CreateInterviewDto } from './dto/create-interview.dto'
@@ -19,22 +19,10 @@ export class InterviewController {
   }
 
   @Post('stream')
-  async createStream(@Body() dto: CreateInterviewDto, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
-    const session = createSseSession(res)
-    writeSseEvent(res, 'start', { message: 'Interview session generation started' })
-
-    try {
-      const result = await this.interviewService.createStream(dto, user.id, {
-        signal: session.signal,
-        onDelta: (delta) => writeSseEvent(res, 'delta', { delta }),
-        onUsage: (usage) => writeSseEvent(res, 'usage', usage),
-      })
-      writeSseEvent(res, 'done', result)
-    } catch (error) {
-      writeSseEvent(res, 'error', { message: getErrorMessage(error) })
-    } finally {
-      session.end()
-    }
+  createStream(@Body() dto: CreateInterviewDto, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
+    return runSseStream(res, 'Interview session generation started', (callbacks) =>
+      this.interviewService.createStream(dto, user.id, callbacks),
+    )
   }
 
   @Post(':sessionId/messages')
@@ -43,27 +31,15 @@ export class InterviewController {
   }
 
   @Post(':sessionId/messages/stream')
-  async submitAnswerStream(
+  submitAnswerStream(
     @Param('sessionId') sessionId: string,
     @Body() dto: SubmitAnswerDto,
     @CurrentUser() user: AuthUserResponse,
     @Res() res: Response,
   ) {
-    const session = createSseSession(res)
-    writeSseEvent(res, 'start', { message: 'Interview feedback generation started' })
-
-    try {
-      const result = await this.interviewService.submitAnswerStream(sessionId, dto, user.id, {
-        signal: session.signal,
-        onDelta: (delta) => writeSseEvent(res, 'delta', { delta }),
-        onUsage: (usage) => writeSseEvent(res, 'usage', usage),
-      })
-      writeSseEvent(res, 'done', result)
-    } catch (error) {
-      writeSseEvent(res, 'error', { message: getErrorMessage(error) })
-    } finally {
-      session.end()
-    }
+    return runSseStream(res, 'Interview feedback generation started', (callbacks) =>
+      this.interviewService.submitAnswerStream(sessionId, dto, user.id, callbacks),
+    )
   }
 
   @Post(':sessionId/finish')
@@ -72,21 +48,9 @@ export class InterviewController {
   }
 
   @Post(':sessionId/finish/stream')
-  async finishStream(@Param('sessionId') sessionId: string, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
-    const session = createSseSession(res)
-    writeSseEvent(res, 'start', { message: 'Interview summary generation started' })
-
-    try {
-      const result = await this.interviewService.finishStream(sessionId, user.id, {
-        signal: session.signal,
-        onDelta: (delta) => writeSseEvent(res, 'delta', { delta }),
-        onUsage: (usage) => writeSseEvent(res, 'usage', usage),
-      })
-      writeSseEvent(res, 'done', result)
-    } catch (error) {
-      writeSseEvent(res, 'error', { message: getErrorMessage(error) })
-    } finally {
-      session.end()
-    }
+  finishStream(@Param('sessionId') sessionId: string, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
+    return runSseStream(res, 'Interview summary generation started', (callbacks) =>
+      this.interviewService.finishStream(sessionId, user.id, callbacks),
+    )
   }
 }

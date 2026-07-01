@@ -2,20 +2,15 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma, Resume } from '@prisma/client'
 import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
+import { clampScore, toStringList } from '../../common/utils/normalize.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
 import { AiCacheService, type AiGeneration } from '../ai/ai-cache.service'
 import { AiService } from '../ai/ai.service'
-import type { AiUsage, ResumeAnalysisResult } from '../ai/ai.types'
+import type { AiStreamCallbacks, ResumeAnalysisResult } from '../ai/ai.types'
 import { PrismaService } from '../../prisma/prisma.service'
 import { buildResumeAnalyzePrompt, CAREER_ASSISTANT_SYSTEM_PROMPT } from '../../prompts/resume.prompt'
 import { CreateResumeDto } from './dto/create-resume.dto'
 import { UpdateResumeDto } from './dto/update-resume.dto'
-
-interface AiStreamCallbacks {
-  signal?: AbortSignal
-  onDelta?: (delta: string) => void
-  onUsage?: (usage: AiUsage) => void
-}
 
 interface AnalysisPayload {
   systemPrompt: string
@@ -222,14 +217,4 @@ export function normalizeResumeAnalysisResult(value: ResumeAnalysisResult | { ra
         }))
       : [],
   }
-}
-
-function clampScore(value: unknown) {
-  const score = Number(value)
-  if (!Number.isFinite(score)) return 0
-  return Math.max(0, Math.min(100, Math.round(score)))
-}
-
-function toStringList(value: unknown) {
-  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : []
 }
