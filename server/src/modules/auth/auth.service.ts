@@ -147,12 +147,13 @@ export class AuthService {
     return this.toUserResponse(user)
   }
 
-  toUserResponse(user: Pick<User, 'id' | 'username' | 'email' | 'avatarUrl' | 'createdAt'>): AuthUserResponse {
+  toUserResponse(user: Pick<User, 'id' | 'username' | 'email' | 'avatarUrl' | 'role' | 'createdAt'>): AuthUserResponse {
     return {
       id: user.id,
       username: user.username,
       email: user.email,
       avatarUrl: user.avatarUrl,
+      role: user.role,
       createdAt: user.createdAt,
     }
   }

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config'
 import { APP_GUARD } from '@nestjs/core'
 import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerModule } from '@nestjs/throttler'
+import { RolesGuard } from './common/guards/roles.guard'
 import { UserThrottlerGuard } from './common/guards/user-throttler.guard'
 import { AiModule } from './modules/ai/ai.module'
 import { AuthGuard } from './modules/auth/auth.guard'
@@ -40,6 +41,11 @@ import { validateEnv } from './config/env.validation'
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
+    },
+    // RolesGuard 需排在 AuthGuard 之后，依赖 request.user.role。
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
     {
       provide: APP_GUARD,

@@ -3,6 +3,7 @@
   username: string
   email: string
   avatarUrl?: string | null
+  role: string
   createdAt: string
 }
 
