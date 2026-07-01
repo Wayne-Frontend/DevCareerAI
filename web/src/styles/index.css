@@ -228,7 +228,6 @@
   .feature-workspace-balanced,
   .feature-workspace-compact {
     @apply grid items-stretch gap-4;
-    height: max(520px, calc(100vh - 164px));
     min-height: 0;
   }
 
@@ -479,8 +478,8 @@
     display: grid;
     align-items: stretch;
     gap: var(--page-gap);
-    height: auto;
-    min-height: calc(100vh - 146px);
+    flex: 1;
+    min-height: 0;
   }
 
   .feature-workspace {
@@ -497,8 +496,7 @@
 
   .feature-pane-left,
   .feature-pane-right {
-    min-height: calc(100vh - 146px);
-    max-height: calc(100vh - 146px);
+    min-height: 0;
     overflow-y: auto;
   }
 
@@ -598,6 +596,7 @@
   .feature-workspace-compact {
     grid-template-columns: 1fr;
     height: auto;
+    flex: none;
   }
 
   .feature-pane-left,

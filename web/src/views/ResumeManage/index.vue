@@ -394,13 +394,13 @@ function goInterview() {
   display: grid;
   grid-template-columns: minmax(320px, 0.34fr) minmax(0, 0.66fr);
   gap: var(--page-gap);
-  min-height: calc(100vh - 146px);
+  flex: 1;
+  min-height: 0;
 }
 
 .resume-list-pane,
 .resume-detail-pane {
   min-height: 0;
-  max-height: calc(100vh - 146px);
   overflow-y: auto;
 }
 
@@ -482,6 +482,7 @@ function goInterview() {
 @media (max-width: 1180px) {
   .resume-manage-grid {
     grid-template-columns: 1fr;
+    flex: none;
   }
 
   .resume-list-pane,

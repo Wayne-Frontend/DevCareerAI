@@ -120,7 +120,6 @@ const actionCards = [
     path: '/project-optimize',
     tone: 'green',
     icon: Boxes,
-    visual: 'code',
   },
   {
     title: 'JD 匹配',
@@ -130,7 +129,6 @@ const actionCards = [
     path: '/job-match',
     tone: 'blue',
     icon: Target,
-    visual: 'match',
   },
   {
     title: '模拟面试',
@@ -140,7 +138,6 @@ const actionCards = [
     path: '/interview',
     tone: 'purple',
     icon: Mic,
-    visual: 'interview',
   },
 ]
 </script>
@@ -308,22 +305,6 @@ const actionCards = [
               {{ point }}
             </li>
           </ul>
-
-          <div class="mini-visual" :class="`visual-${card.visual}`" aria-hidden="true">
-            <template v-if="card.visual === 'code'">
-              <span class="window-bar" />
-              <span class="code-mark">&lt;/&gt;</span>
-              <span class="chart-chip"><i /><i /><i /></span>
-            </template>
-            <template v-else-if="card.visual === 'match'">
-              <span class="small-ring"><strong>72<small>%</small></strong><em>匹配度</em></span>
-            </template>
-            <template v-else>
-              <span class="voice-panel"><Mic :size="22" /><i /><i /></span>
-              <span class="chat-panel"><i /><i /><i /></span>
-              <span class="wave"><i /><i /><i /><i /></span>
-            </template>
-          </div>
         </div>
 
         <RouterLink class="card-action-btn" :to="card.path">
@@ -515,44 +496,6 @@ const actionCards = [
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 14px 26px rgba(37, 99, 235, 0.22);
 }
 
-.trend-line {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  width: 92px;
-  height: 38px;
-
-  path {
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.4;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    filter: drop-shadow(0 6px 8px color-mix(in srgb, currentColor 22%, transparent));
-    stroke-dasharray: 180;
-    animation: drawLine 0.85s ease both;
-  }
-}
-
-.trend-bars {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  display: flex;
-  align-items: end;
-  justify-content: end;
-  gap: 8px;
-  height: 48px;
-
-  i {
-    width: 8px;
-    border-radius: 999px;
-    background: currentColor;
-    opacity: 0.3;
-    animation: barIn 0.6s ease both;
-  }
-}
-
 .tone-blue {
   color: #2563eb;
 
@@ -582,10 +525,6 @@ const actionCards = [
 
   .icon-block {
     background: linear-gradient(135deg, #6ee7f9, #38a8e8);
-  }
-
-  .metric-copy em {
-    max-width: 78px;
   }
 }
 
@@ -1129,10 +1068,6 @@ const actionCards = [
 }
 
 .action-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 128px;
-  gap: 14px;
-  align-items: center;
   margin-top: 14px;
 
   ul {
@@ -1150,211 +1085,6 @@ const actionCards = [
     color: #213a64;
     font-size: 14px;
     font-weight: 700;
-  }
-}
-
-.mini-visual {
-  position: relative;
-  min-height: 92px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.38);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 12px 26px rgba(31, 73, 125, 0.06);
-}
-
-.visual-code {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.16), rgba(255, 255, 255, 0.38));
-
-  .window-bar {
-    position: absolute;
-    top: 19px;
-    left: 22px;
-    width: 96px;
-    height: 36px;
-    border-radius: 8px 8px 3px 3px;
-    background: linear-gradient(135deg, #5ad79b, #20ad75);
-    box-shadow: 0 12px 22px rgba(32, 173, 117, 0.18);
-  }
-
-  .window-bar::before {
-    content: '';
-    position: absolute;
-    top: 9px;
-    left: 10px;
-    width: 4px;
-    height: 4px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.7);
-    box-shadow: 10px 0 0 rgba(255, 255, 255, 0.58), 20px 0 0 rgba(255, 255, 255, 0.46);
-  }
-
-  .code-mark {
-    position: absolute;
-    left: 42px;
-    bottom: 18px;
-    color: #20ad75;
-    font-size: 26px;
-    font-weight: 900;
-  }
-
-  .chart-chip {
-    position: absolute;
-    right: 14px;
-    bottom: 12px;
-    display: flex;
-    width: 48px;
-    height: 58px;
-    align-items: end;
-    gap: 5px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.68);
-    padding: 10px;
-  }
-
-  .chart-chip i {
-    flex: 1;
-    border-radius: 999px;
-    background: rgba(32, 173, 117, 0.44);
-  }
-
-  .chart-chip i:nth-child(1) {
-    height: 22px;
-  }
-
-  .chart-chip i:nth-child(2) {
-    height: 34px;
-  }
-
-  .chart-chip i:nth-child(3) {
-    height: 46px;
-  }
-}
-
-.visual-match {
-  display: grid;
-  place-items: center;
-
-  .small-ring {
-    position: relative;
-    display: grid;
-    width: 88px;
-    height: 88px;
-    place-content: center;
-    border-radius: 999px;
-    background: conic-gradient(#4f7cff 0 72%, rgba(203, 219, 244, 0.7) 72% 100%);
-    text-align: center;
-  }
-
-  .small-ring::before {
-    content: '';
-    position: absolute;
-    inset: 10px;
-    border-radius: inherit;
-    background: rgba(255, 255, 255, 0.88);
-  }
-
-  strong,
-  em {
-    position: relative;
-    z-index: 1;
-  }
-
-  strong {
-    color: #2563eb;
-    font-size: 27px;
-    font-weight: 950;
-    line-height: 1;
-  }
-
-  small {
-    font-size: 15px;
-  }
-
-  em {
-    margin-top: 4px;
-    color: #213a64;
-    font-size: 12px;
-    font-style: normal;
-    font-weight: 800;
-  }
-}
-
-.visual-interview {
-  .voice-panel,
-  .chat-panel {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    border-radius: 9px;
-    background: rgba(255, 255, 255, 0.58);
-    box-shadow: 0 8px 18px rgba(124, 58, 237, 0.08);
-  }
-
-  .voice-panel {
-    top: 14px;
-    left: 16px;
-    width: 104px;
-    height: 38px;
-    gap: 10px;
-    padding: 8px;
-    color: #7c3aed;
-  }
-
-  .voice-panel i {
-    display: block;
-    height: 6px;
-    flex: 1;
-    border-radius: 999px;
-    background: rgba(124, 92, 246, 0.32);
-  }
-
-  .chat-panel {
-    right: 13px;
-    bottom: 14px;
-    width: 96px;
-    height: 56px;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 7px;
-    padding: 12px;
-    background: linear-gradient(135deg, rgba(167, 139, 250, 0.8), rgba(124, 92, 246, 0.72));
-  }
-
-  .chat-panel i {
-    height: 6px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.58);
-  }
-
-  .wave {
-    position: absolute;
-    left: 20px;
-    bottom: 18px;
-    display: flex;
-    align-items: end;
-    gap: 5px;
-  }
-
-  .wave i {
-    width: 6px;
-    border-radius: 999px;
-    background: rgba(124, 92, 246, 0.32);
-  }
-
-  .wave i:nth-child(1) {
-    height: 24px;
-  }
-
-  .wave i:nth-child(2) {
-    height: 42px;
-  }
-
-  .wave i:nth-child(3) {
-    height: 30px;
-  }
-
-  .wave i:nth-child(4) {
-    height: 50px;
   }
 }
 
@@ -1393,15 +1123,6 @@ const actionCards = [
   }
 }
 
-@keyframes drawLine {
-  from {
-    stroke-dashoffset: 180;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
 @keyframes widthIn {
   from {
     width: 0;
@@ -1414,13 +1135,6 @@ const actionCards = [
   }
 }
 
-@keyframes barIn {
-  from {
-    transform: scaleY(0.35);
-    transform-origin: bottom;
-  }
-}
-
 @media (max-width: 1360px) {
   .dashboard-page {
     padding-inline: var(--page-padding-x);
@@ -1428,12 +1142,6 @@ const actionCards = [
 
   .metric-card {
     grid-template-columns: 1fr;
-  }
-
-  .trend-line,
-  .trend-bars {
-    justify-self: end;
-    margin-top: -20px;
   }
 
   .diagnosis-body {
@@ -1502,10 +1210,6 @@ const actionCards = [
     em {
       display: none;
     }
-  }
-
-  .action-main {
-    grid-template-columns: 1fr;
   }
 }
 </style>
