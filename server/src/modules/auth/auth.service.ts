@@ -1,8 +1,9 @@
 ﻿import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common'
 import { Prisma, User } from '@prisma/client'
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'crypto'
-import { extname, join } from 'path'
+import { join } from 'path'
 import { mkdir, writeFile } from 'fs/promises'
+import { detectImageMime, type ImageMimeType } from '../../common/utils/file-signature.util'
 import { PrismaService } from '../../prisma/prisma.service'
 import { LoginDto } from './dto/login.dto'
 import { RegisterDto } from './dto/register.dto'
@@ -16,7 +17,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000
 const LAST_USED_THROTTLE_MS = 10 * 60 * 1000
 const AVATAR_MAX_SIZE = 5 * 1024 * 1024
 const AVATAR_UPLOAD_DIR = join(process.cwd(), 'uploads', 'avatars')
-const AVATAR_EXTENSIONS: Record<string, string> = {
+const AVATAR_EXTENSIONS: Record<ImageMimeType, string> = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
   'image/webp': '.webp',
@@ -121,17 +122,19 @@ export class AuthService {
       throw new BadRequestException('请选择要上传的头像图片')
     }
 
-    if (!AVATAR_EXTENSIONS[file.mimetype]) {
-      throw new BadRequestException('头像仅支持 JPG、PNG、WebP 或 GIF 图片')
-    }
-
     if (file.size > AVATAR_MAX_SIZE) {
       throw new BadRequestException('头像大小不能超过 5MB')
     }
 
+    // 客户端上报的 mimetype 可伪造，以文件头魔数探测出的真实类型为准。
+    const detectedMime = detectImageMime(file.buffer)
+    if (!detectedMime) {
+      throw new BadRequestException('头像仅支持 JPG、PNG、WebP 或 GIF 图片')
+    }
+
     await mkdir(AVATAR_UPLOAD_DIR, { recursive: true })
 
-    const extension = AVATAR_EXTENSIONS[file.mimetype] || extname(file.originalname).toLowerCase()
+    const extension = AVATAR_EXTENSIONS[detectedMime]
     const fileName = `${userId}-${Date.now()}-${randomBytes(8).toString('hex')}${extension}`
     await writeFile(join(AVATAR_UPLOAD_DIR, fileName), file.buffer)
 

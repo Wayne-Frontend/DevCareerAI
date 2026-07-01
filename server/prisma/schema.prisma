@@ -66,6 +66,8 @@ model ResumeAnalysis {
   createdAt DateTime @default(now())
 
   resume    Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId])
 }
 
 model ProjectOptimization {
@@ -109,6 +111,9 @@ model JobMatchAnalysis {
 
   resume           Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
   jobDescription   JobDescription @relation(fields: [jobDescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId])
+  @@index([jobDescriptionId])
 }
 
 model InterviewSession {
@@ -142,6 +147,8 @@ model InterviewMessage {
   createdAt    DateTime @default(now())
 
   session      InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
 }
 
 model AiCache {
