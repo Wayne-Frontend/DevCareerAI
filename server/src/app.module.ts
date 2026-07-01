@@ -7,6 +7,7 @@ import { UserThrottlerGuard } from './common/guards/user-throttler.guard'
 import { AiModule } from './modules/ai/ai.module'
 import { AuthGuard } from './modules/auth/auth.guard'
 import { AuthModule } from './modules/auth/auth.module'
+import { DashboardModule } from './modules/dashboard/dashboard.module'
 import { FileModule } from './modules/file/file.module'
 import { HistoryModule } from './modules/history/history.module'
 import { InterviewModule } from './modules/interview/interview.module'
@@ -25,6 +26,7 @@ import { validateEnv } from './config/env.validation'
     PrismaModule,
     AuthModule,
     AiModule,
+    DashboardModule,
     FileModule,
     ResumeModule,
     ProjectModule,

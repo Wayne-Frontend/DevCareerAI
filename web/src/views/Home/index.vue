@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
 import {
   ArrowRight,
   BarChart3,
-  Bell,
   Boxes,
   BriefcaseBusiness,
   CheckCircle2,
@@ -17,87 +17,99 @@ import {
   Star,
   Target,
 } from 'lucide-vue-next'
+import { getDashboardOverview } from '../../api/dashboard'
+import type { DashboardOverview } from '../../types/dashboard'
 
-const metrics = [
-  {
-    label: '简历综合得分',
-    value: '78',
-    unit: '/100',
-    change: '较上次 +8',
-    icon: FileSearch,
-    tone: 'blue',
-    chart: 'line',
-    line: 'M2 34 C12 34 13 28 22 30 C33 33 33 22 43 25 C55 28 54 14 65 18 C75 21 76 7 86 12 C94 17 97 2 106 8 C113 13 115 6 122 5',
-  },
-  {
-    label: '岗位匹配度',
-    value: '72',
-    unit: '%',
-    change: '较上次 +6%',
-    icon: Target,
-    tone: 'green',
-    chart: 'line',
-    line: 'M2 36 C11 37 12 29 20 31 C30 34 28 23 39 26 C50 29 49 17 60 20 C70 23 68 8 80 12 C92 16 89 2 101 8 C112 14 111 24 122 14',
-  },
-  {
-    label: '模拟面试得分',
-    value: '82',
-    unit: '/100',
-    change: '较上次 +5',
-    icon: Mic,
-    tone: 'purple',
-    chart: 'line',
-    line: 'M2 36 C11 35 12 26 22 28 C33 30 31 13 43 17 C54 22 55 31 66 24 C76 18 77 7 88 13 C98 19 98 31 108 22 C117 14 115 7 122 4',
-  },
-  {
-    label: '投递进展',
-    value: '23',
-    unit: '',
-    change: '本周投递 7 个岗位',
-    icon: Send,
-    tone: 'cyan',
-    chart: 'bar',
-    bars: [28, 42, 56, 74, 94, 46],
-  },
-]
+// 综合得分环的周长，与 <style> 中 .ring-value 的 stroke-dasharray(414) 保持一致。
+const RING_CIRCUMFERENCE = 414
+const SUGGESTION_TONES = ['blue', 'green', 'purple', 'orange'] as const
+const SUGGESTION_ICONS = [FileSearch, PackageCheck, Star, BriefcaseBusiness]
 
-const scoreDimensions = [
-  { label: '技能匹配度', score: 82, color: '#3b82f6', icon: CircleGauge },
-  { label: '项目相关性', score: 75, color: '#8b5cf6', icon: FileSearch },
-  { label: '经验深度', score: 70, color: '#f59e0b', icon: BarChart3 },
-  { label: '表达与呈现', score: 85, color: '#16a36a', icon: Star },
-]
+const loading = ref(true)
+const overview = ref<DashboardOverview | null>(null)
 
-const suggestions = [
-  {
-    title: '优化技术栈匹配',
-    description: '在简历开头突出与目标岗位匹配的核心技术栈',
-    tag: '优先级高',
-    tone: 'blue',
-    icon: FileSearch,
-  },
-  {
-    title: '补充项目量化成果',
-    description: '为 2 个项目补充量化指标，提升说服力',
-    tag: '优先级中',
-    tone: 'green',
-    icon: PackageCheck,
-  },
-  {
-    title: '完善个人亮点',
-    description: '提炼 3 个个人核心优势，增强简历记忆点',
-    tag: '优先级中',
-    tone: 'purple',
-    icon: Star,
-  },
-  {
-    title: '扩展岗位匹配',
-    description: '发现 8 个高匹配度岗位，建议优先投递',
-    tag: '优先级低',
-    tone: 'orange',
-    icon: BriefcaseBusiness,
-  },
-]
+async function loadOverview() {
+  loading.value = true
+  try {
+    overview.value = await getDashboardOverview()
+  } catch {
+    // 请求层已统一弹出错误提示，这里保持空数据即可。
+    overview.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadOverview)
+
+const resumeScore = computed(() => overview.value?.resume.score ?? null)
+
+function formatScore(value: number | null | undefined) {
+  return value === null || value === undefined ? '--' : String(Math.round(value))
+}
+
+function formatDelta(delta: number | null | undefined, unit = '') {
+  if (delta === null || delta === undefined) return '暂无对比数据'
+  if (delta === 0) return '与上次持平'
+  const sign = delta > 0 ? '+' : ''
+  return `较上次 ${sign}${Math.round(delta)}${unit}`
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  const pad = (input: number) => String(input).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+const metrics = computed(() => {
+  const data = overview.value
+  return [
+    { label: '简历综合得分', value: formatScore(data?.resume.score), unit: '/100', change: formatDelta(data?.resume.delta), icon: FileSearch, tone: 'blue' },
+    { label: '岗位匹配度', value: formatScore(data?.jobMatch.score), unit: '%', change: formatDelta(data?.jobMatch.delta, '%'), icon: Target, tone: 'green' },
+    { label: '模拟面试得分', value: formatScore(data?.interview.score), unit: '/100', change: formatDelta(data?.interview.delta), icon: Mic, tone: 'purple' },
+    { label: '累计记录', value: String(data?.recordCount ?? 0), unit: '', change: `简历 / 匹配 / 面试共 ${data?.recordCount ?? 0} 条`, icon: Send, tone: 'cyan' },
+  ]
+})
+
+const scoreDimensions = computed(() => {
+  const dimensions = overview.value?.resume.dimensionScores
+  if (!dimensions) return []
+  return [
+    { label: '技能匹配度', score: dimensions.skillMatch, color: '#3b82f6', icon: CircleGauge },
+    { label: '项目质量', score: dimensions.projectQuality, color: '#8b5cf6', icon: FileSearch },
+    { label: '技术深度', score: dimensions.technicalDepth, color: '#f59e0b', icon: BarChart3 },
+    { label: '专业表达', score: dimensions.professionalExpression, color: '#16a36a', icon: Star },
+  ]
+})
+
+const suggestions = computed(() =>
+  (overview.value?.suggestions ?? []).map((text, index) => ({
+    text,
+    tone: SUGGESTION_TONES[index % SUGGESTION_TONES.length],
+    icon: SUGGESTION_ICONS[index % SUGGESTION_ICONS.length],
+  })),
+)
+
+const ringOffset = computed(() => {
+  if (resumeScore.value === null) return RING_CIRCUMFERENCE
+  return RING_CIRCUMFERENCE * (1 - Math.max(0, Math.min(100, resumeScore.value)) / 100)
+})
+
+const scoreBadge = computed(() => {
+  const score = resumeScore.value
+  if (score === null) return '暂无'
+  if (score >= 85) return '优秀'
+  if (score >= 70) return '良好'
+  if (score >= 60) return '中等'
+  return '待提升'
+})
+
+const lastAnalyzedLabel = computed(() => {
+  const formatted = formatDateTime(overview.value?.resume.lastAnalyzedAt)
+  return formatted ? `上次诊断：${formatted}` : '尚未进行简历诊断'
+})
 
 const actionCards = [
   {
@@ -142,13 +154,9 @@ const actionCards = [
       </div>
 
       <div class="header-actions">
-        <button class="status-pill" type="button">
+        <button class="status-pill" type="button" :disabled="loading" @click="loadOverview">
           <RefreshCw :size="15" />
-          数据更新于 1 小时前
-        </button>
-        <button class="notice-btn" type="button" aria-label="通知">
-          <Bell :size="19" />
-          <span>3</span>
+          {{ loading ? '刷新中…' : '刷新数据' }}
         </button>
       </div>
     </header>
@@ -164,13 +172,6 @@ const actionCards = [
             <strong>{{ metric.value }}<small>{{ metric.unit }}</small></strong>
             <em>{{ metric.change }}</em>
           </div>
-        </div>
-
-        <svg v-if="metric.chart === 'line'" class="trend-line" viewBox="0 0 124 44" aria-hidden="true">
-          <path :d="metric.line" />
-        </svg>
-        <div v-else class="trend-bars" aria-hidden="true">
-          <i v-for="(bar, index) in metric.bars" :key="index" :style="{ height: `${bar}%` }" />
         </div>
       </article>
     </section>
@@ -197,17 +198,17 @@ const actionCards = [
                   </linearGradient>
                 </defs>
                 <circle cx="80" cy="80" r="66" class="ring-track" />
-                <circle cx="80" cy="80" r="66" class="ring-value" />
+                <circle cx="80" cy="80" r="66" class="ring-value" :style="{ strokeDashoffset: ringOffset }" />
               </svg>
               <div>
-                <strong>78</strong>
+                <strong>{{ formatScore(resumeScore) }}</strong>
                 <span>/100</span>
               </div>
             </div>
-            <span class="score-badge">良好</span>
+            <span class="score-badge">{{ scoreBadge }}</span>
           </div>
 
-          <div class="dimension-panel">
+          <div v-if="scoreDimensions.length" class="dimension-panel">
             <div v-for="item in scoreDimensions" :key="item.label" class="dimension-row">
               <span class="dimension-icon" :style="{ color: item.color, background: `${item.color}18` }">
                 <component :is="item.icon" :size="17" />
@@ -223,6 +224,9 @@ const actionCards = [
               </div>
             </div>
           </div>
+          <div v-else class="dimension-panel dimension-panel--empty">
+            <p>{{ loading ? '正在加载维度得分…' : '完成一次简历诊断后，这里会展示各维度得分。' }}</p>
+          </div>
 
           <div class="resume-illustration" aria-hidden="true">
             <div class="iso-cube">
@@ -237,7 +241,7 @@ const actionCards = [
         </div>
 
         <footer class="diagnosis-footer">
-          <span>上次诊断：2024-05-20 10:30</span>
+          <span>{{ lastAnalyzedLabel }}</span>
           <RouterLink class="primary-gradient-btn" to="/resume-analyze">
             <Sparkles :size="20" />
             开始诊断
@@ -254,10 +258,10 @@ const actionCards = [
           </RouterLink>
         </div>
 
-        <div class="suggestion-list">
+        <div v-if="suggestions.length" class="suggestion-list">
           <RouterLink
-            v-for="suggestion in suggestions"
-            :key="suggestion.title"
+            v-for="(suggestion, index) in suggestions"
+            :key="index"
             class="suggestion-item"
             :class="`priority-${suggestion.tone}`"
             to="/resume-analyze"
@@ -266,12 +270,21 @@ const actionCards = [
               <component :is="suggestion.icon" :size="21" />
             </span>
             <span class="suggestion-text">
-              <strong>{{ suggestion.title }}</strong>
-              <small>{{ suggestion.description }}</small>
+              <strong>{{ suggestion.text }}</strong>
             </span>
-            <em>{{ suggestion.tag }}</em>
+            <em>去优化</em>
             <ChevronRight :size="19" />
           </RouterLink>
+        </div>
+        <div v-else class="suggestion-empty">
+          <p v-if="loading">正在加载建议…</p>
+          <template v-else>
+            <p>完成一次简历诊断后，这里会显示可执行的改进建议。</p>
+            <RouterLink to="/resume-analyze">
+              去诊断简历
+              <ArrowRight :size="16" />
+            </RouterLink>
+          </template>
         </div>
       </aside>
     </section>
@@ -933,6 +946,49 @@ const actionCards = [
   display: grid;
   gap: 11px;
   margin-top: 14px;
+}
+
+.dimension-panel--empty {
+  place-items: center;
+  min-height: 96px;
+
+  p {
+    margin: 0;
+    max-width: 220px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.6;
+    text-align: center;
+  }
+}
+
+.suggestion-empty {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  place-items: center;
+  min-height: 200px;
+  align-content: center;
+  text-align: center;
+
+  p {
+    margin: 0;
+    max-width: 240px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.6;
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #2563eb;
+    font-size: 14px;
+    font-weight: 800;
+  }
 }
 
 .suggestion-item {
