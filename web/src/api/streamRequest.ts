@@ -114,7 +114,7 @@ export async function streamRequest<TDone>(
   return donePayload
 }
 
-function parseSseEvent<TDone>(block: string): { event: string; data: unknown | TDone } | null {
+export function parseSseEvent<TDone>(block: string): { event: string; data: unknown | TDone } | null {
   const lines = block.split(/\r?\n/)
   const event = lines.find((line) => line.startsWith('event:'))?.replace(/^event:\s*/, '').trim()
   const dataLines = lines.filter((line) => line.startsWith('data:')).map((line) => line.replace(/^data:\s*/, ''))
