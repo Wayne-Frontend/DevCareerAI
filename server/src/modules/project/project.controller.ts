@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, Res } from '@nestjs/common'
 import type { Response } from 'express'
+import { AiThrottle } from '../../common/guards/ai-throttle.decorator'
 import { createSseSession, getErrorMessage, writeSseEvent } from '../../common/utils/sse.util'
 import { CurrentUser } from '../auth/current-user.decorator'
 import type { AuthUserResponse } from '../auth/auth.types'
@@ -10,6 +11,7 @@ import { ProjectService } from './project.service'
 export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
 
+  @AiThrottle()
   @Post('optimize')
   optimize(@Body() dto: OptimizeProjectDto, @CurrentUser() user: AuthUserResponse) {
     return this.projectService.optimize(dto, user.id)
@@ -30,6 +32,7 @@ export class ProjectController {
     return this.projectService.removeOptimization(id, user.id)
   }
 
+  @AiThrottle()
   @Post('optimize/stream')
   async optimizeStream(@Body() dto: OptimizeProjectDto, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
     const session = createSseSession(res)

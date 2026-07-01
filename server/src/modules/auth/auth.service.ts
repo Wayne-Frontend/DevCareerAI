@@ -12,6 +12,8 @@ import type { AuthUserResponse } from './auth.types'
 const PASSWORD_KEY_LENGTH = 64
 const TOKEN_BYTES = 32
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
+// 仅在距上次活跃超过该间隔时才刷新 lastUsedAt，避免每个鉴权请求都写一次库。
+const LAST_USED_THROTTLE_MS = 10 * 60 * 1000
 const AVATAR_MAX_SIZE = 5 * 1024 * 1024
 const AVATAR_UPLOAD_DIR = join(process.cwd(), 'uploads', 'avatars')
 const AVATAR_EXTENSIONS: Record<string, string> = {
@@ -69,14 +71,17 @@ export class AuthService {
       include: { user: true },
     })
 
-    if (!session || session.expiresAt.getTime() <= Date.now()) {
+    const now = Date.now()
+    if (!session || session.expiresAt.getTime() <= now) {
       return null
     }
 
-    await this.prisma.authSession.update({
-      where: { id: session.id },
-      data: { lastUsedAt: new Date() },
-    })
+    if (now - session.lastUsedAt.getTime() > LAST_USED_THROTTLE_MS) {
+      await this.prisma.authSession.update({
+        where: { id: session.id },
+        data: { lastUsedAt: new Date(now) },
+      })
+    }
 
     return session
   }
@@ -178,14 +183,14 @@ function normalizeAccount(value: string) {
   return value.trim().toLowerCase()
 }
 
-function hashPassword(password: string) {
+export function hashPassword(password: string) {
   const salt = randomBytes(16).toString('hex')
   const key = scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString('hex')
 
   return `scrypt$${salt}$${key}`
 }
 
-function verifyPassword(password: string, storedHash: string) {
+export function verifyPassword(password: string, storedHash: string) {
   const [algorithm, salt, key] = storedHash.split('$')
   if (algorithm !== 'scrypt' || !salt || !key) return false
 

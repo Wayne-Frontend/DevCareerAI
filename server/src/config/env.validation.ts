@@ -1,33 +1,34 @@
-const PLACEHOLDER_API_KEYS = new Set(['', 'your_api_key_here'])
+import { isConfiguredApiKey } from '../modules/ai/ai-config'
 
 export function validateEnv(config: Record<string, unknown>) {
   const errors: string[] = []
   const databaseUrl = readString(config.DATABASE_URL)
-  const apiKey = readString(config.DEEPSEEK_API_KEY)
-  const baseUrl = readString(config.DEEPSEEK_BASE_URL) || 'https://api.deepseek.com'
-  const fastModel = readString(config.DEEPSEEK_MODEL_FAST)
-  const qualityModel = readString(config.DEEPSEEK_MODEL_QUALITY)
-  const legacyModel = readString(config.DEEPSEEK_MODEL)
+  const apiKey = readString(config.AI_API_KEY)
+  const baseUrl = readString(config.AI_BASE_URL)
+  const fastModel = readString(config.AI_MODEL_FAST)
+  const qualityModel = readString(config.AI_MODEL_QUALITY)
   const port = readString(config.PORT)
 
   if (!databaseUrl) {
     errors.push('DATABASE_URL is required')
   }
 
-  if (PLACEHOLDER_API_KEYS.has(apiKey)) {
-    errors.push('DEEPSEEK_API_KEY is required and must not use the example placeholder')
+  if (!isConfiguredApiKey(apiKey)) {
+    errors.push('AI_API_KEY is required and must not be the example placeholder')
   }
 
-  if (!isHttpUrl(baseUrl)) {
-    errors.push('DEEPSEEK_BASE_URL must be a valid http(s) URL')
+  if (!baseUrl) {
+    errors.push('AI_BASE_URL is required')
+  } else if (!isHttpUrl(baseUrl)) {
+    errors.push('AI_BASE_URL must be a valid http(s) URL')
   }
 
-  if (!fastModel && !legacyModel) {
-    errors.push('DEEPSEEK_MODEL_FAST or DEEPSEEK_MODEL is required')
+  if (!fastModel) {
+    errors.push('AI_MODEL_FAST is required')
   }
 
-  if (!qualityModel && !legacyModel) {
-    errors.push('DEEPSEEK_MODEL_QUALITY or DEEPSEEK_MODEL is required')
+  if (!qualityModel) {
+    errors.push('AI_MODEL_QUALITY is required')
   }
 
   if (port && (!Number.isInteger(Number(port)) || Number(port) <= 0 || Number(port) > 65535)) {

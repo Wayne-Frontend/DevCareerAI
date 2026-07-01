@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import type { Response } from 'express'
+import { AiThrottle } from '../../common/guards/ai-throttle.decorator'
 import { createSseSession, getErrorMessage, writeSseEvent } from '../../common/utils/sse.util'
 import { FileService } from '../file/file.service'
 import { CurrentUser } from '../auth/current-user.decorator'
@@ -62,11 +63,13 @@ export class ResumeController {
     return this.fileService.parse(file)
   }
 
+  @AiThrottle()
   @Post(':id/analyze')
   analyze(@Param('id') id: string, @CurrentUser() user: AuthUserResponse) {
     return this.resumeService.analyze(id, user.id)
   }
 
+  @AiThrottle()
   @Post(':id/analyze/stream')
   async analyzeStream(@Param('id') id: string, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
     const session = createSseSession(res)

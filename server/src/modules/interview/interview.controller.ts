@@ -1,5 +1,6 @@
 import { Body, Controller, Param, Post, Res } from '@nestjs/common'
 import type { Response } from 'express'
+import { AiThrottle } from '../../common/guards/ai-throttle.decorator'
 import { createSseSession, getErrorMessage, writeSseEvent } from '../../common/utils/sse.util'
 import { CurrentUser } from '../auth/current-user.decorator'
 import type { AuthUserResponse } from '../auth/auth.types'
@@ -7,6 +8,7 @@ import { CreateInterviewDto } from './dto/create-interview.dto'
 import { SubmitAnswerDto } from './dto/submit-answer.dto'
 import { InterviewService } from './interview.service'
 
+@AiThrottle()
 @Controller('interviews')
 export class InterviewController {
   constructor(private readonly interviewService: InterviewService) {}

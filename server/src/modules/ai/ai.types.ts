@@ -9,11 +9,11 @@ export interface ChatOptions {
 }
 
 export interface AiUsage {
-  completion_tokens?: number
   prompt_tokens?: number
-  prompt_cache_hit_tokens?: number
-  prompt_cache_miss_tokens?: number
+  completion_tokens?: number
   total_tokens?: number
+  // 各服务可能返回额外的用量字段（如 DeepSeek 的 prompt_cache_hit_tokens），按原样透传，不在通用类型里写死。
+  [key: string]: number | undefined
 }
 
 export interface ChatStreamOptions extends ChatOptions {

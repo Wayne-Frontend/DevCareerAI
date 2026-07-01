@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
-import { AiCacheService } from '../ai/ai-cache.service'
+import { AiCacheService, type AiGeneration } from '../ai/ai-cache.service'
 import { AiService } from '../ai/ai.service'
 import type { AiUsage, ProjectOptimizationResult } from '../ai/ai.types'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -17,6 +17,16 @@ interface AiStreamCallbacks {
   onUsage?: (usage: AiUsage) => void
 }
 
+interface OptimizePayload {
+  systemPrompt: string
+  userPrompt: string
+  temperature: number
+  maxTokens: number
+}
+
+const OPTIMIZE_FEATURE = 'project-optimization'
+const OPTIMIZE_VERSION = 'project-optimization-v2'
+
 @Injectable()
 export class ProjectService {
   constructor(
@@ -26,60 +36,11 @@ export class ProjectService {
   ) {}
 
   async optimize(dto: OptimizeProjectDto, userId: string) {
-    const aiText = await this.aiService.chat({
-      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
-      userPrompt: this.buildPrompt(dto),
-      temperature: 0.25,
-      maxTokens: 2400,
-      modelTier: 'quality',
-    })
-    const parsed = safeParseJson<ProjectOptimizationResult>(aiText)
-    const status = getAiResultStatus(parsed)
-    const result = normalizeProjectResult(parsed, dto)
-
-    await this.createOptimization(dto, result, userId)
-
-    return {
-      result,
-      meta: { status },
-    }
+    return this.produceOptimization(dto, userId, (payload) => this.generateWithChat(payload, dto))
   }
 
   async optimizeStream(dto: OptimizeProjectDto, userId: string, callbacks: AiStreamCallbacks = {}) {
-    const model = this.aiService.getModel('quality')
-    const cachePayload = {
-      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
-      userPrompt: this.buildPrompt(dto),
-      temperature: 0.25,
-      maxTokens: 2400,
-    }
-    const cached = await this.aiCacheService.get<ProjectOptimizationResult>({
-      feature: 'project-optimization',
-      model,
-      version: 'project-optimization-v2',
-      payload: cachePayload,
-    })
-
-    const generated = cached
-      ? { result: cached.result, status: 'success' as const }
-      : await this.generateOptimization({
-          cachePayload,
-          model,
-          dto,
-          callbacks,
-        })
-    const result = generated.result
-
-    await this.createOptimization(dto, result, userId)
-
-    return {
-      result,
-      cached: Boolean(cached),
-      meta: {
-        cached: Boolean(cached),
-        status: generated.status,
-      },
-    }
+    return this.produceOptimization(dto, userId, (payload) => this.generateWithStream(payload, dto, callbacks))
   }
 
   findOptimizations(userId: string) {
@@ -117,45 +78,70 @@ export class ProjectService {
     }
   }
 
+  private async produceOptimization(
+    dto: OptimizeProjectDto,
+    userId: string,
+    generate: (payload: OptimizePayload) => Promise<AiGeneration<ProjectOptimizationResult>>,
+  ) {
+    const model = this.aiService.getModel('quality')
+    const payload: OptimizePayload = {
+      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
+      userPrompt: this.buildPrompt(dto),
+      temperature: 0.25,
+      maxTokens: 2400,
+    }
+
+    const { result, cached, status } = await this.aiCacheService.resolve<ProjectOptimizationResult>(
+      { feature: OPTIMIZE_FEATURE, model, version: OPTIMIZE_VERSION, payload },
+      () => generate(payload),
+    )
+
+    await this.createOptimization(dto, result, userId)
+
+    return {
+      result,
+      cached,
+      meta: { cached, status },
+    }
+  }
+
+  private async generateWithChat(
+    payload: OptimizePayload,
+    dto: OptimizeProjectDto,
+  ): Promise<AiGeneration<ProjectOptimizationResult>> {
+    const text = await this.aiService.chat({ ...payload, modelTier: 'quality' })
+    return this.toGeneration(text, dto)
+  }
+
+  private async generateWithStream(
+    payload: OptimizePayload,
+    dto: OptimizeProjectDto,
+    callbacks: AiStreamCallbacks,
+  ): Promise<AiGeneration<ProjectOptimizationResult>> {
+    const stream = await this.aiService.chatStream({
+      ...payload,
+      modelTier: 'quality',
+      signal: callbacks.signal,
+      onDelta: callbacks.onDelta,
+      onUsage: callbacks.onUsage,
+    })
+    return this.toGeneration(stream.text, dto)
+  }
+
+  private toGeneration(text: string, dto: OptimizeProjectDto): AiGeneration<ProjectOptimizationResult> {
+    const parsed = safeParseJson<ProjectOptimizationResult>(text)
+    return {
+      result: normalizeProjectResult(parsed, dto),
+      rawText: text,
+      status: getAiResultStatus(parsed),
+    }
+  }
+
   private buildPrompt(dto: OptimizeProjectDto) {
     return buildProjectOptimizePrompt({
       ...dto,
       rawContent: limitTextForAi(dto.rawContent, AI_TEXT_LIMITS.project),
     })
-  }
-
-  private async generateOptimization(params: {
-    cachePayload: {
-      systemPrompt: string
-      userPrompt: string
-      temperature: number
-      maxTokens: number
-    }
-    model: string
-    dto: OptimizeProjectDto
-    callbacks: AiStreamCallbacks
-  }) {
-    const stream = await this.aiService.chatStream({
-      ...params.cachePayload,
-      modelTier: 'quality',
-      signal: params.callbacks.signal,
-      onDelta: params.callbacks.onDelta,
-      onUsage: params.callbacks.onUsage,
-    })
-    const parsed = safeParseJson<ProjectOptimizationResult>(stream.text)
-    const status = getAiResultStatus(parsed)
-    const result = normalizeProjectResult(parsed, params.dto)
-
-    await this.aiCacheService.set({
-      feature: 'project-optimization',
-      model: params.model,
-      version: 'project-optimization-v2',
-      payload: params.cachePayload,
-      result,
-      rawText: stream.text,
-    })
-
-    return { result, status }
   }
 
   private createOptimization(dto: OptimizeProjectDto, result: ProjectOptimizationResult, userId: string) {
@@ -172,7 +158,7 @@ export class ProjectService {
   }
 }
 
-function normalizeProjectResult(
+export function normalizeProjectResult(
   value: ProjectOptimizationResult | { rawText: string; parseError: true },
   dto: OptimizeProjectDto,
 ): ProjectOptimizationResult {

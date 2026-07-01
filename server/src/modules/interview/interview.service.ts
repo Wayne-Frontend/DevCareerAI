@@ -27,6 +27,15 @@ interface AiStreamCallbacks {
   onUsage?: (usage: AiUsage) => void
 }
 
+interface InterviewPayload {
+  systemPrompt: string
+  userPrompt: string
+  temperature: number
+  maxTokens: number
+}
+
+type GetText = (payload: InterviewPayload) => Promise<string>
+
 type SessionWithMessages = InterviewSession & {
   resume: Resume | null
   messages: InterviewMessage[]
@@ -41,167 +50,139 @@ export class InterviewService {
   ) {}
 
   async create(dto: CreateInterviewDto, userId: string) {
-    const resumeRecord = await this.resolveResume(dto, userId)
-    const jobDescription = await this.resolveJobDescription(dto, userId)
-    const aiText = await this.aiService.chat({
-      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
-      userPrompt: this.buildQuestionPrompt(dto),
-      temperature: 0.35,
-      maxTokens: 1200,
-      modelTier: 'fast',
-    })
-    const parsed = safeParseJson<InterviewQuestionResult>(aiText)
-    const status = getAiResultStatus(parsed)
-    const question = normalizeQuestionResult(parsed, dto)
-
-    return {
-      ...(await this.createSession(dto, resumeRecord.id, jobDescription?.id, question, userId)),
-      meta: { status },
-    }
+    return this.produceQuestion(dto, userId, (payload) => this.chatText(payload))
   }
 
   async createStream(dto: CreateInterviewDto, userId: string, callbacks: AiStreamCallbacks = {}) {
-    const resumeRecord = await this.resolveResume(dto, userId)
-    const jobDescription = await this.resolveJobDescription(dto, userId)
-    const model = this.aiService.getModel('fast')
-    const cachePayload = {
-      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
-      userPrompt: this.buildQuestionPrompt(dto),
-      temperature: 0.35,
-      maxTokens: 1200,
-    }
-    const cached = await this.aiCacheService.get<InterviewQuestionResult>({
-      feature: 'interview-question',
-      model,
-      version: 'interview-question-v2',
-      payload: cachePayload,
-    })
-    const generated = cached
-      ? { result: cached.result, status: 'success' as const }
-      : await this.generateQuestion({
-          cachePayload,
-          model,
-          dto,
-          callbacks,
-        })
-    const response = await this.createSession(dto, resumeRecord.id, jobDescription?.id, generated.result, userId)
-
-    return {
-      ...response,
-      cached: Boolean(cached),
-      meta: {
-        cached: Boolean(cached),
-        status: generated.status,
-      },
-    }
+    return this.produceQuestion(dto, userId, (payload) => this.streamText(payload, callbacks))
   }
 
   async submitAnswer(sessionId: string, dto: SubmitAnswerDto, userId: string) {
     const session = await this.findSession(sessionId, userId)
     this.assertOngoingSession(session)
-    const feedback = await this.requestFeedback(session, dto)
-    await this.createAnswerMessages(sessionId, dto.answer, feedback)
 
-    return toMessageResponse(sessionId, feedback)
+    return this.produceFeedback(session, dto, (payload) => this.chatText(payload))
   }
 
   async submitAnswerStream(sessionId: string, dto: SubmitAnswerDto, userId: string, callbacks: AiStreamCallbacks = {}) {
     const session = await this.findSession(sessionId, userId)
     this.assertOngoingSession(session)
-    const lastQuestion = [...session.messages].reverse().find((message) => message.role === 'ai')
-    const model = this.aiService.getModel('fast')
-    const cachePayload = {
-      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
-      userPrompt: this.buildFeedbackPrompt(session, dto.answer, lastQuestion?.content || ''),
-      temperature: 0.3,
-      maxTokens: 1800,
-    }
-    const cached = await this.aiCacheService.get<InterviewFeedbackResult>({
-      feature: 'interview-feedback',
-      model,
-      version: 'interview-feedback-v2',
-      payload: cachePayload,
-    })
-    const generated = cached
-      ? { result: cached.result, status: 'success' as const }
-      : await this.generateFeedback({
-          cachePayload,
-          model,
-          callbacks,
-        })
-    const feedback = generated.result
 
-    await this.createAnswerMessages(sessionId, dto.answer, feedback)
-
-    return {
-      ...toMessageResponse(sessionId, feedback),
-      cached: Boolean(cached),
-      meta: {
-        cached: Boolean(cached),
-        status: generated.status,
-      },
-    }
+    return this.produceFeedback(session, dto, (payload) => this.streamText(payload, callbacks))
   }
 
   async finish(sessionId: string, userId: string) {
     const session = await this.findSession(sessionId, userId, false)
     this.assertOngoingSession(session)
-    const aiText = await this.aiService.chat({
-      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
-      userPrompt: this.buildSummaryPrompt(session),
-      temperature: 0.25,
-      maxTokens: 1800,
-      modelTier: 'fast',
-    })
-    const parsed = safeParseJson<InterviewSummaryResult>(aiText)
-    const status = getAiResultStatus(parsed)
-    const summary = normalizeSummaryResult(parsed)
 
-    await this.finishSession(sessionId, userId, summary)
-
-    return {
-      sessionId,
-      ...summary,
-      meta: { status },
-    }
+    return this.produceSummary(session, userId, (payload) => this.chatText(payload))
   }
 
   async finishStream(sessionId: string, userId: string, callbacks: AiStreamCallbacks = {}) {
     const session = await this.findSession(sessionId, userId, false)
     this.assertOngoingSession(session)
+
+    return this.produceSummary(session, userId, (payload) => this.streamText(payload, callbacks))
+  }
+
+  private async produceQuestion(dto: CreateInterviewDto, userId: string, getText: GetText) {
+    const resumeRecord = await this.resolveResume(dto, userId)
+    const jobDescription = await this.resolveJobDescription(dto, userId)
     const model = this.aiService.getModel('fast')
-    const cachePayload = {
+    const payload: InterviewPayload = {
+      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
+      userPrompt: this.buildQuestionPrompt(dto),
+      temperature: 0.35,
+      maxTokens: 1200,
+    }
+
+    const { result, cached, status } = await this.aiCacheService.resolve<InterviewQuestionResult>(
+      { feature: 'interview-question', model, version: 'interview-question-v2', payload },
+      async () => {
+        const text = await getText(payload)
+        const parsed = safeParseJson<InterviewQuestionResult>(text)
+        return { result: normalizeQuestionResult(parsed, dto), rawText: text, status: getAiResultStatus(parsed) }
+      },
+    )
+
+    const response = await this.createSession(dto, resumeRecord.id, jobDescription?.id, result, userId)
+
+    return {
+      ...response,
+      cached,
+      meta: { cached, status },
+    }
+  }
+
+  private async produceFeedback(session: SessionWithMessages, dto: SubmitAnswerDto, getText: GetText) {
+    const lastQuestion = [...session.messages].reverse().find((message) => message.role === 'ai')
+    const model = this.aiService.getModel('fast')
+    const payload: InterviewPayload = {
+      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
+      userPrompt: this.buildFeedbackPrompt(session, dto.answer, lastQuestion?.content || ''),
+      temperature: 0.3,
+      maxTokens: 1800,
+    }
+
+    const { result, cached, status } = await this.aiCacheService.resolve<InterviewFeedbackResult>(
+      { feature: 'interview-feedback', model, version: 'interview-feedback-v2', payload },
+      async () => {
+        const text = await getText(payload)
+        const parsed = safeParseJson<InterviewFeedbackResult>(text)
+        return { result: normalizeFeedbackResult(parsed), rawText: text, status: getAiResultStatus(parsed) }
+      },
+    )
+
+    await this.createAnswerMessages(session.id, dto.answer, result)
+
+    return {
+      ...toMessageResponse(session.id, result),
+      cached,
+      meta: { cached, status },
+    }
+  }
+
+  private async produceSummary(session: SessionWithMessages, userId: string, getText: GetText) {
+    const model = this.aiService.getModel('fast')
+    const payload: InterviewPayload = {
       systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
       userPrompt: this.buildSummaryPrompt(session),
       temperature: 0.25,
       maxTokens: 1800,
     }
-    const cached = await this.aiCacheService.get<InterviewSummaryResult>({
-      feature: 'interview-summary',
-      model,
-      version: 'interview-summary-v2',
-      payload: cachePayload,
-    })
-    const generated = cached
-      ? { result: cached.result, status: 'success' as const }
-      : await this.generateSummary({
-          cachePayload,
-          model,
-          callbacks,
-        })
-    const summary = generated.result
 
-    await this.finishSession(sessionId, userId, summary)
+    const { result, cached, status } = await this.aiCacheService.resolve<InterviewSummaryResult>(
+      { feature: 'interview-summary', model, version: 'interview-summary-v2', payload },
+      async () => {
+        const text = await getText(payload)
+        const parsed = safeParseJson<InterviewSummaryResult>(text)
+        return { result: normalizeSummaryResult(parsed), rawText: text, status: getAiResultStatus(parsed) }
+      },
+    )
+
+    await this.finishSession(session.id, userId, result)
 
     return {
-      sessionId,
-      ...summary,
-      cached: Boolean(cached),
-      meta: {
-        cached: Boolean(cached),
-        status: generated.status,
-      },
+      sessionId: session.id,
+      ...result,
+      cached,
+      meta: { cached, status },
     }
+  }
+
+  private chatText(payload: InterviewPayload): Promise<string> {
+    return this.aiService.chat({ ...payload, modelTier: 'fast' })
+  }
+
+  private async streamText(payload: InterviewPayload, callbacks: AiStreamCallbacks): Promise<string> {
+    const stream = await this.aiService.chatStream({
+      ...payload,
+      modelTier: 'fast',
+      signal: callbacks.signal,
+      onDelta: callbacks.onDelta,
+      onUsage: callbacks.onUsage,
+    })
+    return stream.text
   }
 
   private async resolveResume(dto: CreateInterviewDto, userId: string) {
@@ -221,6 +202,7 @@ export class InterviewService {
         title: `${dto.targetRole} 模拟面试简历`,
         content: dto.resumeContent,
         targetRole: dto.targetRole,
+        source: 'auto',
       },
     })
   }
@@ -242,6 +224,7 @@ export class InterviewService {
           userId,
           jobTitle: dto.targetRole,
           content: dto.jobDescription,
+          source: 'auto',
         },
       })
     }
@@ -331,119 +314,6 @@ export class InterviewService {
     return session as SessionWithMessages
   }
 
-  private async requestFeedback(session: SessionWithMessages, dto: SubmitAnswerDto) {
-    const lastQuestion = [...session.messages].reverse().find((message) => message.role === 'ai')
-    const aiText = await this.aiService.chat({
-      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
-      userPrompt: this.buildFeedbackPrompt(session, dto.answer, lastQuestion?.content || ''),
-      temperature: 0.3,
-      maxTokens: 1800,
-      modelTier: 'fast',
-    })
-
-    return normalizeFeedbackResult(safeParseJson<InterviewFeedbackResult>(aiText))
-  }
-
-  private async generateQuestion(params: {
-    cachePayload: {
-      systemPrompt: string
-      userPrompt: string
-      temperature: number
-      maxTokens: number
-    }
-    model: string
-    dto: CreateInterviewDto
-    callbacks: AiStreamCallbacks
-  }) {
-    const stream = await this.aiService.chatStream({
-      ...params.cachePayload,
-      modelTier: 'fast',
-      signal: params.callbacks.signal,
-      onDelta: params.callbacks.onDelta,
-      onUsage: params.callbacks.onUsage,
-    })
-    const parsed = safeParseJson<InterviewQuestionResult>(stream.text)
-    const status = getAiResultStatus(parsed)
-    const result = normalizeQuestionResult(parsed, params.dto)
-
-    await this.aiCacheService.set({
-      feature: 'interview-question',
-      model: params.model,
-      version: 'interview-question-v2',
-      payload: params.cachePayload,
-      result,
-      rawText: stream.text,
-    })
-
-    return { result, status }
-  }
-
-  private async generateFeedback(params: {
-    cachePayload: {
-      systemPrompt: string
-      userPrompt: string
-      temperature: number
-      maxTokens: number
-    }
-    model: string
-    callbacks: AiStreamCallbacks
-  }) {
-    const stream = await this.aiService.chatStream({
-      ...params.cachePayload,
-      modelTier: 'fast',
-      signal: params.callbacks.signal,
-      onDelta: params.callbacks.onDelta,
-      onUsage: params.callbacks.onUsage,
-    })
-    const parsed = safeParseJson<InterviewFeedbackResult>(stream.text)
-    const status = getAiResultStatus(parsed)
-    const result = normalizeFeedbackResult(parsed)
-
-    await this.aiCacheService.set({
-      feature: 'interview-feedback',
-      model: params.model,
-      version: 'interview-feedback-v2',
-      payload: params.cachePayload,
-      result,
-      rawText: stream.text,
-    })
-
-    return { result, status }
-  }
-
-  private async generateSummary(params: {
-    cachePayload: {
-      systemPrompt: string
-      userPrompt: string
-      temperature: number
-      maxTokens: number
-    }
-    model: string
-    callbacks: AiStreamCallbacks
-  }) {
-    const stream = await this.aiService.chatStream({
-      ...params.cachePayload,
-      modelTier: 'fast',
-      signal: params.callbacks.signal,
-      onDelta: params.callbacks.onDelta,
-      onUsage: params.callbacks.onUsage,
-    })
-    const parsed = safeParseJson<InterviewSummaryResult>(stream.text)
-    const status = getAiResultStatus(parsed)
-    const result = normalizeSummaryResult(parsed)
-
-    await this.aiCacheService.set({
-      feature: 'interview-summary',
-      model: params.model,
-      version: 'interview-summary-v2',
-      payload: params.cachePayload,
-      result,
-      rawText: stream.text,
-    })
-
-    return { result, status }
-  }
-
   private async createAnswerMessages(sessionId: string, answer: string, feedback: InterviewFeedbackResult) {
     await this.prisma.interviewMessage.create({
       data: {
@@ -511,7 +381,7 @@ function normalizeQuestionResult(
   }
 }
 
-function normalizeFeedbackResult(value: InterviewFeedbackResult | { rawText: string; parseError: true }): InterviewFeedbackResult {
+export function normalizeFeedbackResult(value: InterviewFeedbackResult | { rawText: string; parseError: true }): InterviewFeedbackResult {
   if ('parseError' in value) {
     return {
       score: 0,
@@ -531,7 +401,7 @@ function normalizeFeedbackResult(value: InterviewFeedbackResult | { rawText: str
   }
 }
 
-function normalizeSummaryResult(value: InterviewSummaryResult | { rawText: string; parseError: true }): InterviewSummaryResult {
+export function normalizeSummaryResult(value: InterviewSummaryResult | { rawText: string; parseError: true }): InterviewSummaryResult {
   if ('parseError' in value) {
     return {
       totalScore: 0,

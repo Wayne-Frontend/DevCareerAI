@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, Res } from '@nestjs/common'
 import type { Response } from 'express'
+import { AiThrottle } from '../../common/guards/ai-throttle.decorator'
 import { createSseSession, getErrorMessage, writeSseEvent } from '../../common/utils/sse.util'
 import { CurrentUser } from '../auth/current-user.decorator'
 import type { AuthUserResponse } from '../auth/auth.types'
@@ -10,6 +11,7 @@ import { JobService } from './job.service'
 export class JobController {
   constructor(private readonly jobService: JobService) {}
 
+  @AiThrottle()
   @Post('match')
   match(@Body() dto: MatchJobDto, @CurrentUser() user: AuthUserResponse) {
     return this.jobService.match(dto, user.id)
@@ -30,6 +32,7 @@ export class JobController {
     return this.jobService.removeDescription(id, user.id)
   }
 
+  @AiThrottle()
   @Post('match/stream')
   async matchStream(@Body() dto: MatchJobDto, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
     const session = createSseSession(res)

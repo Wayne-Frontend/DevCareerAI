@@ -3,7 +3,7 @@ import { Prisma, Resume } from '@prisma/client'
 import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
-import { AiCacheService } from '../ai/ai-cache.service'
+import { AiCacheService, type AiGeneration } from '../ai/ai-cache.service'
 import { AiService } from '../ai/ai.service'
 import type { AiUsage, JobMatchResult } from '../ai/ai.types'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -17,6 +17,16 @@ interface AiStreamCallbacks {
   onUsage?: (usage: AiUsage) => void
 }
 
+interface MatchPayload {
+  systemPrompt: string
+  userPrompt: string
+  temperature: number
+  maxTokens: number
+}
+
+const MATCH_FEATURE = 'job-match'
+const MATCH_VERSION = 'job-match-v2'
+
 @Injectable()
 export class JobService {
   constructor(
@@ -26,69 +36,16 @@ export class JobService {
   ) {}
 
   async match(dto: MatchJobDto, userId: string) {
-    const resumeRecord = await this.resolveResume(dto, userId)
-    const jobDescription = await this.resolveJobDescription(dto, userId)
-    const aiText = await this.aiService.chat({
-      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
-      userPrompt: this.buildPrompt(dto),
-      temperature: 0.2,
-      maxTokens: 2400,
-      modelTier: 'quality',
-    })
-    const parsed = safeParseJson<JobMatchResult>(aiText)
-    const status = getAiResultStatus(parsed)
-    const result = normalizeJobMatchResult(parsed)
-
-    await this.createMatchAnalysis(resumeRecord.id, jobDescription.id, result)
-
-    return {
-      matchScore: result.matchScore,
-      result,
-      meta: { status },
-    }
+    return this.produceMatch(dto, userId, (payload) => this.generateWithChat(payload))
   }
 
   async matchStream(dto: MatchJobDto, userId: string, callbacks: AiStreamCallbacks = {}) {
-    const resumeRecord = await this.resolveResume(dto, userId)
-    const jobDescription = await this.resolveJobDescription(dto, userId)
-    const model = this.aiService.getModel('quality')
-    const cachePayload = {
-      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
-      userPrompt: this.buildPrompt(dto),
-      temperature: 0.2,
-      maxTokens: 2400,
-    }
-    const cached = await this.aiCacheService.get<JobMatchResult>({
-      feature: 'job-match',
-      model,
-      version: 'job-match-v2',
-      payload: cachePayload,
-    })
-    const generated = cached
-      ? { result: cached.result, status: 'success' as const }
-      : await this.generateMatch({
-          cachePayload,
-          model,
-          callbacks,
-        })
-    const result = generated.result
-
-    await this.createMatchAnalysis(resumeRecord.id, jobDescription.id, result)
-
-    return {
-      matchScore: result.matchScore,
-      result,
-      cached: Boolean(cached),
-      meta: {
-        cached: Boolean(cached),
-        status: generated.status,
-      },
-    }
+    return this.produceMatch(dto, userId, (payload) => this.generateWithStream(payload, callbacks))
   }
 
   findDescriptions(userId: string) {
     return this.prisma.jobDescription.findMany({
-      where: { userId },
+      where: { userId, source: 'manual' },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -119,6 +76,64 @@ export class JobService {
     }
   }
 
+  private async produceMatch(
+    dto: MatchJobDto,
+    userId: string,
+    generate: (payload: MatchPayload) => Promise<AiGeneration<JobMatchResult>>,
+  ) {
+    const resumeRecord = await this.resolveResume(dto, userId)
+    const jobDescription = await this.resolveJobDescription(dto, userId)
+    const model = this.aiService.getModel('quality')
+    const payload: MatchPayload = {
+      systemPrompt: CAREER_ASSISTANT_SYSTEM_PROMPT,
+      userPrompt: this.buildPrompt(dto),
+      temperature: 0.2,
+      maxTokens: 2400,
+    }
+
+    const { result, cached, status } = await this.aiCacheService.resolve<JobMatchResult>(
+      { feature: MATCH_FEATURE, model, version: MATCH_VERSION, payload },
+      () => generate(payload),
+    )
+
+    await this.createMatchAnalysis(resumeRecord.id, jobDescription.id, result)
+
+    return {
+      matchScore: result.matchScore,
+      result,
+      cached,
+      meta: { cached, status },
+    }
+  }
+
+  private async generateWithChat(payload: MatchPayload): Promise<AiGeneration<JobMatchResult>> {
+    const text = await this.aiService.chat({ ...payload, modelTier: 'quality' })
+    return this.toGeneration(text)
+  }
+
+  private async generateWithStream(
+    payload: MatchPayload,
+    callbacks: AiStreamCallbacks,
+  ): Promise<AiGeneration<JobMatchResult>> {
+    const stream = await this.aiService.chatStream({
+      ...payload,
+      modelTier: 'quality',
+      signal: callbacks.signal,
+      onDelta: callbacks.onDelta,
+      onUsage: callbacks.onUsage,
+    })
+    return this.toGeneration(stream.text)
+  }
+
+  private toGeneration(text: string): AiGeneration<JobMatchResult> {
+    const parsed = safeParseJson<JobMatchResult>(text)
+    return {
+      result: normalizeJobMatchResult(parsed),
+      rawText: text,
+      status: getAiResultStatus(parsed),
+    }
+  }
+
   private async resolveResume(dto: MatchJobDto, userId: string): Promise<Resume> {
     if (dto.resumeId) {
       const resume = await this.prisma.resume.findFirst({ where: { id: dto.resumeId, userId } })
@@ -136,6 +151,7 @@ export class JobService {
         title: `${dto.jobTitle} 匹配分析简历`,
         content: dto.resumeContent,
         targetRole: dto.jobTitle,
+        source: 'auto',
       },
     })
   }
@@ -159,6 +175,7 @@ export class JobService {
         jobTitle: dto.jobTitle,
         companyName: dto.companyName,
         content: dto.jobDescription,
+        source: 'auto',
       },
     })
   }
@@ -169,39 +186,6 @@ export class JobService {
       jobTitle: dto.jobTitle,
       jobDescription: limitTextForAi(dto.jobDescription, AI_TEXT_LIMITS.jobDescription),
     })
-  }
-
-  private async generateMatch(params: {
-    cachePayload: {
-      systemPrompt: string
-      userPrompt: string
-      temperature: number
-      maxTokens: number
-    }
-    model: string
-    callbacks: AiStreamCallbacks
-  }) {
-    const stream = await this.aiService.chatStream({
-      ...params.cachePayload,
-      modelTier: 'quality',
-      signal: params.callbacks.signal,
-      onDelta: params.callbacks.onDelta,
-      onUsage: params.callbacks.onUsage,
-    })
-    const parsed = safeParseJson<JobMatchResult>(stream.text)
-    const status = getAiResultStatus(parsed)
-    const result = normalizeJobMatchResult(parsed)
-
-    await this.aiCacheService.set({
-      feature: 'job-match',
-      model: params.model,
-      version: 'job-match-v2',
-      payload: params.cachePayload,
-      result,
-      rawText: stream.text,
-    })
-
-    return { result, status }
   }
 
   private createMatchAnalysis(resumeId: string, jobDescriptionId: string, result: JobMatchResult) {
@@ -216,7 +200,7 @@ export class JobService {
   }
 }
 
-function normalizeJobMatchResult(value: JobMatchResult | { rawText: string; parseError: true }): JobMatchResult {
+export function normalizeJobMatchResult(value: JobMatchResult | { rawText: string; parseError: true }): JobMatchResult {
   if ('parseError' in value) {
     return {
       matchScore: 0,
