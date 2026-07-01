@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import type { Response } from 'express'
 import { AiThrottle } from '../../common/guards/ai-throttle.decorator'
 import { runSseStream } from '../../common/utils/sse.util'
@@ -12,6 +13,8 @@ import { ResumeService } from './resume.service'
 
 const SUPPORTED_RESUME_EXTENSIONS = new Set(['pdf', 'docx', 'txt', 'md'])
 
+@ApiTags('简历')
+@ApiBearerAuth()
 @Controller('resumes')
 export class ResumeController {
   constructor(

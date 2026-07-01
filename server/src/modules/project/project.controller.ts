@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Res } from '@nestjs/common'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import type { Response } from 'express'
 import { AiThrottle } from '../../common/guards/ai-throttle.decorator'
 import { runSseStream } from '../../common/utils/sse.util'
@@ -7,6 +8,8 @@ import type { AuthUserResponse } from '../auth/auth.types'
 import { OptimizeProjectDto } from './dto/optimize-project.dto'
 import { ProjectService } from './project.service'
 
+@ApiTags('项目优化')
+@ApiBearerAuth()
 @Controller('projects')
 export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}

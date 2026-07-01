@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Res } from '@nestjs/common'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import type { Response } from 'express'
 import { AiThrottle } from '../../common/guards/ai-throttle.decorator'
 import { runSseStream } from '../../common/utils/sse.util'
@@ -7,6 +8,8 @@ import type { AuthUserResponse } from '../auth/auth.types'
 import { MatchJobDto } from './dto/match-job.dto'
 import { JobService } from './job.service'
 
+@ApiTags('岗位匹配')
+@ApiBearerAuth()
 @Controller('jobs')
 export class JobController {
   constructor(private readonly jobService: JobService) {}

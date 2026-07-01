@@ -1,5 +1,6 @@
 ﻿import { BadRequestException, Body, Controller, Get, Patch, Post, Req, UploadedFile, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import type { Request } from 'express'
 import { AuthService, extractBearerToken } from './auth.service'
 import type { AuthUserResponse } from './auth.types'
@@ -11,6 +12,7 @@ import { Public } from './public.decorator'
 
 const AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
+@ApiTags('认证')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -27,16 +29,19 @@ export class AuthController {
     return this.authService.login(dto)
   }
 
+  @ApiBearerAuth()
   @Get('me')
   me(@Req() request: Request & { user?: unknown }) {
     return request.user
   }
 
+  @ApiBearerAuth()
   @Patch('me')
   updateMe(@CurrentUser() user: AuthUserResponse, @Body() dto: UpdateProfileDto) {
     return this.authService.updateProfile(user.id, dto)
   }
 
+  @ApiBearerAuth()
   @Post('me/avatar')
   @UseInterceptors(
     FileInterceptor('avatar', {
@@ -55,6 +60,7 @@ export class AuthController {
     return this.authService.updateAvatar(user.id, file, getRequestOrigin(request))
   }
 
+  @ApiBearerAuth()
   @Post('logout')
   logout(@Req() request: Request) {
     return this.authService.logout(extractBearerToken(request.headers.authorization))
