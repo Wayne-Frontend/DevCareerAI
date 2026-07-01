@@ -31,11 +31,11 @@ export class ProjectService {
   ) {}
 
   async optimize(dto: OptimizeProjectDto, userId: string) {
-    return this.produceOptimization(dto, userId, (payload) => this.generateWithChat(payload, dto))
+    return this.produceOptimization(dto, userId, (payload) => this.generateWithChat(payload, dto, userId))
   }
 
   async optimizeStream(dto: OptimizeProjectDto, userId: string, callbacks: AiStreamCallbacks = {}) {
-    return this.produceOptimization(dto, userId, (payload) => this.generateWithStream(payload, dto, callbacks))
+    return this.produceOptimization(dto, userId, (payload) => this.generateWithStream(payload, dto, callbacks, userId))
   }
 
   findOptimizations(userId: string) {
@@ -103,8 +103,9 @@ export class ProjectService {
   private async generateWithChat(
     payload: OptimizePayload,
     dto: OptimizeProjectDto,
+    userId: string,
   ): Promise<AiGeneration<ProjectOptimizationResult>> {
-    const text = await this.aiService.chat({ ...payload, modelTier: 'quality' })
+    const text = await this.aiService.chat({ ...payload, modelTier: 'quality', feature: OPTIMIZE_FEATURE, userId })
     return this.toGeneration(text, dto)
   }
 
@@ -112,10 +113,13 @@ export class ProjectService {
     payload: OptimizePayload,
     dto: OptimizeProjectDto,
     callbacks: AiStreamCallbacks,
+    userId: string,
   ): Promise<AiGeneration<ProjectOptimizationResult>> {
     const stream = await this.aiService.chatStream({
       ...payload,
       modelTier: 'quality',
+      feature: OPTIMIZE_FEATURE,
+      userId,
       signal: callbacks.signal,
       onDelta: callbacks.onDelta,
       onUsage: callbacks.onUsage,

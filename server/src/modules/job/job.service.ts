@@ -31,11 +31,11 @@ export class JobService {
   ) {}
 
   async match(dto: MatchJobDto, userId: string) {
-    return this.produceMatch(dto, userId, (payload) => this.generateWithChat(payload))
+    return this.produceMatch(dto, userId, (payload) => this.generateWithChat(payload, userId))
   }
 
   async matchStream(dto: MatchJobDto, userId: string, callbacks: AiStreamCallbacks = {}) {
-    return this.produceMatch(dto, userId, (payload) => this.generateWithStream(payload, callbacks))
+    return this.produceMatch(dto, userId, (payload) => this.generateWithStream(payload, callbacks, userId))
   }
 
   findDescriptions(userId: string) {
@@ -101,18 +101,21 @@ export class JobService {
     }
   }
 
-  private async generateWithChat(payload: MatchPayload): Promise<AiGeneration<JobMatchResult>> {
-    const text = await this.aiService.chat({ ...payload, modelTier: 'quality' })
+  private async generateWithChat(payload: MatchPayload, userId: string): Promise<AiGeneration<JobMatchResult>> {
+    const text = await this.aiService.chat({ ...payload, modelTier: 'quality', feature: MATCH_FEATURE, userId })
     return this.toGeneration(text)
   }
 
   private async generateWithStream(
     payload: MatchPayload,
     callbacks: AiStreamCallbacks,
+    userId: string,
   ): Promise<AiGeneration<JobMatchResult>> {
     const stream = await this.aiService.chatStream({
       ...payload,
       modelTier: 'quality',
+      feature: MATCH_FEATURE,
+      userId,
       signal: callbacks.signal,
       onDelta: callbacks.onDelta,
       onUsage: callbacks.onUsage,

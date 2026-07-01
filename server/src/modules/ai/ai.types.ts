@@ -6,6 +6,9 @@ export interface ChatOptions {
   responseFormat?: 'json_object' | 'text'
   thinking?: 'enabled' | 'disabled'
   modelTier?: 'fast' | 'quality'
+  // 用量埋点上下文：标记本次调用属于哪个功能、归属哪个用户。不参与缓存键计算。
+  feature?: string
+  userId?: string | null
 }
 
 export interface AiUsage {
@@ -27,6 +30,12 @@ export interface AiStreamCallbacks {
   signal?: AbortSignal
   onDelta?: (delta: string) => void
   onUsage?: (usage: AiUsage) => void
+}
+
+export interface ChatResult {
+  text: string
+  usage?: AiUsage
+  model: string
 }
 
 export interface ChatStreamResult {

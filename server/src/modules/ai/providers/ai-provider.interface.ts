@@ -1,4 +1,4 @@
-import type { ChatOptions, ChatStreamOptions, ChatStreamResult } from '../ai.types'
+import type { ChatOptions, ChatResult, ChatStreamOptions, ChatStreamResult } from '../ai.types'
 
 export const AI_PROVIDER = Symbol('AI_PROVIDER')
 
@@ -8,6 +8,6 @@ export const AI_PROVIDER = Symbol('AI_PROVIDER')
  */
 export interface AiProvider {
   getModel(tier?: ChatOptions['modelTier']): string
-  chat(options: ChatOptions): Promise<string>
+  chat(options: ChatOptions): Promise<ChatResult>
   chatStream(options: ChatStreamOptions): Promise<ChatStreamResult>
 }

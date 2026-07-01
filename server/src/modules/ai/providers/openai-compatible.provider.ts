@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import axios, { AxiosError } from 'axios'
 import type { Readable } from 'stream'
 import { isConfiguredApiKey, resolveAiConfig, type ResolvedAiConfig } from '../ai-config'
-import type { AiUsage, ChatOptions, ChatStreamOptions, ChatStreamResult } from '../ai.types'
+import type { AiUsage, ChatOptions, ChatResult, ChatStreamOptions, ChatStreamResult } from '../ai.types'
 import type { AiProvider } from './ai-provider.interface'
 
 interface ChatCompletionResponse {
@@ -41,7 +41,7 @@ export class OpenAiCompatibleProvider implements AiProvider {
     return tier === 'fast' ? this.config.modelFast : this.config.modelQuality
   }
 
-  async chat(options: ChatOptions): Promise<string> {
+  async chat(options: ChatOptions): Promise<ChatResult> {
     this.assertApiKey()
     const model = this.getModel(options.modelTier)
 
@@ -51,7 +51,11 @@ export class OpenAiCompatibleProvider implements AiProvider {
         timeout: 90000,
       })
 
-      return response.data.choices?.[0]?.message?.content || ''
+      return {
+        text: response.data.choices?.[0]?.message?.content || '',
+        usage: response.data.usage,
+        model,
+      }
     } catch (error) {
       throw new ServiceUnavailableException(`AI service unavailable: ${readAxiosErrorMessage(error)}`)
     }

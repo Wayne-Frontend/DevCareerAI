@@ -82,13 +82,13 @@ export class ResumeService {
   async analyze(id: string, userId: string) {
     const resume = await this.findResume(id, userId)
 
-    return this.produceAnalysis(resume, (payload) => this.generateWithChat(payload))
+    return this.produceAnalysis(resume, (payload) => this.generateWithChat(payload, userId))
   }
 
   async analyzeStream(id: string, userId: string, callbacks: AiStreamCallbacks = {}) {
     const resume = await this.findResume(id, userId)
 
-    return this.produceAnalysis(resume, (payload) => this.generateWithStream(payload, callbacks))
+    return this.produceAnalysis(resume, (payload) => this.generateWithStream(payload, callbacks, userId))
   }
 
   private async produceAnalysis(
@@ -118,18 +118,21 @@ export class ResumeService {
     }
   }
 
-  private async generateWithChat(payload: AnalysisPayload): Promise<AiGeneration<ResumeAnalysisResult>> {
-    const text = await this.aiService.chat({ ...payload, modelTier: 'quality' })
+  private async generateWithChat(payload: AnalysisPayload, userId: string): Promise<AiGeneration<ResumeAnalysisResult>> {
+    const text = await this.aiService.chat({ ...payload, modelTier: 'quality', feature: ANALYSIS_FEATURE, userId })
     return this.toGeneration(text)
   }
 
   private async generateWithStream(
     payload: AnalysisPayload,
     callbacks: AiStreamCallbacks,
+    userId: string,
   ): Promise<AiGeneration<ResumeAnalysisResult>> {
     const stream = await this.aiService.chatStream({
       ...payload,
       modelTier: 'quality',
+      feature: ANALYSIS_FEATURE,
+      userId,
       signal: callbacks.signal,
       onDelta: callbacks.onDelta,
       onUsage: callbacks.onUsage,

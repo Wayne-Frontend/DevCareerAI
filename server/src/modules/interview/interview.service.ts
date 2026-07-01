@@ -29,6 +29,12 @@ interface InterviewPayload {
   maxTokens: number
 }
 
+// 用量埋点上下文：面试三个阶段的 feature 不同，需随调用透传。
+interface AiCallMeta {
+  feature: string
+  userId: string
+}
+
 type GetText = (payload: InterviewPayload) => Promise<string>
 
 type SessionWithMessages = InterviewSession & {
@@ -45,39 +51,45 @@ export class InterviewService {
   ) {}
 
   async create(dto: CreateInterviewDto, userId: string) {
-    return this.produceQuestion(dto, userId, (payload) => this.chatText(payload))
+    const meta: AiCallMeta = { feature: 'interview-question', userId }
+    return this.produceQuestion(dto, userId, (payload) => this.chatText(payload, meta))
   }
 
   async createStream(dto: CreateInterviewDto, userId: string, callbacks: AiStreamCallbacks = {}) {
-    return this.produceQuestion(dto, userId, (payload) => this.streamText(payload, callbacks))
+    const meta: AiCallMeta = { feature: 'interview-question', userId }
+    return this.produceQuestion(dto, userId, (payload) => this.streamText(payload, callbacks, meta))
   }
 
   async submitAnswer(sessionId: string, dto: SubmitAnswerDto, userId: string) {
     const session = await this.findSession(sessionId, userId)
     this.assertOngoingSession(session)
 
-    return this.produceFeedback(session, dto, (payload) => this.chatText(payload))
+    const meta: AiCallMeta = { feature: 'interview-feedback', userId }
+    return this.produceFeedback(session, dto, (payload) => this.chatText(payload, meta))
   }
 
   async submitAnswerStream(sessionId: string, dto: SubmitAnswerDto, userId: string, callbacks: AiStreamCallbacks = {}) {
     const session = await this.findSession(sessionId, userId)
     this.assertOngoingSession(session)
 
-    return this.produceFeedback(session, dto, (payload) => this.streamText(payload, callbacks))
+    const meta: AiCallMeta = { feature: 'interview-feedback', userId }
+    return this.produceFeedback(session, dto, (payload) => this.streamText(payload, callbacks, meta))
   }
 
   async finish(sessionId: string, userId: string) {
     const session = await this.findSession(sessionId, userId, false)
     this.assertOngoingSession(session)
 
-    return this.produceSummary(session, userId, (payload) => this.chatText(payload))
+    const meta: AiCallMeta = { feature: 'interview-summary', userId }
+    return this.produceSummary(session, userId, (payload) => this.chatText(payload, meta))
   }
 
   async finishStream(sessionId: string, userId: string, callbacks: AiStreamCallbacks = {}) {
     const session = await this.findSession(sessionId, userId, false)
     this.assertOngoingSession(session)
 
-    return this.produceSummary(session, userId, (payload) => this.streamText(payload, callbacks))
+    const meta: AiCallMeta = { feature: 'interview-summary', userId }
+    return this.produceSummary(session, userId, (payload) => this.streamText(payload, callbacks, meta))
   }
 
   private async produceQuestion(dto: CreateInterviewDto, userId: string, getText: GetText) {
@@ -165,14 +177,16 @@ export class InterviewService {
     }
   }
 
-  private chatText(payload: InterviewPayload): Promise<string> {
-    return this.aiService.chat({ ...payload, modelTier: 'fast' })
+  private chatText(payload: InterviewPayload, meta: AiCallMeta): Promise<string> {
+    return this.aiService.chat({ ...payload, modelTier: 'fast', feature: meta.feature, userId: meta.userId })
   }
 
-  private async streamText(payload: InterviewPayload, callbacks: AiStreamCallbacks): Promise<string> {
+  private async streamText(payload: InterviewPayload, callbacks: AiStreamCallbacks, meta: AiCallMeta): Promise<string> {
     const stream = await this.aiService.chatStream({
       ...payload,
       modelTier: 'fast',
+      feature: meta.feature,
+      userId: meta.userId,
       signal: callbacks.signal,
       onDelta: callbacks.onDelta,
       onUsage: callbacks.onUsage,
