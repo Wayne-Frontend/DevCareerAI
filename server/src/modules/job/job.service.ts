@@ -4,13 +4,16 @@ import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
 import { clampScore, toStringList } from '../../common/utils/normalize.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
+import { stableStringify } from '../../common/utils/stable-json.util'
 import { AiCacheService, type AiGeneration } from '../ai/ai-cache.service'
 import { AiService } from '../ai/ai.service'
 import type { AiStreamCallbacks, JobMatchResult } from '../ai/ai.types'
 import { PrismaService } from '../../prisma/prisma.service'
 import { buildJobMatchPrompt } from '../../prompts/job.prompt'
 import { CAREER_ASSISTANT_SYSTEM_PROMPT } from '../../prompts/resume.prompt'
+import { CreateJobDescriptionDto } from './dto/create-job-description.dto'
 import { MatchJobDto } from './dto/match-job.dto'
+import { UpdateJobDescriptionDto } from './dto/update-job-description.dto'
 
 interface MatchPayload {
   systemPrompt: string
@@ -47,6 +50,7 @@ export class JobService {
         jobTitle: true,
         companyName: true,
         content: true,
+        source: true,
         createdAt: true,
       },
     })
@@ -60,6 +64,27 @@ export class JobService {
     }
 
     return jobDescription
+  }
+
+  createDescription(dto: CreateJobDescriptionDto, userId: string) {
+    return this.prisma.jobDescription.create({
+      data: {
+        userId,
+        jobTitle: dto.jobTitle,
+        companyName: dto.companyName,
+        content: dto.content,
+        source: 'manual',
+      },
+    })
+  }
+
+  async updateDescription(id: string, dto: UpdateJobDescriptionDto, userId: string) {
+    await this.findDescription(id, userId)
+
+    return this.prisma.jobDescription.update({
+      where: { id },
+      data: dto,
+    })
   }
 
   async removeDescription(id: string, userId: string) {
@@ -91,7 +116,10 @@ export class JobService {
       () => generate(payload),
     )
 
-    await this.createMatchAnalysis(resumeRecord.id, jobDescription.id, result)
+    // 缓存命中说明输入未变、结果与此前完全一致：复用同一简历+JD 下的已有记录，避免重复历史。
+    if (!cached || !(await this.hasReusableMatchAnalysis(resumeRecord.id, jobDescription.id, result))) {
+      await this.createMatchAnalysis(resumeRecord.id, jobDescription.id, result)
+    }
 
     return {
       matchScore: result.matchScore,
@@ -195,6 +223,19 @@ export class JobService {
         resultJson: result as unknown as Prisma.InputJsonValue,
       },
     })
+  }
+
+  // 在同一简历+JD 的近期记录中查找 resultJson 完全一致的一条，命中则说明已存在无需再写。
+  private async hasReusableMatchAnalysis(resumeId: string, jobDescriptionId: string, result: JobMatchResult) {
+    const target = stableStringify(result)
+    const recent = await this.prisma.jobMatchAnalysis.findMany({
+      where: { resumeId, jobDescriptionId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { resultJson: true },
+    })
+
+    return recent.some((row) => stableStringify(row.resultJson) === target)
   }
 }
 

@@ -38,7 +38,7 @@ const resumeOptions = ref<ResumeRecord[]>([])
 const jobOptions = ref<JobDescriptionRecord[]>([])
 const selectedResumeId = ref('')
 const selectedJobDescriptionId = ref('')
-const queryResumeApplied = ref(false)
+const queryApplied = ref(false)
 
 const form = reactive({
   resumeContent: '',
@@ -75,7 +75,7 @@ async function loadAssets() {
     const [resumes, jobs] = await Promise.all([getResumes(), getJobDescriptions()])
     resumeOptions.value = resumes
     jobOptions.value = jobs
-    applyResumeFromQuery()
+    applyFromQuery()
   } catch {
     assetsError.value = '已有简历或 JD 加载失败，你仍可以手动输入内容。'
     notify('已有资料加载失败，可手动填写后继续分析', 'warning')
@@ -84,24 +84,34 @@ async function loadAssets() {
   }
 }
 
-function readResumeIdQuery() {
-  const value = route.query.resumeId
+function readQueryId(key: 'resumeId' | 'jdId') {
+  const value = route.query[key]
   return typeof value === 'string' ? value : ''
 }
 
-function applyResumeFromQuery() {
-  const resumeId = readResumeIdQuery()
-  if (!resumeId || queryResumeApplied.value) return
+function applyFromQuery() {
+  if (queryApplied.value) return
+  queryApplied.value = true
 
-  const resume = resumeOptions.value.find((item) => item.id === resumeId)
-  queryResumeApplied.value = true
-  if (!resume) {
-    notify('指定简历加载失败，可手动选择或填写后继续分析', 'warning')
-    return
+  const resumeId = readQueryId('resumeId')
+  if (resumeId) {
+    if (resumeOptions.value.some((item) => item.id === resumeId)) {
+      applyResume(resumeId)
+      notify('已带入简历管理中的简历', 'success')
+    } else {
+      notify('指定简历加载失败，可手动选择或填写后继续分析', 'warning')
+    }
   }
 
-  applyResume(resumeId)
-  notify('已带入简历管理中的简历', 'success')
+  const jdId = readQueryId('jdId')
+  if (jdId) {
+    if (jobOptions.value.some((item) => item.id === jdId)) {
+      applyJobDescription(jdId)
+      notify('已带入 JD 管理中的岗位描述', 'success')
+    } else {
+      notify('指定 JD 加载失败，可手动选择或填写后继续匹配', 'warning')
+    }
+  }
 }
 
 function applyResume(id: string) {
@@ -120,6 +130,10 @@ function applyJobDescription(id: string) {
   form.jobTitle = job.jobTitle
   form.companyName = job.companyName || ''
   form.jobDescription = job.content
+}
+
+function jobDescriptionLabel(job: JobDescriptionRecord) {
+  return job.companyName ? `${job.companyName} - ${job.jobTitle}` : job.jobTitle
 }
 
 async function onResumeFileChange(event: Event) {
@@ -301,7 +315,7 @@ function goInterviewFromJobMatch() {
           <span class="field-label">选择已有 JD</span>
           <select v-model="selectedJobDescriptionId" class="select-base" :disabled="loading" @change="applyJobDescription(selectedJobDescriptionId)">
             <option value="">手动输入新 JD</option>
-            <option v-for="job in jobOptions" :key="job.id" :value="job.id">{{ job.companyName ? `${job.companyName} - ${job.jobTitle}` : job.jobTitle }}</option>
+            <option v-for="job in jobOptions" :key="job.id" :value="job.id">{{ jobDescriptionLabel(job) }}</option>
           </select>
         </label>
 

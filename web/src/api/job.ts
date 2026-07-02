@@ -1,6 +1,12 @@
 import { request } from './request'
 import { streamRequest, type StreamHandlers } from './streamRequest'
-import type { JobDescriptionRecord, JobMatchPayload, JobMatchResponse } from '../types/job'
+import type {
+  JobDescriptionPayload,
+  JobDescriptionRecord,
+  JobMatchPayload,
+  JobMatchResponse,
+  UpdateJobDescriptionPayload,
+} from '../types/job'
 
 export function matchJob(data: JobMatchPayload) {
   return request<JobMatchResponse>({
@@ -18,6 +24,22 @@ export function getJobDescriptions() {
   return request<JobDescriptionRecord[]>({
     url: '/jobs/descriptions',
     method: 'GET',
+  })
+}
+
+export function createJobDescription(data: JobDescriptionPayload) {
+  return request<JobDescriptionRecord>({
+    url: '/jobs/descriptions',
+    method: 'POST',
+    data,
+  })
+}
+
+export function updateJobDescription(id: string, data: UpdateJobDescriptionPayload) {
+  return request<JobDescriptionRecord>({
+    url: `/jobs/descriptions/${id}`,
+    method: 'PATCH',
+    data,
   })
 }
 

@@ -38,6 +38,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: '项目优化' },
       },
       {
+        path: 'jobs',
+        name: 'job-manage',
+        component: () => import('../views/JobManage/index.vue'),
+        meta: { title: 'JD 管理' },
+      },
+      {
         path: 'job-match',
         name: 'job-match',
         component: () => import('../views/JobMatch/index.vue'),
@@ -69,6 +75,16 @@ export const routes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/404',
+    name: 'not-found',
+    component: () => import('../views/NotFound/index.vue'),
+    meta: { title: '页面不存在', public: true },
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: { name: 'not-found' },
+  },
 ]
 
 const router = createRouter({
@@ -87,9 +103,9 @@ router.beforeEach((to) => {
     return { name: 'home' }
   }
 
-  // 角色受限路由：仅体验层拦截，真正的安全边界由后端 RolesGuard 保证。
+  // 角色受限路由：无权限则跳 404（仅体验层拦截，真正的安全边界由后端 RolesGuard 保证）。
   if (to.meta.role && getStoredAuthSession()?.user.role !== to.meta.role) {
-    return { name: 'home' }
+    return { name: 'not-found' }
   }
 
   return true

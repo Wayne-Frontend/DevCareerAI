@@ -12,8 +12,17 @@ export interface JobDescriptionRecord {
   jobTitle: string
   companyName?: string
   content: string
+  source?: 'manual' | 'auto'
   createdAt: string
 }
+
+export interface JobDescriptionPayload {
+  jobTitle: string
+  companyName?: string
+  content: string
+}
+
+export type UpdateJobDescriptionPayload = Partial<JobDescriptionPayload>
 
 export interface JobMatchResult {
   matchScore: number

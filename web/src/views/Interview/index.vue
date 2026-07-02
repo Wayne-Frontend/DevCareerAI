@@ -37,7 +37,7 @@ const resumeOptions = ref<ResumeRecord[]>([])
 const jobOptions = ref<JobDescriptionRecord[]>([])
 const selectedResumeId = ref('')
 const selectedJobDescriptionId = ref('')
-const queryResumeApplied = ref(false)
+const queryApplied = ref(false)
 
 const form = reactive({
   resumeContent: '',
@@ -70,7 +70,7 @@ async function loadAssets() {
     const [resumes, jobs] = await Promise.all([getResumes(), getJobDescriptions()])
     resumeOptions.value = resumes
     jobOptions.value = jobs
-    applyResumeFromQuery()
+    applyFromQuery()
   } catch {
     assetsError.value = '已有简历或 JD 加载失败，你仍可以手动输入内容。'
     notify('已有资料加载失败，可手动填写后继续面试', 'warning')
@@ -79,24 +79,34 @@ async function loadAssets() {
   }
 }
 
-function readResumeIdQuery() {
-  const value = route.query.resumeId
+function readQueryId(key: 'resumeId' | 'jdId') {
+  const value = route.query[key]
   return typeof value === 'string' ? value : ''
 }
 
-function applyResumeFromQuery() {
-  const resumeId = readResumeIdQuery()
-  if (!resumeId || queryResumeApplied.value) return
+function applyFromQuery() {
+  if (queryApplied.value) return
+  queryApplied.value = true
 
-  const resume = resumeOptions.value.find((item) => item.id === resumeId)
-  queryResumeApplied.value = true
-  if (!resume) {
-    notify('指定简历加载失败，可手动选择或填写后继续面试', 'warning')
-    return
+  const resumeId = readQueryId('resumeId')
+  if (resumeId) {
+    if (resumeOptions.value.some((item) => item.id === resumeId)) {
+      applyResume(resumeId)
+      workflowMessage.value = '已带入简历管理中的简历，可直接开始模拟面试。'
+    } else {
+      notify('指定简历加载失败，可手动选择或填写后继续面试', 'warning')
+    }
   }
 
-  applyResume(resumeId)
-  workflowMessage.value = '已带入简历管理中的简历，可直接开始模拟面试。'
+  const jdId = readQueryId('jdId')
+  if (jdId) {
+    if (jobOptions.value.some((item) => item.id === jdId)) {
+      applyJobDescription(jdId)
+      workflowMessage.value = '已带入 JD 管理中的岗位描述，可直接开始模拟面试。'
+    } else {
+      notify('指定 JD 加载失败，可手动选择或填写后继续面试', 'warning')
+    }
+  }
 }
 
 function applyResume(id: string) {

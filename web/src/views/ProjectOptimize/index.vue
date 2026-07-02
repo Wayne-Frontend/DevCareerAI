@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { AlertTriangle, Code2, Copy, FileText, HelpCircle, Layers, Mic, Shield, Sparkles, Square, Star, Trash2, UserRound } from 'lucide-vue-next'
 import EmptyState from '../../components/EmptyState/index.vue'
 import InlineStatus from '../../components/InlineStatus/index.vue'
+import ListSection from '../../components/ListSection/index.vue'
 import LoadingButton from '../../components/LoadingButton/index.vue'
 import StreamPreview from '../../components/StreamPreview/index.vue'
 import { deleteProjectOptimization, getProjectOptimizations, optimizeProjectStream } from '../../api/project'
@@ -313,38 +314,4 @@ function goInterviewFromProject() {
     </div>
   </div>
 </template>
-
-<script lang="ts">
-import type { Component } from 'vue'
-
-export default {
-  components: {
-    ListSection: {
-      props: {
-        title: { type: String, required: true },
-        icon: { type: Object as () => Component, required: true },
-        items: { type: Array as () => string[], required: true },
-        ordered: { type: Boolean, default: false },
-      },
-      template: `
-        <section class="section-card">
-          <h3 class="mb-3 mt-0 flex items-center gap-2 text-lg font-black text-[#0f172a]">
-            <component :is="icon" :size="20" class="text-indigo-500" />
-            {{ title }}
-          </h3>
-          <ol v-if="ordered" class="m-0 grid gap-2 pl-5 text-sm font-semibold leading-7 text-[#334155]">
-            <li v-for="item in items" :key="item">{{ item }}</li>
-          </ol>
-          <ul v-else class="m-0 grid list-disc gap-2 pl-5 text-sm font-semibold leading-7 text-[#334155]">
-            <li v-for="item in items" :key="item">{{ item }}</li>
-          </ul>
-        </section>
-      `,
-    },
-  },
-}
-</script>
-
-
-
 
