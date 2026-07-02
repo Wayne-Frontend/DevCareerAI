@@ -1,6 +1,6 @@
 ﻿import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import MainLayout from '../layout/MainLayout.vue'
-import { getAuthToken } from '../utils/authSession'
+import { getAuthToken, getStoredAuthSession } from '../utils/authSession'
 
 export const routes: RouteRecordRaw[] = [
   {
@@ -61,6 +61,12 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('../views/Profile/index.vue'),
         meta: { title: '个人中心' },
       },
+      {
+        path: 'admin/ai-usage',
+        name: 'ai-usage',
+        component: () => import('../views/AiUsage/index.vue'),
+        meta: { title: '用量监控', role: 'admin' },
+      },
     ],
   },
 ]
@@ -78,6 +84,11 @@ router.beforeEach((to) => {
   }
 
   if (to.name === 'login' && isAuthenticated) {
+    return { name: 'home' }
+  }
+
+  // 角色受限路由：仅体验层拦截，真正的安全边界由后端 RolesGuard 保证。
+  if (to.meta.role && getStoredAuthSession()?.user.role !== to.meta.role) {
     return { name: 'home' }
   }
 

@@ -9,6 +9,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = computed(() => session.value?.user || null)
   const token = computed(() => session.value?.token || '')
   const isAuthenticated = computed(() => Boolean(token.value))
+  const isAdmin = computed(() => user.value?.role === 'admin')
 
   function setSession(nextSession: AuthSession, remember: boolean) {
     session.value = nextSession
@@ -35,6 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     token,
     isAuthenticated,
+    isAdmin,
     setSession,
     clearSession,
     updateUser,

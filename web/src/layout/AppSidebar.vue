@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Files,
   FileSearch,
+  Gauge,
   Home,
   Mic,
   Sparkles,
@@ -19,7 +20,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const authStore = useAuthStore()
 
-const mainMenuItems = [
+const baseMenuItems = [
   { path: '/', label: '首页', icon: Home },
   { path: '/resumes', label: '简历管理', icon: Files },
   { path: '/resume-analyze', label: '简历诊断', icon: FileSearch },
@@ -28,6 +29,13 @@ const mainMenuItems = [
   { path: '/interview', label: '模拟面试', icon: Mic },
   { path: '/history', label: '复盘中心', icon: BarChart3 },
 ]
+
+// 用量监控仅管理员可见，与后端 @Roles('admin') 对齐。
+const mainMenuItems = computed(() =>
+  authStore.isAdmin
+    ? [...baseMenuItems, { path: '/admin/ai-usage', label: '用量监控', icon: Gauge }]
+    : baseMenuItems,
+)
 
 const avatarLoadFailed = ref(false)
 const userName = computed(() => authStore.user?.username || authStore.user?.email || 'Dev 同学')
