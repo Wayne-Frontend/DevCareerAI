@@ -4,6 +4,7 @@ import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
 import { toStringList } from '../../common/utils/normalize.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
+import { stableStringify } from '../../common/utils/stable-json.util'
 import { AiCacheService, type AiGeneration } from '../ai/ai-cache.service'
 import { AiService } from '../ai/ai.service'
 import type { AiStreamCallbacks, ProjectOptimizationResult } from '../ai/ai.types'
@@ -91,7 +92,10 @@ export class ProjectService {
       () => generate(payload),
     )
 
-    await this.createOptimization(dto, result, userId)
+    // 缓存命中说明输入未变、结果与此前完全一致：复用该用户已有记录，避免重复历史。
+    if (!cached || !(await this.hasReusableOptimization(userId, result))) {
+      await this.createOptimization(dto, result, userId)
+    }
 
     return {
       result,
@@ -154,6 +158,19 @@ export class ProjectService {
         resultJson: result as unknown as Prisma.InputJsonValue,
       },
     })
+  }
+
+  // 在该用户近期的项目优化记录中查找 resultJson 完全一致的一条（缓存命中即同输入同结果），命中则无需再写。
+  private async hasReusableOptimization(userId: string, result: ProjectOptimizationResult) {
+    const target = stableStringify(result)
+    const recent = await this.prisma.projectOptimization.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { resultJson: true },
+    })
+
+    return recent.some((row) => stableStringify(row.resultJson) === target)
   }
 }
 

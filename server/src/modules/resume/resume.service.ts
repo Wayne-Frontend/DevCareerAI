@@ -4,6 +4,7 @@ import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
 import { clampScore, toStringList } from '../../common/utils/normalize.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
+import { stableStringify } from '../../common/utils/stable-json.util'
 import { AiCacheService, type AiGeneration } from '../ai/ai-cache.service'
 import { AiService } from '../ai/ai.service'
 import type { AiStreamCallbacks, ResumeAnalysisResult } from '../ai/ai.types'
@@ -107,7 +108,9 @@ export class ResumeService {
       { feature: ANALYSIS_FEATURE, model, version: ANALYSIS_VERSION, payload },
       () => generate(payload),
     )
-    const analysis = await this.createAnalysis(resume.id, result)
+    // 缓存命中说明输入未变、结果与此前完全一致：复用已有记录，避免重复点击刷出成堆相同历史。
+    const reusableId = cached ? await this.findReusableAnalysisId(resume.id, result) : null
+    const analysis = reusableId ? { id: reusableId } : await this.createAnalysis(resume.id, result)
 
     return {
       analysisId: analysis.id,
@@ -175,6 +178,19 @@ export class ResumeService {
         resultJson: result as unknown as Prisma.InputJsonValue,
       },
     })
+  }
+
+  // 在同一份简历的近期记录中查找 resultJson 完全一致的一条，命中则返回其 id 供复用。
+  private async findReusableAnalysisId(resumeId: string, result: ResumeAnalysisResult) {
+    const target = stableStringify(result)
+    const recent = await this.prisma.resumeAnalysis.findMany({
+      where: { resumeId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, resultJson: true },
+    })
+
+    return recent.find((row) => stableStringify(row.resultJson) === target)?.id ?? null
   }
 }
 

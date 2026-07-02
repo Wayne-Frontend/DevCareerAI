@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Clock3, Code2, Copy, FileSearch, History, Mic, RefreshCw, Search, Target, Trash2 } from 'lucide-vue-next'
 import EmptyState from '../../components/EmptyState/index.vue'
+import InlineStatus from '../../components/InlineStatus/index.vue'
 import LoadingButton from '../../components/LoadingButton/index.vue'
 import SkeletonCard from '../../components/SkeletonCard/index.vue'
 import { deleteHistoryRecord, getHistory } from '../../api/history'
@@ -26,6 +27,7 @@ const workflowStore = useWorkflowStore()
 const router = useRouter()
 const activeType = ref<FilterType>('all')
 const loading = ref(false)
+const loadError = ref(false)
 const records = ref<HistoryRecord[]>([])
 const keyword = ref('')
 const activeDetail = ref<HistoryRecord | null>(null)
@@ -75,8 +77,12 @@ const displayRecords = computed(() => {
 
 async function load(type: FilterType = activeType.value) {
   loading.value = true
+  loadError.value = false
   try {
     records.value = await getHistory(type === 'all' ? undefined : type)
+  } catch {
+    // 接口失败时保留上一次列表，仅置错误态；具体错误提示已由响应拦截器弹出。
+    loadError.value = true
   } finally {
     loading.value = false
   }
@@ -312,6 +318,10 @@ onMounted(() => load())
     <section v-if="loading" class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5">
       <SkeletonCard v-for="index in 4" :key="index" />
     </section>
+
+    <InlineStatus v-else-if="loadError" type="error" title="历史记录加载失败" description="可能是网络或服务异常，请重试。">
+      <button type="button" class="btn-secondary mt-3 min-h-9 text-sm" @click="load(activeType)">重新加载</button>
+    </InlineStatus>
 
     <EmptyState v-else-if="displayRecords.length === 0" title="暂无历史记录" description="完成一次 AI 分析或模拟面试后，记录会出现在这里。" />
 

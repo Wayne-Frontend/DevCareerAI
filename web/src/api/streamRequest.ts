@@ -1,4 +1,5 @@
-﻿import { clearStoredAuthSession, getAuthToken } from '../utils/authSession'
+﻿import { getAuthToken } from '../utils/authSession'
+import { redirectToLogin } from '../utils/redirectToLogin'
 import { notifyApiError, resolveFetchErrorMessage } from './errors'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
@@ -44,9 +45,8 @@ export async function streamRequest<TDone>(
     const message = await resolveFetchErrorMessage(response)
     notifyApiError(message)
 
-    if (response.status === 401 && window.location.pathname !== '/login') {
-      clearStoredAuthSession()
-      window.location.assign('/login')
+    if (response.status === 401) {
+      redirectToLogin()
     }
 
     throw new Error(message)

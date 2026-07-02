@@ -1,5 +1,6 @@
 ﻿import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
-import { clearStoredAuthSession, getAuthToken } from '../utils/authSession'
+import { getAuthToken } from '../utils/authSession'
+import { redirectToLogin } from '../utils/redirectToLogin'
 import { notifyApiError, resolveApiErrorMessage, type ApiErrorPayload } from './errors'
 
 const service = axios.create({
@@ -23,9 +24,8 @@ service.interceptors.response.use(
     const message = resolveApiErrorMessage(error)
     notifyApiError(message)
 
-    if (error.response?.status === 401 && window.location.pathname !== '/login') {
-      clearStoredAuthSession()
-      window.location.assign('/login')
+    if (error.response?.status === 401) {
+      redirectToLogin()
     }
 
     return Promise.reject(error)
