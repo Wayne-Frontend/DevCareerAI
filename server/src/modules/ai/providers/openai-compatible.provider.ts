@@ -105,12 +105,14 @@ export class OpenAiCompatibleProvider implements AiProvider {
   }
 
   private buildBody(options: ChatOptions, model: string, stream: boolean) {
+    // messages 数组优先（多轮对话场景）；否则退回到单条 userPrompt 的既有行为。
+    const turns = options.messages?.length
+      ? options.messages
+      : [{ role: 'user' as const, content: options.userPrompt ?? '' }]
+
     return {
       model,
-      messages: [
-        { role: 'system', content: options.systemPrompt },
-        { role: 'user', content: options.userPrompt },
-      ],
+      messages: [{ role: 'system', content: options.systemPrompt }, ...turns],
       temperature: options.temperature ?? 0.2,
       max_tokens: options.maxTokens ?? 2000,
       ...(this.config.sendThinking ? { thinking: { type: options.thinking ?? 'disabled' } } : {}),

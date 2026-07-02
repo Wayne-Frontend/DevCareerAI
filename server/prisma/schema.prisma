@@ -22,6 +22,7 @@ model User {
   projectOptimizations ProjectOptimization[]
   jobDescriptions      JobDescription[]
   interviewSessions    InterviewSession[]
+  chatSessions         ChatSession[]
 }
 
 model AuthSession {
@@ -55,6 +56,7 @@ model Resume {
   analyses        ResumeAnalysis[]
   jobMatches      JobMatchAnalysis[]
   interviews      InterviewSession[]
+  chatSessions    ChatSession[]
 
   @@index([userId])
 }
@@ -98,6 +100,7 @@ model JobDescription {
   user        User? @relation(fields: [userId], references: [id], onDelete: Cascade)
   matches     JobMatchAnalysis[]
   interviews  InterviewSession[]
+  chatSessions ChatSession[]
 
   @@index([userId])
 }
@@ -148,6 +151,36 @@ model InterviewMessage {
   createdAt    DateTime @default(now())
 
   session      InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
+
+model ChatSession {
+  id               String   @id @default(cuid())
+  userId           String?
+  resumeId         String?
+  jobDescriptionId String?
+  title            String   @default("新的会话")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user             User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // 删除简历/JD 不应连带删除聊天记录，故用 SetNull。
+  resume           Resume? @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  jobDescription   JobDescription? @relation(fields: [jobDescriptionId], references: [id], onDelete: SetNull)
+  messages         ChatMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  role      String // 'user' | 'ai'，与 InterviewMessage 保持一致
+  content   String
+  createdAt DateTime @default(now())
+
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
 }

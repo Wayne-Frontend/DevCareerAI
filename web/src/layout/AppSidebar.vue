@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import {
   BarChart3,
   Boxes,
@@ -9,6 +9,7 @@ import {
   FileSearch,
   Gauge,
   Home,
+  MessagesSquare,
   Mic,
   Sparkles,
   X,
@@ -29,6 +30,7 @@ const baseMenuItems = [
   { path: '/jobs', label: 'JD 管理', icon: ClipboardList },
   { path: '/job-match', label: '岗位匹配', icon: BriefcaseBusiness },
   { path: '/interview', label: '模拟面试', icon: Mic },
+  { path: '/chat', label: '职业顾问', icon: MessagesSquare },
   { path: '/history', label: '复盘中心', icon: BarChart3 },
 ]
 
@@ -273,4 +275,3 @@ watch(avatarUrl, () => {
   }
 }
 </style>
-

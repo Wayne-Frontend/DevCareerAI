@@ -1,15 +1,33 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { Send } from 'lucide-vue-next'
 import type { ChatMessage } from '../../types/interview'
 import EmptyState from '../EmptyState/index.vue'
 import ChatMessageItem from '../ChatMessage/index.vue'
 
-const props = defineProps<{
-  messages: ChatMessage[]
-  loading?: boolean
-  disabled?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    messages: ChatMessage[]
+    loading?: boolean
+    disabled?: boolean
+    // 以下文案可按场景覆盖，默认保持模拟面试原有表现。
+    emptyTitle?: string
+    emptyDescription?: string
+    placeholder?: string
+    disabledHint?: string
+    maxLength?: number
+    // AI 消息按 Markdown 渲染（职业顾问场景使用）。
+    markdown?: boolean
+  }>(),
+  {
+    emptyTitle: '准备开始',
+    emptyDescription: '左侧配置完成后，AI 面试官会在这里生成第一道问题。',
+    placeholder: '请输入你的回答...',
+    disabledHint: '当前面试已结束',
+    maxLength: 1500,
+    markdown: false,
+  },
+)
 
 const emit = defineEmits<{
   sendAnswer: [answer: string]
@@ -70,6 +88,17 @@ watch(
   { flush: 'post' },
 )
 
+// 流式生成时最后一条消息的内容会持续增长，跟随滚动保持贴底。
+watch(
+  () => props.messages[props.messages.length - 1]?.content.length,
+  async () => {
+    if (!pinnedToBottom.value) return
+    await nextTick()
+    scrollToBottom()
+  },
+  { flush: 'post' },
+)
+
 watch(answer, async () => {
   await nextTick()
   resizeAnswerTextarea()
@@ -87,8 +116,8 @@ onMounted(async () => {
     <div ref="messageScroller" class="soft-scrollbar grid min-h-0 flex-1 content-start gap-4 overflow-auto px-1 pb-4" @scroll="onMessagesScroll">
       <EmptyState
         v-if="messages.length === 0"
-        title="准备开始"
-        description="左侧配置完成后，AI 面试官会在这里生成第一道问题。"
+        :title="emptyTitle"
+        :description="emptyDescription"
       />
       <ChatMessageItem
         v-for="message in messages"
@@ -97,6 +126,7 @@ onMounted(async () => {
         :role="message.role"
         :content="message.content"
         :feedback="message.feedback"
+        :markdown="markdown"
       />
     </div>
 
@@ -107,14 +137,14 @@ onMounted(async () => {
             ref="answerTextarea"
             v-model="answer"
             class="soft-scrollbar min-h-8 flex-1 resize-none border-0 bg-transparent py-1 text-sm font-semibold leading-6 text-[#0f172a] outline-none placeholder:text-[#94a3b8]"
-            maxlength="1500"
-            placeholder="请输入你的回答..."
+            :maxlength="maxLength"
+            :placeholder="placeholder"
             rows="1"
             :disabled="loading || disabled"
             @input="resizeAnswerTextarea"
             @keydown.ctrl.enter.prevent="send"
           />
-          <span class="mb-1 shrink-0 text-xs font-bold text-[#64748b]">{{ answer.length }}/1500</span>
+          <span class="mb-1 shrink-0 text-xs font-bold text-[#64748b]">{{ answer.length }}/{{ maxLength }}</span>
         </div>
         <button
           class="grid h-[58px] w-[58px] place-items-center rounded-full bg-gradient-to-br from-violet-500 to-blue-500 text-white shadow-[0_18px_36px_rgba(99,102,241,0.35)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
@@ -125,7 +155,7 @@ onMounted(async () => {
           <Send :size="18" />
         </button>
       </div>
-      <span class="ml-1 mt-2 block text-xs text-[#94a3b8]">{{ disabled ? '当前面试已结束' : loading ? 'AI 思考中，请稍候' : '按 Ctrl + Enter 发送' }}</span>
+      <span class="ml-1 mt-2 block text-xs text-[#94a3b8]">{{ disabled ? disabledHint : loading ? 'AI 思考中，请稍候' : '按 Ctrl + Enter 发送' }}</span>
     </div>
   </div>
 </template>

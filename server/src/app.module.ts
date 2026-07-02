@@ -8,6 +8,7 @@ import { UserThrottlerGuard } from './common/guards/user-throttler.guard'
 import { AiModule } from './modules/ai/ai.module'
 import { AuthGuard } from './modules/auth/auth.guard'
 import { AuthModule } from './modules/auth/auth.module'
+import { ChatModule } from './modules/chat/chat.module'
 import { DashboardModule } from './modules/dashboard/dashboard.module'
 import { FileModule } from './modules/file/file.module'
 import { HistoryModule } from './modules/history/history.module'
@@ -33,6 +34,7 @@ import { validateEnv } from './config/env.validation'
     ProjectModule,
     JobModule,
     InterviewModule,
+    ChatModule,
     HistoryModule,
     MaintenanceModule,
   ],

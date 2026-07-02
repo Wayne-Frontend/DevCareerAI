@@ -1,4 +1,4 @@
-﻿import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import MainLayout from '../layout/MainLayout.vue'
 import { getAuthToken, getStoredAuthSession } from '../utils/authSession'
 
@@ -54,6 +54,12 @@ export const routes: RouteRecordRaw[] = [
         name: 'interview',
         component: () => import('../views/Interview/index.vue'),
         meta: { title: '模拟面试' },
+      },
+      {
+        path: 'chat',
+        name: 'chat',
+        component: () => import('../views/Chat/index.vue'),
+        meta: { title: '职业顾问' },
       },
       {
         path: 'history',
