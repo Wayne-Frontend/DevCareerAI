@@ -1,4 +1,4 @@
-﻿import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common'
+﻿import { BadRequestException, ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common'
 import { Prisma, User } from '@prisma/client'
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'crypto'
 import { join } from 'path'
@@ -26,6 +26,8 @@ const AVATAR_EXTENSIONS: Record<ImageMimeType, string> = {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name)
+
   constructor(private readonly prisma: PrismaService) {}
 
   async register(dto: RegisterDto) {
@@ -33,13 +35,24 @@ export class AuthService {
     const username = dto.username.trim()
 
     try {
-      const user = await this.prisma.user.create({
-        data: {
-          username,
-          email,
-          passwordHash: hashPassword(dto.password),
-        },
+      const user = await this.prisma.$transaction(async (tx) => {
+        // 空系统里的首个注册用户自动成为管理员（first-run 引导，只发生一次）。
+        // SQLite 写事务串行化，并发注册不会同时读到 0，无需额外加锁；此后永不再从任何字段反推 role。
+        const isFirstUser = (await tx.user.count()) === 0
+
+        return tx.user.create({
+          data: {
+            username,
+            email,
+            passwordHash: hashPassword(dto.password),
+            role: isFirstUser ? 'admin' : 'user',
+          },
+        })
       })
+
+      if (user.role === 'admin') {
+        this.logger.log(`已将首个注册用户 ${user.username} 设为管理员`)
+      }
 
       return this.createAuthResponse(user, true)
     } catch (error) {
