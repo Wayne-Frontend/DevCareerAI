@@ -227,7 +227,7 @@ function switchMode(nextMode: 'login' | 'register') {
 .login-page {
   position: relative;
   display: grid;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   place-items: center;
   padding: 28px;

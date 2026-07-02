@@ -397,7 +397,7 @@ function goInterviewFromResume() {
 
           <section class="section-card">
             <h3 class="mb-4 mt-0 text-lg font-black text-[#0f172a]">维度评分</h3>
-            <div class="grid grid-cols-5 gap-3">
+            <div class="grid grid-cols-[repeat(auto-fit,minmax(88px,1fr))] gap-3">
               <div v-for="(score, key) in result.dimensionScores" :key="key" class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-center">
                 <strong class="block text-2xl text-indigo-600">{{ score }}</strong>
                 <span class="text-xs font-bold text-[#64748b]">{{ key }}</span>
@@ -405,7 +405,7 @@ function goInterviewFromResume() {
             </div>
           </section>
 
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
             <SuggestionList title="优势" :items="result.strengths" />
             <SuggestionList title="存在问题" :items="result.weaknesses" />
           </div>

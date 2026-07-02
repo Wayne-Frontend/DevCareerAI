@@ -286,7 +286,7 @@ onMounted(() => load())
     </header>
 
     <section class="glass-card p-5">
-      <div class="flex items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="flex flex-wrap gap-3">
           <button
             v-for="tab in tabs"
@@ -302,20 +302,20 @@ onMounted(() => load())
           </button>
         </div>
 
-        <label class="flex h-11 w-[280px] items-center gap-3 rounded-[13px] border border-[rgba(203,213,225,0.82)] bg-white/68 px-4">
+        <label class="flex h-11 w-[min(100%,280px)] items-center gap-3 rounded-[13px] border border-[rgba(203,213,225,0.82)] bg-white/68 px-4">
           <input v-model="keyword" class="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-[#94a3b8]" placeholder="搜索记录标题..." />
           <Search :size="18" class="text-[#64748b]" />
         </label>
       </div>
     </section>
 
-    <section v-if="loading" class="grid grid-cols-4 gap-5">
+    <section v-if="loading" class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5">
       <SkeletonCard v-for="index in 4" :key="index" />
     </section>
 
     <EmptyState v-else-if="displayRecords.length === 0" title="暂无历史记录" description="完成一次 AI 分析或模拟面试后，记录会出现在这里。" />
 
-    <section v-else class="grid grid-cols-4 gap-5">
+    <section v-else class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5">
       <article v-for="record in displayRecords" :key="record.id" class="section-card flex h-[250px] flex-col p-5">
         <div class="flex items-center justify-between">
           <span class="inline-flex h-10 items-center gap-2 rounded-[12px] px-3 text-sm font-black" :class="typeMeta[record.type].tagClass">

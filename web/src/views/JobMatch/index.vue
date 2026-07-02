@@ -375,7 +375,7 @@ function goInterviewFromJobMatch() {
             AI 返回内容不是合法 JSON，已保留原文整理结果，建议重试生成。
           </p>
 
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
             <section class="section-card">
               <h3 class="mb-4 mt-0 text-lg font-black text-[#0f172a]">匹配关键词</h3>
               <KeywordTags :tags="result.matchedKeywords" type="success" />

@@ -302,7 +302,7 @@ function goInterviewFromProject() {
               <span v-for="tag in result.techStack" :key="tag" class="rounded-[10px] border border-slate-200 bg-white/70 px-4 py-2 text-sm font-bold text-indigo-600">{{ tag }}</span>
             </div>
           </section>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
             <ListSection title="个人职责" :icon="UserRound" :items="result.responsibilities" />
             <ListSection title="技术亮点" :icon="Star" :items="result.highlights" />
             <ListSection title="项目难点" :icon="AlertTriangle" :items="result.difficulties" />

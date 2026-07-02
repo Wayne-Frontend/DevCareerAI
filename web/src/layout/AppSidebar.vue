@@ -9,9 +9,13 @@ import {
   Home,
   Mic,
   Sparkles,
+  X,
 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
+
+defineProps<{ open?: boolean }>()
+const emit = defineEmits<{ close: [] }>()
 
 const authStore = useAuthStore()
 
@@ -35,8 +39,12 @@ watch(avatarUrl, () => {
 </script>
 
 <template>
-  <aside class="app-sidebar" aria-label="主导航">
-    <RouterLink class="brand-link" to="/">
+  <aside class="app-sidebar" :class="{ 'is-open': open }" aria-label="主导航">
+    <button type="button" class="drawer-close" aria-label="关闭菜单" @click="emit('close')">
+      <X :size="20" />
+    </button>
+
+    <RouterLink class="brand-link" to="/" @click="emit('close')">
       <span class="brand-mark">
         <Sparkles :size="30" stroke-width="1.7" />
       </span>
@@ -50,13 +58,14 @@ watch(avatarUrl, () => {
         :to="item.path"
         class="menu-item"
         :class="{ active: $route.path === item.path }"
+        @click="emit('close')"
       >
         <component :is="item.icon" :size="23" stroke-width="1.9" />
         <span>{{ item.label }}</span>
       </RouterLink>
     </nav>
 
-    <RouterLink class="user-card" to="/profile">
+    <RouterLink class="user-card" to="/profile" @click="emit('close')">
       <span class="user-avatar">
         <img
           v-if="avatarUrl && !avatarLoadFailed"
@@ -227,48 +236,30 @@ watch(avatarUrl, () => {
   }
 }
 
+.drawer-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: none;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #0b55e8;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px rgba(31, 73, 125, 0.08);
+}
+
 @media (max-width: 980px) {
+  /* 抽屉模式：竖向布局保持不变，仅露出关闭按钮并适配圆角 */
+  .drawer-close {
+    display: grid;
+  }
+
   .app-sidebar {
-    position: sticky;
-    top: 0;
-    width: auto;
-    min-height: 66px;
-    flex-direction: row;
-    align-items: center;
-    overflow-x: auto;
-    border-radius: 0 0 20px 20px;
-    padding: 10px 12px;
-  }
-
-  .brand-link {
-    min-height: 48px;
-    flex: 0 0 auto;
-    padding: 0 6px;
-
-    strong {
-      display: none;
-    }
-  }
-
-  .main-menu {
-    display: flex;
-    gap: 8px;
-    margin-top: 0;
-  }
-
-  .menu-item {
-    min-width: 46px;
-    min-height: 46px;
-    justify-content: center;
-    padding: 0 12px;
-
-    span {
-      display: none;
-    }
-  }
-
-  .user-card {
-    display: none;
+    border-radius: 0 20px 20px 0;
+    padding-top: 22px;
   }
 }
 </style>

@@ -23,23 +23,24 @@
     --gradient-soft: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(56, 189, 248, 0.1));
     --shadow-card: 0 20px 50px rgba(31, 73, 125, 0.1);
     --shadow-inner-light: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-    /* 统一桌面密度：1080p 以工具台可读性为基准，2K/4K 通过最大宽度留白保持观感稳定。 */
-    --app-sidebar-width: 260px;
-    --app-content-max-width: 1680px;
-    --page-padding-x: 28px;
-    --page-padding-y: 24px;
-    --page-gap: 18px;
-    --page-header-min-height: 82px;
-    --page-title-size: 34px;
-    --page-subtitle-size: 14px;
-    --panel-padding: 20px;
-    --card-radius: 16px;
-    --glass-radius: 18px;
-    --control-height: 40px;
-    --control-radius: 11px;
-    --feature-left-min: 360px;
-    --feature-balanced-left-min: 420px;
-    --feature-compact-left-min: 320px;
+    /* 流式令牌：以 1080p 为基准，2K/4K 借 clamp 上限按比例放大填满，向下平滑收缩至平板/手机。
+       离散断点仅用于处理布局质变（双栏折叠、侧栏形态），尺寸密度全部交给 clamp 连续过渡。 */
+    --app-sidebar-width: clamp(248px, 60px + 10vw, 360px);
+    --app-content-max-width: clamp(1280px, 85vw, 3200px);
+    --page-padding-x: clamp(16px, 1.6vw, 48px);
+    --page-padding-y: clamp(16px, 1.3vw, 36px);
+    --page-gap: clamp(14px, 1vw, 28px);
+    --page-header-min-height: clamp(72px, 4.3vw, 112px);
+    --page-title-size: clamp(26px, 1.9vw, 52px);
+    --page-subtitle-size: clamp(13px, 0.8vw, 20px);
+    --panel-padding: clamp(14px, 1.15vw, 32px);
+    --card-radius: clamp(14px, 0.9vw, 22px);
+    --glass-radius: clamp(16px, 1vw, 24px);
+    --control-height: clamp(40px, 2.1vw, 54px);
+    --control-radius: clamp(10px, 0.65vw, 16px);
+    --feature-left-min: clamp(300px, 20vw, 520px);
+    --feature-balanced-left-min: clamp(340px, 23vw, 620px);
+    --feature-compact-left-min: clamp(260px, 17vw, 460px);
   }
 
   * {
@@ -86,7 +87,7 @@
 @layer components {
   .app-bg {
     position: relative;
-    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     background:
       linear-gradient(115deg, rgba(255, 255, 255, 0.72) 0 18%, transparent 18% 100%),
@@ -132,7 +133,7 @@
   .app-main {
     position: relative;
     z-index: 1;
-    height: 100vh;
+    height: 100dvh;
     margin-left: var(--app-sidebar-width);
     overflow-x: hidden;
     overflow-y: auto;
@@ -155,24 +156,6 @@
     border: 3px solid rgba(255, 255, 255, 0.24);
     border-radius: 999px;
     background: rgba(59, 130, 246, 0.34);
-  }
-
-  .app-bg > .app-sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    width: var(--app-sidebar-width) !important;
-    height: 100vh !important;
-    flex: 0 0 var(--app-sidebar-width) !important;
-  }
-
-  .app-bg > .app-main {
-    position: relative !important;
-    top: 0 !important;
-    margin-left: var(--app-sidebar-width) !important;
-    width: calc(100% - var(--app-sidebar-width)) !important;
-    height: 100vh !important;
   }
 
   .glass-card {
@@ -399,12 +382,32 @@
 }
 
 
+  /* 桌面外壳定位：保持 unlayered，使底部移动端媒体查询（同为 unlayered !important）能按源码顺序覆盖它，
+     避免 @layer 内的 !important 反转优先级导致移动端无法解除固定侧栏。 */
+  .app-bg > .app-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: var(--app-sidebar-width) !important;
+    height: 100dvh !important;
+    flex: 0 0 var(--app-sidebar-width) !important;
+  }
+
+  .app-bg > .app-main {
+    position: relative !important;
+    top: 0 !important;
+    margin-left: var(--app-sidebar-width) !important;
+    width: calc(100% - var(--app-sidebar-width)) !important;
+    height: 100dvh !important;
+  }
+
   /* Unified AI workspace styling for feature pages */
   .page {
     position: relative;
     z-index: 1;
     display: flex;
-    min-height: 100vh;
+    min-height: 100dvh;
     width: 100%;
     max-width: var(--app-content-max-width);
     flex-direction: column;
@@ -577,18 +580,6 @@
     background: rgba(79, 124, 255, 0.12) !important;
     color: #4f7cff !important;
   }
-@media (max-width: 1440px) {
-  :root {
-    --app-sidebar-width: 248px;
-    --app-content-max-width: 1320px;
-    --page-padding-x: 24px;
-    --panel-padding: 18px;
-    --page-title-size: 32px;
-    --feature-left-min: 330px;
-    --feature-balanced-left-min: 360px;
-  }
-}
-
 @media (max-width: 1180px) {
   .work-grid,
   .feature-workspace,
@@ -609,32 +600,52 @@
 }
 
 @media (max-width: 980px) {
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
   .app-bg {
     overflow: visible;
     height: auto;
-    min-height: 100vh;
+    min-height: 100dvh;
   }
 
-  .app-main {
-    width: 100%;
-    height: auto;
-    min-height: calc(100vh - 66px);
-    margin-left: 0;
-    overflow: visible;
+  /* 移动端隐藏大尺寸装饰光晕，消除横向溢出 */
+  .app-bg::before,
+  .app-bg::after {
+    display: none;
   }
 
-  .app-bg > .app-sidebar {
-    position: sticky !important;
-    top: 0 !important;
-    width: auto !important;
-    height: auto !important;
-    flex: none !important;
-  }
-
+  /* 内容全宽，为固定顶部条留出 56px 空间 */
+  .app-main,
   .app-bg > .app-main {
     margin-left: 0 !important;
     width: 100% !important;
     height: auto !important;
+    min-height: 100dvh;
+    padding-top: 56px;
+    overflow: visible;
+  }
+
+  /* 侧栏化为左侧滑出抽屉：默认移出屏幕，.is-open 时滑入 */
+  .app-bg > .app-sidebar {
+    top: 0 !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: 0 !important;
+    z-index: 60 !important;
+    width: min(82vw, 300px) !important;
+    height: 100dvh !important;
+    transform: translateX(-100%);
+    transition: transform 0.28s ease;
+    box-shadow: 0 0 60px rgba(15, 40, 90, 0.28);
+  }
+
+  .app-bg > .app-sidebar.is-open {
+    transform: none;
   }
 
   .page-title {
@@ -643,6 +654,11 @@
 }
 
 @media (max-width: 640px) {
+  :root {
+    /* 手机端满足 ≥44px 触摸目标 */
+    --control-height: 44px;
+  }
+
   .app-bg {
     padding: 10px;
   }
@@ -653,6 +669,22 @@
 
   .page-subtitle {
     font-size: 15px;
+  }
+
+  .copy-action {
+    min-height: 44px;
+  }
+}
+
+/* 触摸设备：禁用悬停位移，避免点按后动画粘滞 */
+@media (hover: none) {
+  .btn-primary:hover,
+  .btn-secondary:hover,
+  .primary-gradient-btn:hover,
+  .section-card:hover,
+  .copy-action:hover,
+  .glass-card:hover {
+    transform: none;
   }
 }
 
