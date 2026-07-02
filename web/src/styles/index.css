@@ -688,3 +688,33 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   固定视口页面（page-viewport）：页面本身不出现整体滚动条，
+   滚动只发生在左右卡片内部（卡片自带 overflow-y:auto）。
+   用法：在页面根节点 .page 上追加 .page-viewport。
+   --------------------------------------------------------------------------- */
+.page-viewport {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page-viewport > header {
+  flex: 0 0 auto;
+}
+
+.page-viewport .feature-workspace,
+.page-viewport .feature-workspace-balanced,
+.page-viewport .feature-workspace-compact {
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
+/* 窄屏折叠为单列时退回普通页面滚动，避免卡片被压扁。 */
+@media (max-width: 1180px) {
+  .page-viewport {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+}

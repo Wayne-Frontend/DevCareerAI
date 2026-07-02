@@ -353,7 +353,7 @@ async function copyStudyPlan() {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page page-viewport">
     <header class="flex items-center gap-4">
       <div class="icon-tile">
         <Mic :size="23" />

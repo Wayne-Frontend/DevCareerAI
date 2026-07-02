@@ -261,6 +261,7 @@ const actionCards = [
             :key="index"
             class="suggestion-item"
             :class="`priority-${suggestion.tone}`"
+            :title="suggestion.text"
             to="/resume-analyze"
           >
             <span class="suggestion-icon">
@@ -532,6 +533,14 @@ const actionCards = [
   display: grid;
   grid-template-columns: minmax(0, 1.66fr) minmax(390px, 1fr);
   gap: var(--page-gap);
+  /* 覆盖全局 items-start：两卡等高，底边始终对齐 */
+  align-items: stretch;
+}
+
+/* 左卡为高度标尺：flex 纵向 + footer 钉底，被拉伸时按钮不脱离卡底 */
+.diagnosis-card {
+  display: flex;
+  flex-direction: column;
 }
 
 .diagnosis-card,
@@ -838,6 +847,7 @@ const actionCards = [
   align-items: center;
   justify-content: space-between;
   gap: 18px;
+  margin-top: auto;
   padding-top: 6px;
 
   span {
@@ -855,6 +865,9 @@ const actionCards = [
 }
 
 .suggestions-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   min-height: 342px;
 }
 
@@ -883,8 +896,16 @@ const actionCards = [
 
 .suggestion-list {
   display: grid;
+  flex: 1 1 0;
+  grid-auto-rows: max-content;
+  align-content: start;
   gap: 11px;
+  min-height: 0;
   margin-top: 14px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-color: rgba(99, 102, 241, 0.32) rgba(226, 232, 240, 0.46);
+  scrollbar-width: thin;
 }
 
 .dimension-panel--empty {
@@ -904,6 +925,7 @@ const actionCards = [
 
 .suggestion-empty {
   display: grid;
+  flex: 1;
   gap: 12px;
   margin-top: 14px;
   place-items: center;
@@ -968,9 +990,15 @@ const actionCards = [
   }
 
   strong {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
     color: #07163f;
     font-size: 15px;
     font-weight: 850;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
   }
 
   small {
@@ -1161,6 +1189,21 @@ const actionCards = [
   .work-grid,
   .action-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* 单列堆叠：取消等高约束，各卡按内容自适应 */
+  .suggestions-card {
+    min-height: auto;
+  }
+
+  .suggestion-list {
+    flex: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .suggestion-empty {
+    flex: none;
   }
 }
 

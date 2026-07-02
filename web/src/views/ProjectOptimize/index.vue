@@ -175,7 +175,7 @@ function goInterviewFromProject() {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page page-viewport">
     <header class="flex items-center gap-5">
       <div class="icon-tile">
         <Code2 :size="23" />

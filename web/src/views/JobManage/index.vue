@@ -167,7 +167,7 @@ function goInterview() {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page page-viewport">
     <header class="flex items-center gap-4">
       <div class="icon-tile">
         <ClipboardList :size="23" />
@@ -397,9 +397,8 @@ function goInterview() {
 }
 
 .jd-content-preview {
-  max-height: 440px;
+  /* 不限制高度：让正文自动撑开，滚动统一交给外层卡片，避免双滚动条。 */
   margin: 0;
-  overflow: auto;
   white-space: pre-wrap;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.66);
