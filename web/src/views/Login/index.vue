@@ -30,7 +30,12 @@ const subtitle = computed(() =>
     : '登录 DevCareer AI，开启你的智能求职工作台。',
 )
 const submitLabel = computed(() => (isRegister.value ? '注册' : '登录'))
-const passwordValid = computed(() => form.password.length >= 6)
+// 注册要求 8 位以上且含字母和数字（与后端 RegisterDto 一致）；登录只做非空长度校验，兼容老密码。
+const passwordValid = computed(() =>
+  isRegister.value
+    ? form.password.length >= 8 && /[a-zA-Z]/.test(form.password) && /\d/.test(form.password)
+    : form.password.length >= 6,
+)
 const registerPasswordMatched = computed(
   () => !isRegister.value || form.password === form.confirmPassword,
 )
@@ -49,7 +54,10 @@ async function submit() {
   }
 
   if (!passwordValid.value) {
-    notify('密码至少需要 6 位', 'warning')
+    notify(
+      isRegister.value ? '密码需至少 8 位，且同时包含字母和数字' : '密码至少需要 6 位',
+      'warning',
+    )
     return
   }
 
@@ -176,7 +184,7 @@ function switchMode(nextMode: 'login' | 'register') {
               <input
                 v-model="form.password"
                 :autocomplete="isRegister ? 'new-password' : 'current-password'"
-                :placeholder="isRegister ? '请设置至少 6 位密码' : '请输入密码'"
+                :placeholder="isRegister ? '至少 8 位，需包含字母和数字' : '请输入密码'"
                 :type="showPassword ? 'text' : 'password'"
               />
               <button
@@ -194,7 +202,7 @@ function switchMode(nextMode: 'login' | 'register') {
               class="helper-text"
               :class="{ 'text-emerald-600': passwordValid }"
             >
-              {{ passwordValid ? '密码长度符合要求' : '至少 6 位密码' }}
+              {{ passwordValid ? '密码符合要求' : '至少 8 位，需同时包含字母和数字' }}
             </span>
           </label>
 

@@ -17,8 +17,8 @@ import EmptyState from '@/components/EmptyState/index.vue'
 import InlineStatus from '@/components/InlineStatus/index.vue'
 import LoadingButton from '@/components/LoadingButton/index.vue'
 import SkeletonCard from '@/components/SkeletonCard/index.vue'
-import { deleteHistoryRecord, getHistory } from '@/api/history'
-import type { HistoryRecord, HistoryType } from '@/types/history'
+import { deleteHistoryRecord, getHistory, getHistoryRecord } from '@/api/history'
+import type { HistoryRecord, HistoryRecordSummary, HistoryType } from '@/types/history'
 import { formatDateTime } from '@/utils/format'
 import { messageBox } from '@/utils/messageBox'
 import { notify } from '@/utils/notify'
@@ -44,9 +44,10 @@ const router = useRouter()
 const activeType = ref<FilterType>('all')
 const loading = ref(false)
 const loadError = ref(false)
-const records = ref<HistoryRecord[]>([])
+const records = ref<HistoryRecordSummary[]>([])
 const keyword = ref('')
 const activeDetail = ref<HistoryRecord | null>(null)
+const detailLoadingId = ref('')
 const deletingId = ref('')
 
 const tabs: Array<{ label: string; value: FilterType; icon?: typeof FileSearch }> = [
@@ -115,7 +116,20 @@ async function changeType(type: FilterType) {
   await load(type)
 }
 
-async function remove(record: HistoryRecord) {
+// 详情按需加载：列表只有汇总，点"查看"时才拉完整内容（简历/JD 原文、面试回放等大字段）。
+async function openDetail(record: HistoryRecordSummary) {
+  if (detailLoadingId.value) return
+  detailLoadingId.value = record.id
+  try {
+    activeDetail.value = await getHistoryRecord(record.id)
+  } catch {
+    notify('详情加载失败，请稍后重试', 'error')
+  } finally {
+    detailLoadingId.value = ''
+  }
+}
+
+async function remove(record: HistoryRecordSummary) {
   const confirmed = await messageBox.confirm({
     type: 'danger',
     title: '确认删除这条记录？',
@@ -139,13 +153,12 @@ function rawDetailText(record: HistoryRecord) {
   return JSON.stringify(record.detail || record, null, 2)
 }
 
-function detailObject(record: HistoryRecord | null) {
-  return record?.detail && typeof record.detail === 'object'
-    ? (record.detail as Record<string, unknown>)
-    : {}
+function detailObject(record: HistoryRecordSummary | HistoryRecord | null) {
+  const detail = record && 'detail' in record ? record.detail : undefined
+  return detail && typeof detail === 'object' ? (detail as Record<string, unknown>) : {}
 }
 
-function detailString(record: HistoryRecord | null, key: string) {
+function detailString(record: HistoryRecordSummary | HistoryRecord | null, key: string) {
   const value = detailObject(record)[key]
   return typeof value === 'string' ? value : ''
 }
@@ -185,7 +198,7 @@ function detailScore(record: HistoryRecord | null) {
   return Number.isFinite(score) ? Math.round(score) : undefined
 }
 
-function displayTitle(record: HistoryRecord) {
+function displayTitle(record: HistoryRecordSummary | HistoryRecord) {
   return (
     detailString(record, 'projectName') ||
     detailString(record, 'jobTitle') ||
@@ -194,15 +207,9 @@ function displayTitle(record: HistoryRecord) {
   )
 }
 
-function searchText(record: HistoryRecord) {
-  const detail = detailObject(record)
-  const values = Object.values(detail).flatMap((value) => {
-    if (Array.isArray(value))
-      return value.map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
-    if (value && typeof value === 'object') return [JSON.stringify(value)]
-    return [String(value ?? '')]
-  })
-  return [displayTitle(record), typeMeta[record.type].label, ...values].join(' ')
+// 列表不再携带 detail，搜索范围为标题 + 类型标签（全文搜索的代价是整表 detail 下发，不值得）。
+function searchText(record: HistoryRecordSummary) {
+  return [displayTitle(record), typeMeta[record.type].label].join(' ')
 }
 
 function summaryText(record: HistoryRecord | null) {
@@ -257,6 +264,37 @@ function detailSections(record: HistoryRecord | null): DetailSection[] {
     { title: '短板', items: detailList(record, 'weaknesses') },
     { title: '学习计划', items: detailList(record, 'studyPlan'), ordered: true },
   ]
+}
+
+// 面试问答回放：detail.transcript 由后端按时间序返回，AI 消息可能带逐题点评。
+interface TranscriptItem {
+  id: string
+  role: 'ai' | 'user'
+  content: string
+  feedback?: { score: number; comment: string; problems: string[]; betterAnswer: string }
+}
+
+function interviewTranscript(record: HistoryRecord | null): TranscriptItem[] {
+  if (record?.type !== 'interview') return []
+  const value = detailObject(record).transcript
+  if (!Array.isArray(value)) return []
+
+  return value.filter(
+    (item): item is TranscriptItem =>
+      !!item && typeof item === 'object' && typeof (item as TranscriptItem).content === 'string',
+  )
+}
+
+// 列表卡片直接带 status 字段；详情面板的 status 在 detail 里，两处兜底判断。
+function isOngoingInterview(record: HistoryRecordSummary | HistoryRecord | null) {
+  if (record?.type !== 'interview') return false
+  return (
+    record.status === 'ongoing' || detailString(record as HistoryRecord, 'status') === 'ongoing'
+  )
+}
+
+function resumeInterview(record: HistoryRecordSummary) {
+  void router.push({ path: '/interview', query: { sessionId: record.id } })
 }
 
 function copyTextForRecord(record: HistoryRecord) {
@@ -407,6 +445,11 @@ onMounted(() => load())
             :class="typeMeta[record.type].scoreClass"
             >{{ record.score }} 分</strong
           >
+          <span
+            v-else-if="isOngoingInterview(record)"
+            class="rounded-[10px] bg-amber-50 px-3 py-2 text-sm font-black text-amber-600"
+            >进行中</span
+          >
         </div>
 
         <h2 class="mb-3 mt-5 text-lg font-black text-[#0f172a]">{{ displayTitle(record) }}</h2>
@@ -417,9 +460,10 @@ onMounted(() => load())
         <div class="mt-auto grid grid-cols-2 gap-3 pt-4">
           <button
             class="btn-secondary min-h-10 whitespace-nowrap text-sm"
-            @click="activeDetail = record"
+            :disabled="detailLoadingId === record.id"
+            @click="openDetail(record)"
           >
-            查看
+            {{ detailLoadingId === record.id ? '加载中...' : '查看' }}
           </button>
           <LoadingButton
             variant="danger"
@@ -450,6 +494,14 @@ onMounted(() => load())
           >
             <Mic :size="18" />
             去模拟面试
+          </button>
+          <button
+            v-if="isOngoingInterview(activeDetail)"
+            class="btn-primary min-h-10"
+            @click="resumeInterview(activeDetail)"
+          >
+            <Mic :size="18" />
+            继续面试
           </button>
           <button class="btn-secondary min-h-10" @click="activeDetail = null">关闭</button>
         </div>
@@ -522,6 +574,56 @@ onMounted(() => load())
             <p v-else class="m-0 text-sm font-semibold text-[#94a3b8]">暂无内容</p>
           </section>
         </div>
+
+        <section v-if="interviewTranscript(activeDetail).length" class="section-card">
+          <h3 class="mb-4 mt-0 text-base font-black text-[#0f172a]">问答回放</h3>
+          <div class="grid gap-3">
+            <article
+              v-for="item in interviewTranscript(activeDetail)"
+              :key="item.id"
+              class="rounded-2xl border p-4"
+              :class="
+                item.role === 'ai'
+                  ? 'border-indigo-100 bg-indigo-50/50'
+                  : 'border-slate-200 bg-white/70'
+              "
+            >
+              <div class="mb-2 flex items-center gap-2">
+                <span
+                  class="rounded-full px-3 py-1 text-xs font-black"
+                  :class="
+                    item.role === 'ai'
+                      ? 'bg-indigo-100 text-indigo-600'
+                      : 'bg-slate-100 text-slate-600'
+                  "
+                  >{{ item.role === 'ai' ? '面试官' : '我的回答' }}</span
+                >
+                <strong
+                  v-if="item.feedback"
+                  class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-600"
+                  >上一题得分 {{ item.feedback.score }}</strong
+                >
+              </div>
+              <p class="m-0 whitespace-pre-wrap text-sm font-semibold leading-7 text-[#334155]">
+                {{ item.content }}
+              </p>
+              <div
+                v-if="item.feedback && (item.feedback.comment || item.feedback.betterAnswer)"
+                class="mt-3 grid gap-2 rounded-xl bg-white/80 p-3 text-sm leading-7 text-[#475569]"
+              >
+                <p v-if="item.feedback.comment" class="m-0">
+                  <b class="text-[#0f172a]">点评：</b>{{ item.feedback.comment }}
+                </p>
+                <p v-if="item.feedback.problems?.length" class="m-0">
+                  <b class="text-[#0f172a]">问题：</b>{{ item.feedback.problems.join('；') }}
+                </p>
+                <p v-if="item.feedback.betterAnswer" class="m-0">
+                  <b class="text-[#0f172a]">参考回答：</b>{{ item.feedback.betterAnswer }}
+                </p>
+              </div>
+            </article>
+          </div>
+        </section>
 
         <details class="section-card">
           <summary class="cursor-pointer text-base font-black text-[#0f172a]">查看原始数据</summary>

@@ -6,6 +6,11 @@ export type {
   InterviewFeedbackResult,
   InterviewMessageResponse,
   InterviewFinishResponse,
+  InterviewSessionStatus,
+  InterviewSessionSummary,
+  InterviewSessionMessage,
+  InterviewSessionSummaryResult,
+  InterviewSessionDetail,
   AiResponseMeta,
 } from '@devcareer/shared'
 

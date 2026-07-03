@@ -41,6 +41,11 @@ export type {
   InterviewFeedbackResult,
   InterviewMessageResponse,
   InterviewFinishResponse,
+  InterviewSessionStatus,
+  InterviewSessionSummary,
+  InterviewSessionMessage,
+  InterviewSessionSummaryResult,
+  InterviewSessionDetail,
 } from './interview'
 export type {
   ChatContextResume,
@@ -64,7 +69,9 @@ export type {
   HistoryType,
   ProjectOptimizationHistoryDetail,
   JobMatchHistoryDetail,
+  InterviewHistoryDetail,
   KnownHistoryDetail,
+  HistoryRecordSummary,
   HistoryRecord,
 } from './history'
 export type {

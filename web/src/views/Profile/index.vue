@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import LoadingButton from '@/components/LoadingButton/index.vue'
 import { logout as logoutRequest, updateProfile, uploadAvatar } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { resolveAssetUrl } from '@/utils/assetUrl'
 import { messageBox } from '@/utils/messageBox'
 import { notify } from '@/utils/notify'
 
@@ -21,7 +22,7 @@ const form = reactive({
   email: authStore.user?.email || '',
 })
 
-const avatarPreview = computed(() => authStore.user?.avatarUrl?.trim() || '')
+const avatarPreview = computed(() => resolveAssetUrl(authStore.user?.avatarUrl))
 const userInitial = computed(() =>
   (authStore.user?.username || authStore.user?.email || 'D').slice(0, 1).toUpperCase(),
 )

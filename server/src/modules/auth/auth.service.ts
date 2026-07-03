@@ -7,9 +7,10 @@
   UnauthorizedException,
 } from '@nestjs/common'
 import { Prisma, User } from '@prisma/client'
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'crypto'
-import { join } from 'path'
-import { mkdir, writeFile } from 'fs/promises'
+import { createHash, randomBytes, scrypt, timingSafeEqual } from 'crypto'
+import { basename, join } from 'path'
+import { promisify } from 'util'
+import { mkdir, unlink, writeFile } from 'fs/promises'
 import { detectImageMime, type ImageMimeType } from '../../common/utils/file-signature.util'
 import { PrismaService } from '../../prisma/prisma.service'
 import { LoginDto } from './dto/login.dto'
@@ -41,6 +42,9 @@ export class AuthService {
     const email = normalizeAccount(dto.email)
     const username = dto.username.trim()
 
+    // 哈希放在事务外算好：scrypt 需要上百毫秒，不应占用 SQLite 的串行写事务窗口。
+    const passwordHash = await hashPassword(dto.password)
+
     try {
       const user = await this.prisma.$transaction(async (tx) => {
         // 空系统里的首个注册用户自动成为管理员（first-run 引导，只发生一次）。
@@ -51,7 +55,7 @@ export class AuthService {
           data: {
             username,
             email,
-            passwordHash: hashPassword(dto.password),
+            passwordHash,
             role: isFirstUser ? 'admin' : 'user',
           },
         })
@@ -79,7 +83,7 @@ export class AuthService {
       },
     })
 
-    if (!user || !verifyPassword(dto.password, user.passwordHash)) {
+    if (!user || !(await verifyPassword(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('账号或密码不正确')
     }
 
@@ -148,7 +152,7 @@ export class AuthService {
     return this.toUserResponse(user)
   }
 
-  async updateAvatar(userId: string, file: Express.Multer.File | undefined, requestOrigin: string) {
+  async updateAvatar(userId: string, file: Express.Multer.File | undefined) {
     if (!file) {
       throw new BadRequestException('请选择要上传的头像图片')
     }
@@ -169,13 +173,39 @@ export class AuthService {
     const fileName = `${userId}-${Date.now()}-${randomBytes(8).toString('hex')}${extension}`
     await writeFile(join(AVATAR_UPLOAD_DIR, fileName), file.buffer)
 
-    const avatarUrl = `${requestOrigin}/uploads/avatars/${fileName}`
+    // 只存相对路径：换域名/端口后头像不失效，也杜绝伪造 Host 头污染存储 URL。
+    // 前端负责按 API origin 拼接完整地址（同时兼容存量的绝对 URL 数据）。
+    const previousUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatarUrl: true },
+    })
+    const avatarUrl = `/uploads/avatars/${fileName}`
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: { avatarUrl },
     })
 
+    await this.removeAvatarFile(previousUser?.avatarUrl)
+
     return this.toUserResponse(user)
+  }
+
+  // 删除被替换的旧头像文件，避免磁盘无限增长。
+  // 只取 basename 并限定在头像目录内，防止库里存了异常值时被诱导删除任意文件；
+  // 删除失败（文件不存在、被占用）不影响主流程。
+  private async removeAvatarFile(avatarUrl: string | null | undefined) {
+    if (!avatarUrl || !avatarUrl.includes('/uploads/avatars/')) return
+
+    const fileName = basename(avatarUrl)
+    if (!fileName) return
+
+    try {
+      await unlink(join(AVATAR_UPLOAD_DIR, fileName))
+    } catch (error) {
+      this.logger.warn(
+        `旧头像文件删除失败：${fileName}（${error instanceof Error ? error.message : String(error)}）`,
+      )
+    }
   }
 
   toUserResponse(
@@ -221,21 +251,21 @@ function normalizeAccount(value: string) {
   return value.trim().toLowerCase()
 }
 
-export function hashPassword(password: string) {
+// scrypt 计算量大（有意为之），必须走异步版本，避免注册/登录时阻塞事件循环拖垮全部请求。
+const scryptAsync = promisify<string, string, number, Buffer>(scrypt)
+
+export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString('hex')
-  const key = scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString('hex')
+  const key = (await scryptAsync(password, salt, PASSWORD_KEY_LENGTH)).toString('hex')
 
   return `scrypt$${salt}$${key}`
 }
 
-export function verifyPassword(password: string, storedHash: string) {
+export async function verifyPassword(password: string, storedHash: string) {
   const [algorithm, salt, key] = storedHash.split('$')
   if (algorithm !== 'scrypt' || !salt || !key) return false
 
-  const candidate = Buffer.from(
-    scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString('hex'),
-    'hex',
-  )
+  const candidate = await scryptAsync(password, salt, PASSWORD_KEY_LENGTH)
   const expected = Buffer.from(key, 'hex')
 
   return candidate.length === expected.length && timingSafeEqual(candidate, expected)

@@ -9,6 +9,7 @@ import {
   Search,
   Square,
   Target,
+  Trash2,
   UploadCloud,
 } from 'lucide-vue-next'
 import BeforeAfterCompare from '@/components/BeforeAfterCompare/index.vue'
@@ -19,6 +20,7 @@ import LoadingButton from '@/components/LoadingButton/index.vue'
 import ScoreCard from '@/components/ScoreCard/index.vue'
 import StreamPreview from '@/components/StreamPreview/index.vue'
 import SuggestionList from '@/components/SuggestionList/index.vue'
+import { deleteHistoryRecord, getHistory, getHistoryRecord } from '@/api/history'
 import {
   analyzeResumeStream,
   createResume,
@@ -28,7 +30,9 @@ import {
 } from '@/api/resume'
 import { useResumeStore } from '@/stores/resume'
 import { useWorkflowStore } from '@/stores/workflow'
+import type { HistoryRecordSummary } from '@/types/history'
 import type { ResumeAnalysisResult, ResumePayload, ResumeRecord } from '@/types/resume'
+import { formatDateTime } from '@/utils/format'
 import { messageBox } from '@/utils/messageBox'
 import { notify } from '@/utils/notify'
 import { buildResumeSuggestionCopy } from '@/utils/resultCopy'
@@ -52,6 +56,11 @@ const controller = ref<AbortController | null>(null)
 const selectedResumeId = ref('')
 const selectedResumeSnapshot = ref<ResumePayload | null>(null)
 const resumeOptions = ref<ResumeRecord[]>([])
+const historyRecords = ref<HistoryRecordSummary[]>([])
+const historyLoading = ref(false)
+const historyError = ref('')
+const applyingHistoryId = ref('')
+const deletingHistoryId = ref('')
 
 const suggestionText = computed(() => (result.value ? buildResumeSuggestionCopy(result.value) : ''))
 
@@ -69,7 +78,60 @@ const jobMatchTarget = computed(() => ({
 
 onMounted(() => {
   void loadResumeOptions()
+  void loadHistoryRecords()
 })
+
+// 最近诊断记录：结果本身已由后端保存，这里把它拉回页面，刷新后也能直接回看。
+async function loadHistoryRecords() {
+  historyLoading.value = true
+  historyError.value = ''
+  try {
+    historyRecords.value = await getHistory('resume-analysis')
+  } catch {
+    historyError.value = '最近诊断记录加载失败，不影响本次分析。'
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+// 列表只有汇总，点击时按需取详情再回填结果面板。
+async function applyHistoryRecord(record: HistoryRecordSummary) {
+  if (applyingHistoryId.value) return
+  applyingHistoryId.value = record.id
+  try {
+    const full = await getHistoryRecord(record.id)
+    const detail = full.detail as ResumeAnalysisResult | undefined
+    if (!detail?.dimensionScores) {
+      notify('该记录数据不完整，无法回填', 'warning')
+      return
+    }
+    result.value = detail
+    resultStatus.value = 'success'
+  } catch {
+    notify('记录加载失败，请稍后重试', 'error')
+  } finally {
+    applyingHistoryId.value = ''
+  }
+}
+
+async function removeHistoryRecord(record: HistoryRecordSummary) {
+  const confirmed = await messageBox.confirm({
+    type: 'danger',
+    title: '确认删除诊断记录？',
+    message: `「${record.title}」的诊断结果删除后无法恢复。`,
+    confirmText: '删除',
+  })
+  if (!confirmed) return
+
+  deletingHistoryId.value = record.id
+  try {
+    await deleteHistoryRecord(record.id)
+    await loadHistoryRecords()
+    notify('诊断记录已删除', 'success')
+  } finally {
+    deletingHistoryId.value = ''
+  }
+}
 
 onBeforeUnmount(() => {
   controller.value?.abort()
@@ -241,6 +303,7 @@ async function submit() {
       },
     })
     result.value = analysis.result
+    void loadHistoryRecords()
     resultStatus.value = analysis.meta?.status || 'success'
     notify(
       resultStatus.value === 'parse_error'
@@ -441,6 +504,57 @@ function goInterviewFromResume() {
             取消本次生成
           </button>
         </div>
+
+        <section
+          v-if="historyLoading || historyRecords.length"
+          class="mt-5 rounded-2xl border border-slate-200 bg-white/55 p-4"
+        >
+          <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">最近诊断记录</h3>
+          <InlineStatus
+            v-if="historyLoading"
+            type="loading"
+            title="正在加载记录"
+            description="稍等一下，历史记录马上回来。"
+          />
+          <InlineStatus
+            v-else-if="historyError"
+            type="warning"
+            title="记录加载失败"
+            :description="historyError"
+          />
+          <div v-else class="grid gap-2">
+            <article
+              v-for="record in historyRecords.slice(0, 5)"
+              :key="record.id"
+              class="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-xl bg-white/70 p-3"
+            >
+              <button
+                class="min-w-0 text-left"
+                type="button"
+                :disabled="applyingHistoryId === record.id"
+                @click="applyHistoryRecord(record)"
+              >
+                <strong class="block truncate text-sm text-[#0f172a]">{{ record.title }}</strong>
+                <span class="mt-1 block truncate text-xs font-semibold text-[#64748b]">{{
+                  applyingHistoryId === record.id ? '加载中...' : formatDateTime(record.createdAt)
+                }}</span>
+              </button>
+              <strong
+                v-if="record.score !== undefined"
+                class="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-600"
+                >{{ record.score }} 分</strong
+              >
+              <LoadingButton
+                variant="danger"
+                :loading="deletingHistoryId === record.id"
+                class="h-9 w-9 !min-h-9 !p-0"
+                @click="removeHistoryRecord(record)"
+              >
+                <template #icon><Trash2 :size="16" /></template>
+              </LoadingButton>
+            </article>
+          </div>
+        </section>
       </GlassCard>
 
       <GlassCard class="feature-pane-right soft-scrollbar">

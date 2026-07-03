@@ -50,6 +50,28 @@ export class InterviewService {
     private readonly aiCacheService: AiCacheService,
   ) {}
 
+  // 会话列表按最近活跃排序，供前端"继续上次面试"与历史入口使用。
+  async listSessions(userId: string) {
+    const sessions = await this.prisma.interviewSession.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      include: { _count: { select: { messages: true } } },
+    })
+
+    return sessions.map((session) => toSessionSummary(session, session._count.messages))
+  }
+
+  // 会话详情含完整问答与逐题点评，用于恢复进行中的会话和复盘回放。
+  async getSession(sessionId: string, userId: string) {
+    const session = await this.findSession(sessionId, userId, false)
+
+    return {
+      ...toSessionSummary(session, session.messages.length),
+      messages: session.messages.map(toSessionMessage),
+      summary: session.summaryJson ?? null,
+    }
+  }
+
   async create(dto: CreateInterviewDto, userId: string) {
     const meta: AiCallMeta = { feature: 'interview-question', userId }
     return this.produceQuestion(dto, userId, (payload) => this.chatText(payload, meta))
@@ -415,6 +437,50 @@ export class InterviewService {
     if (session.status !== 'ongoing') {
       throw new ConflictException('面试已结束，不能继续操作')
     }
+  }
+}
+
+function toSessionSummary(session: InterviewSession, messageCount: number) {
+  return {
+    id: session.id,
+    title: session.title,
+    targetRole: session.targetRole,
+    interviewType: session.interviewType,
+    difficulty: session.difficulty,
+    status: session.status,
+    messageCount,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+  }
+}
+
+// feedbackJson 有两种形状：首题消息存 {questionType, expectedPoints}，
+// 点评消息存完整 InterviewFeedbackResult（含 score）。按是否有 score 区分映射。
+function toSessionMessage(message: InterviewMessage) {
+  const raw = message.feedbackJson
+  const data =
+    raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null
+
+  const feedback =
+    data && 'score' in data
+      ? {
+          score: clampScore(data.score),
+          comment: String(data.comment || ''),
+          problems: toStringList(data.problems),
+          betterAnswer: String(data.betterAnswer || ''),
+        }
+      : undefined
+
+  const expectedPoints =
+    data && !feedback && 'expectedPoints' in data ? toStringList(data.expectedPoints) : undefined
+
+  return {
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    feedback,
+    expectedPoints,
+    createdAt: message.createdAt,
   }
 }
 

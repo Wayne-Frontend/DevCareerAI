@@ -2,14 +2,14 @@ import { equal, notEqual } from 'node:assert/strict'
 import { test } from 'node:test'
 import { extractBearerToken, hashPassword, verifyPassword } from '../src/modules/auth/auth.service'
 
-test('密码哈希可被正确校验', () => {
-  const hash = hashPassword('secret123')
-  equal(verifyPassword('secret123', hash), true)
-  equal(verifyPassword('wrong-password', hash), false)
+test('密码哈希可被正确校验', async () => {
+  const hash = await hashPassword('secret123')
+  equal(await verifyPassword('secret123', hash), true)
+  equal(await verifyPassword('wrong-password', hash), false)
 })
 
-test('相同密码每次加盐结果不同', () => {
-  notEqual(hashPassword('same-password'), hashPassword('same-password'))
+test('相同密码每次加盐结果不同', async () => {
+  notEqual(await hashPassword('same-password'), await hashPassword('same-password'))
 })
 
 test('extractBearerToken 解析 Bearer 头', () => {

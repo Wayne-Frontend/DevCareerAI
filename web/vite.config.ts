@@ -18,6 +18,11 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      // 头像等上传文件按相对路径（/uploads/...）存储，dev 下同样转发到后端。
+      '/uploads': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
   build: {

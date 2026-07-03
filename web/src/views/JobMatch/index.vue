@@ -10,6 +10,7 @@ import {
   Mic,
   Square,
   Target,
+  Trash2,
   UploadCloud,
   WandSparkles,
 } from 'lucide-vue-next'
@@ -17,14 +18,18 @@ import EmptyState from '@/components/EmptyState/index.vue'
 import GlassCard from '@/components/GlassCard/index.vue'
 import InlineStatus from '@/components/InlineStatus/index.vue'
 import KeywordTags from '@/components/KeywordTags/index.vue'
+import LoadingButton from '@/components/LoadingButton/index.vue'
 import SuggestionList from '@/components/SuggestionList/index.vue'
 import ScoreCard from '@/components/ScoreCard/index.vue'
 import StreamPreview from '@/components/StreamPreview/index.vue'
+import { deleteHistoryRecord, getHistory, getHistoryRecord } from '@/api/history'
 import { getJobDescriptions, matchJobStream } from '@/api/job'
 import { getResumes, uploadResume } from '@/api/resume'
+import type { HistoryRecordSummary, JobMatchHistoryDetail } from '@/types/history'
 import type { JobDescriptionRecord, JobMatchResult } from '@/types/job'
 import type { ResumeRecord } from '@/types/resume'
 import { useWorkflowStore } from '@/stores/workflow'
+import { formatDateTime } from '@/utils/format'
 import { messageBox } from '@/utils/messageBox'
 import { notify } from '@/utils/notify'
 import { buildJobMatchCopy } from '@/utils/resultCopy'
@@ -50,6 +55,11 @@ const jobOptions = ref<JobDescriptionRecord[]>([])
 const selectedResumeId = ref('')
 const selectedJobDescriptionId = ref('')
 const queryApplied = ref(false)
+const historyRecords = ref<HistoryRecordSummary[]>([])
+const historyLoading = ref(false)
+const historyError = ref('')
+const applyingHistoryId = ref('')
+const deletingHistoryId = ref('')
 
 const form = reactive({
   resumeContent: '',
@@ -77,7 +87,67 @@ onBeforeUnmount(() => {
 
 onMounted(() => {
   void loadAssets()
+  void loadHistoryRecords()
 })
+
+// 最近匹配记录：detail 里带回了当时的简历与 JD 原文，点击可同时回填输入和结果。
+async function loadHistoryRecords() {
+  historyLoading.value = true
+  historyError.value = ''
+  try {
+    historyRecords.value = await getHistory('job-match')
+  } catch {
+    historyError.value = '最近匹配记录加载失败，不影响本次分析。'
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+// 列表只有汇总，点击时按需取详情：detail 带回当时的简历/JD 原文，同时回填输入与结果。
+async function applyHistoryRecord(record: HistoryRecordSummary) {
+  if (applyingHistoryId.value) return
+  applyingHistoryId.value = record.id
+  try {
+    const full = await getHistoryRecord(record.id)
+    const detail = full.detail as (JobMatchHistoryDetail & JobMatchResult) | undefined
+    if (!detail?.dimensionScores) {
+      notify('该记录数据不完整，无法回填', 'warning')
+      return
+    }
+
+    form.resumeContent = (detail.resumeContent || '').slice(0, MAX_RESUME_LENGTH)
+    form.jobTitle = detail.jobTitle || form.jobTitle
+    form.companyName = detail.companyName || ''
+    form.jobDescription = typeof detail.jobDescription === 'string' ? detail.jobDescription : ''
+    selectedResumeId.value = ''
+    selectedJobDescriptionId.value = ''
+    result.value = detail
+    resultStatus.value = 'success'
+  } catch {
+    notify('记录加载失败，请稍后重试', 'error')
+  } finally {
+    applyingHistoryId.value = ''
+  }
+}
+
+async function removeHistoryRecord(record: HistoryRecordSummary) {
+  const confirmed = await messageBox.confirm({
+    type: 'danger',
+    title: '确认删除匹配记录？',
+    message: `「${record.title}」的匹配结果删除后无法恢复。`,
+    confirmText: '删除',
+  })
+  if (!confirmed) return
+
+  deletingHistoryId.value = record.id
+  try {
+    await deleteHistoryRecord(record.id)
+    await loadHistoryRecords()
+    notify('匹配记录已删除', 'success')
+  } finally {
+    deletingHistoryId.value = ''
+  }
+}
 
 async function loadAssets() {
   assetsLoading.value = true
@@ -223,6 +293,7 @@ async function submit() {
     )
     result.value = response.result
     void loadAssets()
+    void loadHistoryRecords()
     resultStatus.value = response.meta?.status || 'success'
     notify(
       resultStatus.value === 'parse_error'
@@ -436,6 +507,57 @@ function goInterviewFromJobMatch() {
             {{ loading ? '分析中...' : '开始匹配分析' }}
           </button>
         </div>
+
+        <section
+          v-if="historyLoading || historyRecords.length"
+          class="mt-5 rounded-2xl border border-slate-200 bg-white/55 p-4"
+        >
+          <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">最近匹配记录</h3>
+          <InlineStatus
+            v-if="historyLoading"
+            type="loading"
+            title="正在加载记录"
+            description="稍等一下，历史记录马上回来。"
+          />
+          <InlineStatus
+            v-else-if="historyError"
+            type="warning"
+            title="记录加载失败"
+            :description="historyError"
+          />
+          <div v-else class="grid gap-2">
+            <article
+              v-for="record in historyRecords.slice(0, 5)"
+              :key="record.id"
+              class="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-xl bg-white/70 p-3"
+            >
+              <button
+                class="min-w-0 text-left"
+                type="button"
+                :disabled="applyingHistoryId === record.id"
+                @click="applyHistoryRecord(record)"
+              >
+                <strong class="block truncate text-sm text-[#0f172a]">{{ record.title }}</strong>
+                <span class="mt-1 block truncate text-xs font-semibold text-[#64748b]">{{
+                  applyingHistoryId === record.id ? '加载中...' : formatDateTime(record.createdAt)
+                }}</span>
+              </button>
+              <strong
+                v-if="record.score !== undefined"
+                class="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-600"
+                >{{ record.score }} 分</strong
+              >
+              <LoadingButton
+                variant="danger"
+                :loading="deletingHistoryId === record.id"
+                class="h-9 w-9 !min-h-9 !p-0"
+                @click="removeHistoryRecord(record)"
+              >
+                <template #icon><Trash2 :size="16" /></template>
+              </LoadingButton>
+            </article>
+          </div>
+        </section>
       </GlassCard>
 
       <GlassCard class="feature-pane-right soft-scrollbar">

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
-import * as echarts from 'echarts'
+import { getInstanceByDom, graphic, init } from '@/utils/echarts'
+import type { ECharts, EChartsCoreOption } from '@/utils/echarts'
 import {
   ArrowRight,
   BarChart3,
@@ -32,7 +33,7 @@ const overview = ref<DashboardOverview | null>(null)
 const trend = ref<DashboardResumeTrend | null>(null)
 
 const trendEl = ref<HTMLDivElement | null>(null)
-const trendChart = shallowRef<echarts.ECharts | null>(null)
+const trendChart = shallowRef<ECharts | null>(null)
 
 // 至少两个诊断点才谈得上“趋势”；单点或无点走提示态。
 const hasTrend = computed(() => (trend.value?.points.length ?? 0) >= 2)
@@ -54,12 +55,12 @@ async function loadOverview() {
 
 function renderTrend() {
   if (!trendEl.value || !hasTrend.value || !trend.value) return
-  const chart = echarts.getInstanceByDom(trendEl.value) ?? echarts.init(trendEl.value)
+  const chart = getInstanceByDom(trendEl.value) ?? init(trendEl.value)
   trendChart.value = chart
   chart.setOption(buildTrendOption(trend.value), true)
 }
 
-function buildTrendOption(data: DashboardResumeTrend): echarts.EChartsCoreOption {
+function buildTrendOption(data: DashboardResumeTrend): EChartsCoreOption {
   return {
     grid: { top: 24, right: 20, bottom: 40, left: 44 },
     tooltip: { trigger: 'axis' },
@@ -87,7 +88,7 @@ function buildTrendOption(data: DashboardResumeTrend): echarts.EChartsCoreOption
         lineStyle: { width: 3, color: '#2563eb' },
         itemStyle: { color: '#2563eb' },
         areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          color: new graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: 'rgba(37,99,235,0.26)' },
             { offset: 1, color: 'rgba(37,99,235,0.02)' },
           ]),

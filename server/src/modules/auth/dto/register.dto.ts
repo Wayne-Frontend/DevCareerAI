@@ -13,8 +13,10 @@ export class RegisterDto implements RegisterPayload {
   @MaxLength(120)
   email: string
 
+  // 密码策略仅约束新注册（LoginDto 保持 6 位下限，存量老密码账号仍可登录）。
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   @MaxLength(72)
+  @Matches(/^(?=.*[a-zA-Z])(?=.*\d)/, { message: '密码需同时包含字母和数字' })
   password: string
 }

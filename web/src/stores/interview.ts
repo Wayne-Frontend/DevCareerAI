@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { ChatMessage } from '@/types/interview'
+import type { ChatMessage, InterviewSessionDetail } from '@/types/interview'
 
 export const useInterviewStore = defineStore('interview', () => {
   const sessionId = ref('')
@@ -11,6 +11,25 @@ export const useInterviewStore = defineStore('interview', () => {
     sessionId.value = id
     finished.value = false
     messages.value = [{ id: crypto.randomUUID(), role: 'ai', content: firstQuestion }]
+  }
+
+  // 从服务端会话详情恢复对话（刷新/切换设备后继续未完成的面试，或回看已结束会话）。
+  function restoreSession(detail: InterviewSessionDetail) {
+    sessionId.value = detail.id
+    finished.value = detail.status === 'finished'
+    messages.value = detail.messages.map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      feedback: message.feedback,
+    }))
+    if (detail.summary) {
+      messages.value.push({
+        id: crypto.randomUUID(),
+        role: 'system',
+        content: `${detail.summary.summary}\n\n优势：${detail.summary.strengths.join('；')}\n待提升：${detail.summary.weaknesses.join('；')}\n学习计划：${detail.summary.studyPlan.join('；')}`,
+      })
+    }
   }
 
   function appendMessage(message: ChatMessage) {
@@ -30,6 +49,7 @@ export const useInterviewStore = defineStore('interview', () => {
     messages,
     finished,
     startSession,
+    restoreSession,
     appendMessage,
     removeMessage,
     finishSession,

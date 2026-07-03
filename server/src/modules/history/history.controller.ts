@@ -15,6 +15,11 @@ export class HistoryController {
     return this.historyService.findAll(user.id, type)
   }
 
+  @Get(':id')
+  findOne(@Param('id') id: string, @CurrentUser() user: AuthUserResponse) {
+    return this.historyService.findOne(id, user.id)
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser() user: AuthUserResponse) {
     return this.historyService.remove(id, user.id)

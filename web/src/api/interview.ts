@@ -5,7 +5,23 @@ import type {
   InterviewCreateResponse,
   InterviewFinishResponse,
   InterviewMessageResponse,
+  InterviewSessionDetail,
+  InterviewSessionSummary,
 } from '@/types/interview'
+
+export function getInterviewSessions() {
+  return request<InterviewSessionSummary[]>({
+    url: '/interviews',
+    method: 'GET',
+  })
+}
+
+export function getInterviewSession(sessionId: string) {
+  return request<InterviewSessionDetail>({
+    url: `/interviews/${sessionId}`,
+    method: 'GET',
+  })
+}
 
 export function createInterview(data: InterviewCreatePayload) {
   return request<InterviewCreateResponse>({

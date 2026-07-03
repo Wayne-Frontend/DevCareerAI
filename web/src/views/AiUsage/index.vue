@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
-import * as echarts from 'echarts'
+import { getInstanceByDom, graphic, init } from '@/utils/echarts'
+import type { ECharts, EChartsCoreOption } from '@/utils/echarts'
 import { Activity, Coins, Gauge, Layers, RefreshCw, Sparkles } from 'lucide-vue-next'
 import EmptyState from '@/components/EmptyState/index.vue'
 import LoadingButton from '@/components/LoadingButton/index.vue'
@@ -31,10 +32,10 @@ const dailyEl = ref<HTMLDivElement | null>(null)
 const featureEl = ref<HTMLDivElement | null>(null)
 const modelEl = ref<HTMLDivElement | null>(null)
 const userEl = ref<HTMLDivElement | null>(null)
-const dailyChart = shallowRef<echarts.ECharts | null>(null)
-const featureChart = shallowRef<echarts.ECharts | null>(null)
-const modelChart = shallowRef<echarts.ECharts | null>(null)
-const userChart = shallowRef<echarts.ECharts | null>(null)
+const dailyChart = shallowRef<ECharts | null>(null)
+const featureChart = shallowRef<ECharts | null>(null)
+const modelChart = shallowRef<ECharts | null>(null)
+const userChart = shallowRef<ECharts | null>(null)
 
 const totals = computed(() => summary.value?.totals ?? null)
 const hasData = computed(() => (summary.value?.totals.calls ?? 0) > 0)
@@ -89,7 +90,7 @@ async function changeRange(days: number) {
 }
 
 function ensureChart(el: HTMLDivElement) {
-  return echarts.getInstanceByDom(el) ?? echarts.init(el)
+  return getInstanceByDom(el) ?? init(el)
 }
 
 function renderCharts() {
@@ -132,7 +133,7 @@ function renderCharts() {
   }
 }
 
-function buildDailyOption(data: AiUsageSummary): echarts.EChartsCoreOption {
+function buildDailyOption(data: AiUsageSummary): EChartsCoreOption {
   return {
     grid: { top: 24, right: 20, bottom: 40, left: 56 },
     tooltip: { trigger: 'axis' },
@@ -156,7 +157,7 @@ function buildDailyOption(data: AiUsageSummary): echarts.EChartsCoreOption {
         data: data.daily.map((item) => item.totalTokens),
         lineStyle: { width: 3, color: '#6366f1' },
         areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          color: new graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: 'rgba(99,102,241,0.28)' },
             { offset: 1, color: 'rgba(99,102,241,0.02)' },
           ]),
@@ -169,7 +170,7 @@ function buildDailyOption(data: AiUsageSummary): echarts.EChartsCoreOption {
 function buildBarOption(
   items: Array<{ name: string; value: number }>,
   color: string,
-): echarts.EChartsCoreOption {
+): EChartsCoreOption {
   // 后端已按 token 降序返回；横向条形图从上到下阅读，反转数组让最大值居顶。
   const sorted = [...items].reverse()
   return {

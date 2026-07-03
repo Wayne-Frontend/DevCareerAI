@@ -3,6 +3,8 @@ export type {
   HistoryType,
   ProjectOptimizationHistoryDetail,
   JobMatchHistoryDetail,
+  InterviewHistoryDetail,
   KnownHistoryDetail,
+  HistoryRecordSummary,
   HistoryRecord,
 } from '@devcareer/shared'

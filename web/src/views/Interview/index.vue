@@ -9,14 +9,18 @@ import StreamPreview from '@/components/StreamPreview/index.vue'
 import {
   createInterviewStream,
   finishInterviewStream,
+  getInterviewSession,
+  getInterviewSessions,
   submitInterviewAnswerStream,
 } from '@/api/interview'
 import { getJobDescriptions } from '@/api/job'
 import { getResumes, uploadResume } from '@/api/resume'
 import { useInterviewStore } from '@/stores/interview'
 import { useWorkflowStore } from '@/stores/workflow'
+import type { InterviewSessionSummary } from '@/types/interview'
 import type { JobDescriptionRecord } from '@/types/job'
 import type { ResumeRecord } from '@/types/resume'
+import { formatDateTime } from '@/utils/format'
 import { messageBox } from '@/utils/messageBox'
 import { notify } from '@/utils/notify'
 import { buildInterviewStudyPlanCopy } from '@/utils/resultCopy'
@@ -42,6 +46,8 @@ const jobOptions = ref<JobDescriptionRecord[]>([])
 const selectedResumeId = ref('')
 const selectedJobDescriptionId = ref('')
 const queryApplied = ref(false)
+const resumableSession = ref<InterviewSessionSummary | null>(null)
+const resumeSessionLoading = ref(false)
 
 const form = reactive({
   resumeContent: '',
@@ -65,7 +71,47 @@ onBeforeUnmount(() => {
 onMounted(async () => {
   await loadAssets()
   applyWorkflowContext()
+  await restoreFromQueryOrDetect()
 })
+
+// 刷新或从复盘中心跳回后恢复面试：优先按 ?sessionId= 直接恢复，
+// 否则检测最近一个未完成会话并提示用户继续（不强制恢复，用户可能就想开新面试）。
+async function restoreFromQueryOrDetect() {
+  const querySessionId = route.query.sessionId
+  if (typeof querySessionId === 'string' && querySessionId) {
+    await resumeSession(querySessionId)
+    return
+  }
+
+  if (interviewStore.sessionId) return
+
+  try {
+    const sessions = await getInterviewSessions()
+    resumableSession.value = sessions.find((session) => session.status === 'ongoing') || null
+  } catch {
+    // 检测失败不打扰用户，直接当作没有可恢复会话。
+  }
+}
+
+async function resumeSession(id: string) {
+  resumeSessionLoading.value = true
+  try {
+    const detail = await getInterviewSession(id)
+    interviewStore.restoreSession(detail)
+    form.targetRole = detail.targetRole || form.targetRole
+    form.interviewType = detail.interviewType || form.interviewType
+    form.difficulty = detail.difficulty || form.difficulty
+    if (detail.summary) {
+      finalSummary.value = detail.summary
+    }
+    resumableSession.value = null
+    notify(detail.status === 'ongoing' ? '已恢复上次面试，可继续作答' : '已载入面试记录', 'success')
+  } catch {
+    notify('面试会话恢复失败，可重新开始一场面试', 'warning')
+  } finally {
+    resumeSessionLoading.value = false
+  }
+}
 
 async function loadAssets() {
   assetsLoading.value = true
@@ -394,6 +440,35 @@ async function copyStudyPlan() {
       title="资料加载失败"
       :description="assetsError"
     />
+
+    <section
+      v-if="resumableSession && !interviewStore.sessionId"
+      class="glass-card flex flex-wrap items-center justify-between gap-3 p-4"
+    >
+      <div>
+        <h3 class="m-0 text-base font-black text-[#0f172a]">检测到未完成的面试</h3>
+        <p class="mb-0 mt-1 text-sm font-semibold text-[#64748b]">
+          「{{ resumableSession.title }}」开始于
+          {{ formatDateTime(resumableSession.createdAt) }}，可以继续作答。
+        </p>
+      </div>
+      <div class="flex gap-3">
+        <button
+          class="btn-primary min-h-10"
+          :disabled="resumeSessionLoading || loading"
+          @click="resumeSession(resumableSession.id)"
+        >
+          {{ resumeSessionLoading ? '恢复中...' : '继续上次面试' }}
+        </button>
+        <button
+          class="btn-secondary min-h-10"
+          :disabled="resumeSessionLoading"
+          @click="resumableSession = null"
+        >
+          忽略
+        </button>
+      </div>
+    </section>
 
     <div class="feature-workspace-compact">
       <GlassCard class="feature-pane-left">

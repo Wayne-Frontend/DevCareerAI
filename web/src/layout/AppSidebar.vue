@@ -17,6 +17,7 @@ import {
 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { resolveAssetUrl } from '@/utils/assetUrl'
 
 defineProps<{ open?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
@@ -48,7 +49,7 @@ const mainMenuItems = computed(() =>
 
 const avatarLoadFailed = ref(false)
 const userName = computed(() => authStore.user?.username || authStore.user?.email || 'Dev 同学')
-const avatarUrl = computed(() => authStore.user?.avatarUrl?.trim() || '')
+const avatarUrl = computed(() => resolveAssetUrl(authStore.user?.avatarUrl))
 
 watch(avatarUrl, () => {
   avatarLoadFailed.value = false

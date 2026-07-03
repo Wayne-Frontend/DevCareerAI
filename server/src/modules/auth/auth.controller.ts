@@ -11,6 +11,7 @@
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+import { Throttle } from '@nestjs/throttler'
 import type { Request } from 'express'
 import { AuthService, extractBearerToken } from './auth.service'
 import type { AuthUserResponse } from './auth.types'
@@ -27,13 +28,16 @@ const AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'ima
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // 登录/注册为公开接口，按 IP 严格限流（每分钟 5 次），防止暴力破解密码和批量注册。
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto)
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto)
@@ -65,12 +69,8 @@ export class AuthController {
       },
     }),
   )
-  uploadAvatar(
-    @CurrentUser() user: AuthUserResponse,
-    @UploadedFile() file: Express.Multer.File,
-    @Req() request: Request,
-  ) {
-    return this.authService.updateAvatar(user.id, file, getRequestOrigin(request))
+  uploadAvatar(@CurrentUser() user: AuthUserResponse, @UploadedFile() file: Express.Multer.File) {
+    return this.authService.updateAvatar(user.id, file)
   }
 
   @ApiBearerAuth()
@@ -78,8 +78,4 @@ export class AuthController {
   logout(@Req() request: Request) {
     return this.authService.logout(extractBearerToken(request.headers.authorization))
   }
-}
-
-function getRequestOrigin(request: Request) {
-  return `${request.protocol}://${request.get('host')}`
 }

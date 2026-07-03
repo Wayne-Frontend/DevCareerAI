@@ -14,7 +14,11 @@ async function bootstrap() {
 
   app.use('/uploads', serveStatic(join(process.cwd(), 'uploads')))
   app.setGlobalPrefix('api')
-  setupSwagger(app)
+
+  // 接口文档只在非生产环境开放，避免向公网暴露完整 API 结构。
+  if (process.env.NODE_ENV !== 'production') {
+    setupSwagger(app)
+  }
   app.useGlobalFilters(new ApiExceptionFilter())
   app.enableCors({
     origin: true,
