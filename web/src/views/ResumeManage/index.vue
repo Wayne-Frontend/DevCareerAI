@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import {
   BriefcaseBusiness,
   CalendarClock,
+  Download,
   FilePlus2,
   FileText,
   FileUp,
@@ -24,6 +25,7 @@ import type { ResumePayload, ResumeRecord } from '@/types/resume'
 import { formatDateTime } from '@/utils/format'
 import { messageBox } from '@/utils/messageBox'
 import { notify } from '@/utils/notify'
+import { downloadResumeMarkdown, printResume } from '@/utils/resumeExport'
 
 type PanelMode = 'view' | 'create' | 'edit'
 
@@ -216,6 +218,17 @@ function goJobMatch() {
 function goInterview() {
   if (!selectedResume.value) return
   void router.push({ path: '/interview', query: { resumeId: selectedResume.value.id } })
+}
+
+function exportPdf() {
+  if (!selectedResume.value) return
+  printResume(selectedResume.value)
+}
+
+function exportMarkdown() {
+  if (!selectedResume.value) return
+  downloadResumeMarkdown(selectedResume.value)
+  notify('已导出 Markdown 文件', 'success')
 }
 </script>
 
@@ -451,6 +464,25 @@ function goInterview() {
                 <button class="btn-secondary min-h-11" type="button" @click="goInterview">
                   <Mic :size="18" />
                   去模拟面试
+                </button>
+              </div>
+            </section>
+
+            <section class="section-card">
+              <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="m-0 text-base font-black text-[#0f172a]">导出简历</h3>
+                <span class="text-xs font-semibold text-[#94a3b8]"
+                  >PDF 通过浏览器打印“另存为 PDF”</span
+                >
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <button class="btn-secondary min-h-11" type="button" @click="exportPdf">
+                  <Download :size="18" />
+                  导出 PDF
+                </button>
+                <button class="btn-secondary min-h-11" type="button" @click="exportMarkdown">
+                  <FileText :size="18" />
+                  导出 Markdown
                 </button>
               </div>
             </section>
