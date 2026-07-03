@@ -36,12 +36,13 @@
 
 - NestJS、TypeScript、Prisma、SQLite。
 - 全局 API 前缀为 `/api`。
-- 全局鉴权守卫为 `AuthGuard`，公开接口通过 `@Public()` 放行；管理员接口用 `@Roles('admin')` 限制。
+- 全局鉴权守卫为 `AuthGuard`，公开接口通过 `@Public()` 放行；管理员接口用 `@Roles('admin')` 限制（如 AI 用量统计、用户管理）。
+- 用户有 `status` 字段（`active` / `disabled`）；`AuthService.login` 与 `findSession` 会拒绝被封禁用户，封禁操作同时删除其会话做到即时踢下线。
 - DTO 使用 `class-validator` / `class-transformer`，全局 `ValidationPipe` 开启 `whitelist` 与 `transform`；DTO 用 `implements` 绑定 `@devcareer/shared` 里的请求类型。
 - AI 能力统一由 `server/src/modules/ai/AiService` 封装，包含普通请求和流式请求。
 - AI 结果缓存由 `AiCacheService` 和 Prisma `AiCache` 模型承载；AI 调用用量记入 `AiUsageLog`。
 - 文件解析由 `FileModule` / `FileService` 承载，支持简历上传解析场景。
-- 业务模块除简历、项目、岗位、面试、历史外，还包含职业顾问对话（`chat`）、首页概览（`dashboard`）和定时清理（`maintenance`）。
+- 业务模块除简历、项目、岗位、面试、历史外，还包含职业顾问对话（`chat`）、首页概览（`dashboard`）、管理端用户管理（`admin`）和定时清理（`maintenance`）。
 
 ## 前端开发规则
 
@@ -71,7 +72,8 @@
 
 ## 业务边界
 
-- 当前项目已经包含注册、登录、鉴权、个人信息、简历诊断、项目优化、岗位匹配、模拟面试、历史记录和 AI 缓存能力；不要再按“无登录 MVP”假设设计。
+- 当前项目已经包含注册、登录、鉴权、个人信息、简历诊断、项目优化、岗位匹配、模拟面试、历史记录、AI 缓存，以及管理端的用量监控和用户管理（角色调整、封禁/启用）；不要再按“无登录 MVP”假设设计。
+- 管理端接口涉及角色与封禁时要保留自锁保护：不能改自己角色、封自己，不能把最后一名启用管理员降级或封禁；「首个注册用户自动成为管理员」的引导逻辑不可更改。
 - AI 输出不能编造用户没有提供的经历、公司、项目、指标、规模或结果；缺少量化信息时只能建议用户补充。
 - 简历、JD、面试回答等用户输入属于敏感内容，处理时注意脱敏、边界校验和错误提示。
 - AI 缓存命中逻辑与 prompt/payload/model/version 相关，调整 prompt 或输出结构时要考虑缓存版本。
@@ -105,6 +107,7 @@
 
 - `server/src/modules`: Nest 业务模块。
 - `server/src/modules/ai`: AI 服务、缓存与用量统计。
+- `server/src/modules/admin`: 管理端用户管理（列表、角色调整、封禁/启用），全模块 `@Roles('admin')`。
 - `server/src/prompts`: Prompt 构造与系统提示。
 - `server/src/common`: 通用过滤器、限流守卫和工具。
 - `server/src/prisma`: PrismaService 与模块。

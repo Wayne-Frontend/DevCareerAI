@@ -20,15 +20,17 @@ This document mirrors the current MVP implementation and engineering baseline.
 - Job description matching with match score, keywords, risks, resume suggestions, and interview preparation.
 - Mock interview sessions with first question generation, answer feedback, follow-up questions, and final summaries.
 - Career advisor chat with per-session resume/JD context and streamed replies.
-- Dashboard overview aggregating latest scores and trends across resume, job match, and interview.
-- Admin-only AI usage summary (totals, by feature, by model, by day).
+- Dashboard overview aggregating latest scores across resume, job match, and interview, plus a resume-score trend line (latest N analyses across resumes, chronological).
+- Admin-only AI usage summary (totals, by feature, by model, by day, by user).
+- Admin-only user management: paginated/searchable list with per-user token totals, role changes, and ban/unban.
 - History page for four business record types with filtering, detail view, and deletion.
 
 ## User Roles
 
-- Users carry a `role` of `user` or `admin`.
-- The first account to register in an empty system becomes admin; everyone after is a regular user.
-- Admin-only endpoints (currently the AI usage summary) are guarded by `@Roles('admin')`.
+- Users carry a `role` of `user` or `admin`, and a `status` of `active` or `disabled`.
+- The first account to register in an empty system becomes admin; everyone after is a regular user. This bootstrap rule is fixed — admins are otherwise promoted/demoted through the user-management endpoints.
+- Admin-only endpoints (AI usage summary, user management) are guarded by `@Roles('admin')`.
+- Disabled users are rejected at login and on session validation; banning also deletes their sessions for immediate logout. Self-lock guards prevent an admin from changing their own role, banning themselves, or removing the last active admin.
 
 ## Engineering Baseline
 

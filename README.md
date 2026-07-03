@@ -28,7 +28,8 @@ common/guards              限流守卫与 AI 限流装饰器
 common/utils               JSON 清洗、文本限制、SSE、结果状态判定
 prisma                     PrismaService
 prompts                    各功能 Prompt
-modules/auth               注册登录、会话、守卫、角色
+modules/auth               注册登录、会话、守卫、角色、封禁校验
+modules/admin              管理端用户管理（列表、角色、封禁，仅 admin）
 modules/ai                 AiService、AiCacheService、AI 用量统计
 modules/file               文件解析
 modules/resume             简历
@@ -145,9 +146,10 @@ npm run check       # 依次执行 typecheck、lint、test、build
 - 会话默认 1 天，登录时 `remember=true` 为 30 天。
 - 密码用 scrypt 加盐哈希存储。
 - `AuthGuard` 为全局守卫，`@Public()` 放行注册、登录。token 无效或过期返回 401，前端会清除本地会话并跳转登录页。
-- 用户有 `role` 字段（`user` / `admin`）。空系统里第一个注册的用户自动成为管理员，此后注册均为普通用户。`@Roles('admin')` 用于限制管理员接口（如 AI 用量统计）。
+- 用户有 `role` 字段（`user` / `admin`）。空系统里第一个注册的用户自动成为管理员，此后注册均为普通用户。`@Roles('admin')` 用于限制管理员接口（如 AI 用量统计、用户管理）。
+- 用户有 `status` 字段（`active` / `disabled`）。被封禁（`disabled`）的用户：登录时验密通过也会被拒（返回 403），且已存在的会话在下一次鉴权时即失效（`findSession` 直接判空）。封禁操作同时会删除该用户所有会话，做到即时踢下线。
 
-用户对象字段：`id`、`username`、`email`、`avatarUrl`、`role`、`createdAt`。
+用户对象字段：`id`、`username`、`email`、`avatarUrl`、`role`、`status`、`createdAt`。
 
 会话校验时按 10 分钟节流更新 `lastUsedAt`，避免每个请求都写库。过期时间在创建会话时确定，当前不做滑动续期。
 
@@ -188,7 +190,7 @@ npm run check       # 依次执行 typecheck、lint、test、build
 
 Prisma + SQLite，主要表：
 
-- `User`：账号，`role` 为 `user` / `admin`
+- `User`：账号，`role` 为 `user` / `admin`，`status` 为 `active` / `disabled`（封禁后禁止登录）
 - `AuthSession`：登录会话，存 token 哈希与过期时间
 - `Resume`：简历，归属 `userId`；`source` 为 `manual`（用户保存）或 `auto`（匹配/面试按文本临时创建），列表只展示 `manual`
 - `ResumeAnalysis`：简历诊断记录
@@ -304,16 +306,29 @@ POST   /api/chat/sessions/:sessionId/messages/stream 发送消息（SSE）
 ### 首页概览
 
 ```
-GET    /api/dashboard/overview   汇总简历诊断、岗位匹配、面试的最新分数与趋势
+GET    /api/dashboard/overview        汇总简历诊断、岗位匹配、面试的最新分数与环比
+GET    /api/dashboard/resume-trend     简历诊断得分趋势（最近 N 次，用于首页折线）
 ```
+
+得分趋势按当前用户跨简历取最近若干次诊断、按时间正序返回 `{ points: [{ date, score }] }`。之所以不按单份简历分组：简历诊断页在内容变化时会新建一份简历，按 `resumeId` 分组会让每条曲线只剩一个点，故与历史记录口径一致，跨简历取最近记录。
 
 ### AI 用量（仅管理员）
 
 ```
-GET    /api/ai-usage/summary?days=...   AI token 用量汇总（总计 / 按功能 / 按模型 / 按天）
+GET    /api/ai-usage/summary?days=...   AI token 用量汇总（总计 / 按功能 / 按模型 / 按天 / 按用户）
 ```
 
-`days` 省略时用默认统计窗口。该接口带 `@Roles('admin')`，非管理员访问返回 403。
+`days` 省略时用默认统计窗口。汇总含 `byUser`（消耗最高的若干用户，附用户名；未登录调用归入「匿名」，已注销用户回退为短 id）。该接口带 `@Roles('admin')`，非管理员访问返回 403。
+
+### 用户管理（仅管理员）
+
+```
+GET    /api/admin/users?page=&pageSize=&keyword=   用户列表（分页 + 用户名/邮箱搜索 + 每人累计 token）
+PATCH  /api/admin/users/:id/role                    改角色（body: { role: 'user' | 'admin' }）
+PATCH  /api/admin/users/:id/status                  封禁 / 启用（body: { status: 'active' | 'disabled' }）
+```
+
+均带 `@Roles('admin')`。封禁（`status=disabled`）时在同一事务里删除该用户全部会话，实现即时踢下线。为防管理员误操作自锁，后端拒绝：修改自己的角色、封禁自己、以及把「最后一名启用状态的管理员」降级或封禁。「首个注册用户自动成为管理员」的引导逻辑不受影响，本模块只负责此后的角色调整与封禁。
 
 ## 文件解析与文本限制
 
