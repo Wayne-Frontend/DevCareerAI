@@ -53,7 +53,11 @@ export class JobController {
 
   @AiThrottle()
   @Post('match/stream')
-  matchStream(@Body() dto: MatchJobDto, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
+  matchStream(
+    @Body() dto: MatchJobDto,
+    @CurrentUser() user: AuthUserResponse,
+    @Res() res: Response,
+  ) {
     return runSseStream(res, 'Job match started', (callbacks) =>
       this.jobService.matchStream(dto, user.id, callbacks),
     )

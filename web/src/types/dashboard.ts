@@ -1,24 +1,6 @@
-export interface DashboardMetric {
-  score: number | null
-  delta: number | null
-}
-
-export interface DashboardResumeDimensions {
-  completeness: number
-  skillMatch: number
-  projectQuality: number
-  technicalDepth: number
-  professionalExpression: number
-}
-
-export interface DashboardOverview {
-  hasData: boolean
-  resume: DashboardMetric & {
-    dimensionScores: DashboardResumeDimensions | null
-    lastAnalyzedAt: string | null
-  }
-  jobMatch: DashboardMetric
-  interview: DashboardMetric
-  recordCount: number
-  suggestions: string[]
-}
+// 契约类型已下沉到 @devcareer/shared（前后端单一事实源），此处仅转发以保持既有 import 路径稳定。
+export type {
+  DashboardMetric,
+  DashboardResumeDimensions,
+  DashboardOverview,
+} from '@devcareer/shared'

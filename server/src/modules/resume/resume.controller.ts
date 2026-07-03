@@ -1,4 +1,16 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common'
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import type { Response } from 'express'
@@ -38,7 +50,11 @@ export class ResumeController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateResumeDto, @CurrentUser() user: AuthUserResponse) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateResumeDto,
+    @CurrentUser() user: AuthUserResponse,
+  ) {
     return this.resumeService.update(id, dto, user.id)
   }
 
@@ -56,7 +72,9 @@ export class ResumeController {
         const accepted = SUPPORTED_RESUME_EXTENSIONS.has(extension)
 
         callback(
-          accepted ? null : new BadRequestException('Only PDF, DOCX, TXT and MD files are supported'),
+          accepted
+            ? null
+            : new BadRequestException('Only PDF, DOCX, TXT and MD files are supported'),
           accepted,
         )
       },
@@ -74,7 +92,11 @@ export class ResumeController {
 
   @AiThrottle()
   @Post(':id/analyze/stream')
-  analyzeStream(@Param('id') id: string, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
+  analyzeStream(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUserResponse,
+    @Res() res: Response,
+  ) {
     return runSseStream(res, 'Resume analysis started', (callbacks) =>
       this.resumeService.analyzeStream(id, user.id, callbacks),
     )

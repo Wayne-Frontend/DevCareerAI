@@ -35,7 +35,9 @@ export class HistoryService {
     const [resume, project, job, interview] = await Promise.all([
       this.prisma.resumeAnalysis.deleteMany({ where: { id, resume: { userId } } }),
       this.prisma.projectOptimization.deleteMany({ where: { id, userId } }),
-      this.prisma.jobMatchAnalysis.deleteMany({ where: { id, resume: { userId }, jobDescription: { userId } } }),
+      this.prisma.jobMatchAnalysis.deleteMany({
+        where: { id, resume: { userId }, jobDescription: { userId } },
+      }),
       this.prisma.interviewSession.deleteMany({ where: { id, userId } }),
     ])
 
@@ -131,5 +133,7 @@ function readTotalScore(value: unknown) {
 }
 
 function toDetailObject(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {}
 }

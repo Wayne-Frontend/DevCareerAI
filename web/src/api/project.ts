@@ -1,6 +1,11 @@
 import { request } from './request'
 import { streamRequest, type StreamHandlers } from './streamRequest'
-import type { AiResponseMeta, ProjectOptimizationRecord, ProjectOptimizationResult, ProjectOptimizePayload } from '../types/project'
+import type {
+  AiResponseMeta,
+  ProjectOptimizationRecord,
+  ProjectOptimizationResult,
+  ProjectOptimizePayload,
+} from '@/types/project'
 
 export function optimizeProject(data: ProjectOptimizePayload) {
   return request<{ result: ProjectOptimizationResult; meta?: AiResponseMeta }>({
@@ -20,7 +25,11 @@ export function optimizeProjectStream(
   data: ProjectOptimizePayload,
   handlers?: StreamHandlers<ProjectOptimizationStreamResponse>,
 ) {
-  return streamRequest<ProjectOptimizationStreamResponse>('/projects/optimize/stream', data, handlers)
+  return streamRequest<ProjectOptimizationStreamResponse>(
+    '/projects/optimize/stream',
+    data,
+    handlers,
+  )
 }
 
 export function getProjectOptimizations() {

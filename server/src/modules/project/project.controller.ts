@@ -37,7 +37,11 @@ export class ProjectController {
 
   @AiThrottle()
   @Post('optimize/stream')
-  optimizeStream(@Body() dto: OptimizeProjectDto, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
+  optimizeStream(
+    @Body() dto: OptimizeProjectDto,
+    @CurrentUser() user: AuthUserResponse,
+    @Res() res: Response,
+  ) {
     return runSseStream(res, 'Project optimization started', (callbacks) =>
       this.projectService.optimizeStream(dto, user.id, callbacks),
     )

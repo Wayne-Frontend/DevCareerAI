@@ -28,7 +28,9 @@ withDefaults(
   >
     <LoaderCircle v-if="loading" class="loading-button__spinner" :size="17" />
     <slot v-else name="icon" />
-    <span><slot>{{ loading && loadingText ? loadingText : '' }}</slot></span>
+    <span
+      ><slot>{{ loading && loadingText ? loadingText : '' }}</slot></span
+    >
   </button>
 </template>
 
@@ -44,7 +46,11 @@ withDefaults(
   border: 1px solid transparent;
   font-size: 14px;
   font-weight: 850;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease,
+    background 0.18s ease;
 
   &:hover:not(:disabled) {
     transform: translateY(-1px);
@@ -92,7 +98,7 @@ withDefaults(
 }
 
 .loading-button.is-loading::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(110deg, transparent, rgba(255, 255, 255, 0.22), transparent);

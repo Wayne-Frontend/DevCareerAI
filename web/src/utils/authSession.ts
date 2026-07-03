@@ -1,4 +1,4 @@
-import type { AuthSession, AuthUser } from '../types/auth'
+import type { AuthSession, AuthUser } from '@/types/auth'
 
 const AUTH_SESSION_KEY = 'devcareer-auth-session'
 

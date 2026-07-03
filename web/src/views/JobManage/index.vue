@@ -13,20 +13,20 @@ import {
   Trash2,
   X,
 } from 'lucide-vue-next'
-import EmptyState from '../../components/EmptyState/index.vue'
-import GlassCard from '../../components/GlassCard/index.vue'
-import InlineStatus from '../../components/InlineStatus/index.vue'
-import LoadingButton from '../../components/LoadingButton/index.vue'
+import EmptyState from '@/components/EmptyState/index.vue'
+import GlassCard from '@/components/GlassCard/index.vue'
+import InlineStatus from '@/components/InlineStatus/index.vue'
+import LoadingButton from '@/components/LoadingButton/index.vue'
 import {
   createJobDescription,
   deleteJobDescription,
   getJobDescriptions,
   updateJobDescription,
-} from '../../api/job'
-import type { JobDescriptionPayload, JobDescriptionRecord } from '../../types/job'
-import { formatDateTime } from '../../utils/format'
-import { messageBox } from '../../utils/messageBox'
-import { notify } from '../../utils/notify'
+} from '@/api/job'
+import type { JobDescriptionPayload, JobDescriptionRecord } from '@/types/job'
+import { formatDateTime } from '@/utils/format'
+import { messageBox } from '@/utils/messageBox'
+import { notify } from '@/utils/notify'
 
 type PanelMode = 'view' | 'create' | 'edit'
 
@@ -47,7 +47,9 @@ const form = reactive<JobDescriptionPayload>({
   content: '',
 })
 
-const selectedJd = computed(() => descriptions.value.find((item) => item.id === selectedId.value) || null)
+const selectedJd = computed(
+  () => descriptions.value.find((item) => item.id === selectedId.value) || null,
+)
 const isEditing = computed(() => mode.value === 'create' || mode.value === 'edit')
 
 onMounted(() => {
@@ -59,9 +61,10 @@ async function loadDescriptions(preferredId = selectedId.value) {
   errorMessage.value = ''
   try {
     descriptions.value = await getJobDescriptions()
-    const nextSelected = preferredId && descriptions.value.some((item) => item.id === preferredId)
-      ? preferredId
-      : descriptions.value[0]?.id || ''
+    const nextSelected =
+      preferredId && descriptions.value.some((item) => item.id === preferredId)
+        ? preferredId
+        : descriptions.value[0]?.id || ''
     selectedId.value = nextSelected
     if (nextSelected && mode.value === 'view') {
       fillForm(descriptions.value.find((item) => item.id === nextSelected) || null)
@@ -118,9 +121,10 @@ async function saveJd() {
       companyName: form.companyName?.trim() || undefined,
       content: form.content.trim(),
     }
-    const saved = mode.value === 'edit' && selectedJd.value
-      ? await updateJobDescription(selectedJd.value.id, payload)
-      : await createJobDescription(payload)
+    const saved =
+      mode.value === 'edit' && selectedJd.value
+        ? await updateJobDescription(selectedJd.value.id, payload)
+        : await createJobDescription(payload)
     notify(mode.value === 'edit' ? 'JD 已更新' : 'JD 已保存', 'success')
     mode.value = 'view'
     selectedId.value = saved.id
@@ -136,7 +140,8 @@ async function removeJd() {
   const confirmed = await messageBox.confirm({
     type: 'danger',
     title: '确认删除这条 JD？',
-    message: '删除后基于该 JD 的岗位匹配记录会一并删除；关联的模拟面试记录会保留，但不再关联该 JD。',
+    message:
+      '删除后基于该 JD 的岗位匹配记录会一并删除；关联的模拟面试记录会保留，但不再关联该 JD。',
     confirmText: '删除',
   })
   if (!confirmed) return
@@ -174,7 +179,9 @@ function goInterview() {
       </div>
       <div>
         <h1 class="m-0 text-[26px] font-black text-[#0f172a]">JD 管理</h1>
-        <p class="mt-1.5 text-sm font-semibold text-[#64748b]">集中维护常用岗位 JD，随时在岗位匹配和模拟面试中复用。</p>
+        <p class="mt-1.5 text-sm font-semibold text-[#64748b]">
+          集中维护常用岗位 JD，随时在岗位匹配和模拟面试中复用。
+        </p>
       </div>
       <button class="btn-primary ml-auto min-w-[132px]" type="button" @click="startCreate">
         <FilePlus2 :size="18" />
@@ -182,7 +189,12 @@ function goInterview() {
       </button>
     </header>
 
-    <InlineStatus v-if="errorMessage" type="error" title="JD 加载失败" :description="errorMessage" />
+    <InlineStatus
+      v-if="errorMessage"
+      type="error"
+      title="JD 加载失败"
+      :description="errorMessage"
+    />
 
     <div class="jd-manage-grid">
       <GlassCard class="jd-list-pane soft-scrollbar">
@@ -191,7 +203,12 @@ function goInterview() {
           <span class="soft-tag">{{ descriptions.length }} 条</span>
         </div>
 
-        <InlineStatus v-if="loading" type="loading" title="正在加载 JD" description="稍等一下，JD 列表马上回来。" />
+        <InlineStatus
+          v-if="loading"
+          type="loading"
+          title="正在加载 JD"
+          description="稍等一下，JD 列表马上回来。"
+        />
         <EmptyState
           v-else-if="descriptions.length === 0"
           title="暂无 JD"
@@ -224,7 +241,11 @@ function goInterview() {
               {{ mode === 'create' ? '新建 JD' : mode === 'edit' ? '编辑 JD' : 'JD 详情' }}
             </h2>
             <p class="mb-0 mt-1 text-sm font-semibold text-[#64748b]">
-              {{ isEditing ? '保存后可在岗位匹配和模拟面试流程中复用。' : '查看 JD 正文，并选择下一步 AI 工作流。' }}
+              {{
+                isEditing
+                  ? '保存后可在岗位匹配和模拟面试流程中复用。'
+                  : '查看 JD 正文，并选择下一步 AI 工作流。'
+              }}
             </p>
           </div>
           <div v-if="selectedJd && mode === 'view'" class="flex flex-wrap gap-3">
@@ -232,7 +253,12 @@ function goInterview() {
               <Pencil :size="17" />
               编辑
             </button>
-            <LoadingButton variant="danger" :loading="deleting" loading-text="删除中..." @click="removeJd">
+            <LoadingButton
+              variant="danger"
+              :loading="deleting"
+              loading-text="删除中..."
+              @click="removeJd"
+            >
               <template #icon><Trash2 :size="17" /></template>
               删除
             </LoadingButton>
@@ -250,16 +276,33 @@ function goInterview() {
             <div class="grid gap-3">
               <label>
                 <span class="field-label">岗位名称</span>
-                <input v-model="form.jobTitle" class="input-base" maxlength="120" placeholder="例如：前端开发工程师" />
+                <input
+                  v-model="form.jobTitle"
+                  class="input-base"
+                  maxlength="120"
+                  placeholder="例如：前端开发工程师"
+                />
               </label>
               <label>
                 <span class="field-label">公司名称（可选）</span>
-                <input v-model="form.companyName" class="input-base" maxlength="120" placeholder="例如：某某科技" />
+                <input
+                  v-model="form.companyName"
+                  class="input-base"
+                  maxlength="120"
+                  placeholder="例如：某某科技"
+                />
               </label>
               <label>
                 <span class="field-label">JD 正文</span>
-                <textarea v-model="form.content" class="textarea-base min-h-[280px]" :maxlength="MAX_JD_LENGTH" placeholder="粘贴岗位职责、任职要求等 JD 正文..." />
-                <span class="mt-1 block text-right text-xs font-semibold text-[#64748b]">{{ form.content.length }} / {{ MAX_JD_LENGTH }}</span>
+                <textarea
+                  v-model="form.content"
+                  class="textarea-base min-h-[280px]"
+                  :maxlength="MAX_JD_LENGTH"
+                  placeholder="粘贴岗位职责、任职要求等 JD 正文..."
+                />
+                <span class="mt-1 block text-right text-xs font-semibold text-[#64748b]"
+                  >{{ form.content.length }} / {{ MAX_JD_LENGTH }}</span
+                >
               </label>
             </div>
 
@@ -268,7 +311,12 @@ function goInterview() {
                 <X :size="17" />
                 取消
               </button>
-              <LoadingButton class="min-w-[132px]" :loading="saving" loading-text="保存中..." @click="saveJd">
+              <LoadingButton
+                class="min-w-[132px]"
+                :loading="saving"
+                loading-text="保存中..."
+                @click="saveJd"
+              >
                 <template #icon><Save :size="18" /></template>
                 保存
               </LoadingButton>
@@ -279,7 +327,9 @@ function goInterview() {
             <section class="section-card">
               <div class="flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0">
-                  <h3 class="mb-2 mt-0 truncate text-xl font-black text-[#0f172a]">{{ selectedJd.jobTitle }}</h3>
+                  <h3 class="mb-2 mt-0 truncate text-xl font-black text-[#0f172a]">
+                    {{ selectedJd.jobTitle }}
+                  </h3>
                   <div class="flex flex-wrap gap-2">
                     <span class="soft-tag">{{ selectedJd.companyName || '未填写公司' }}</span>
                     <span class="soft-tag">{{ selectedJd.content.length }} 字</span>
@@ -347,7 +397,11 @@ function goInterview() {
   padding: 14px;
   color: #0f172a;
   text-align: left;
-  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .jd-card:hover,

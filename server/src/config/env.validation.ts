@@ -36,7 +36,9 @@ export function validateEnv(config: Record<string, unknown>) {
   }
 
   if (errors.length > 0) {
-    throw new Error(`Invalid environment configuration:\n${errors.map((item) => `- ${item}`).join('\n')}`)
+    throw new Error(
+      `Invalid environment configuration:\n${errors.map((item) => `- ${item}`).join('\n')}`,
+    )
   }
 
   return config

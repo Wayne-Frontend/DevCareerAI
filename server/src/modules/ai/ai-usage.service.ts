@@ -40,7 +40,9 @@ export class AiUsageService {
         },
       })
     } catch (error) {
-      this.logger.warn(`记录 AI 用量失败：${error instanceof Error ? error.message : String(error)}`)
+      this.logger.warn(
+        `记录 AI 用量失败：${error instanceof Error ? error.message : String(error)}`,
+      )
     }
   }
 
@@ -78,8 +80,20 @@ export class AiUsageService {
         completionTokens: totals._sum.completionTokens ?? 0,
         totalTokens: totals._sum.totalTokens ?? 0,
       },
-      byFeature: toBreakdown(featureRows.map((row) => ({ key: row.feature, count: row._count._all, tokens: row._sum.totalTokens }))),
-      byModel: toBreakdown(modelRows.map((row) => ({ key: row.model, count: row._count._all, tokens: row._sum.totalTokens }))),
+      byFeature: toBreakdown(
+        featureRows.map((row) => ({
+          key: row.feature,
+          count: row._count._all,
+          tokens: row._sum.totalTokens,
+        })),
+      ),
+      byModel: toBreakdown(
+        modelRows.map((row) => ({
+          key: row.model,
+          count: row._count._all,
+          tokens: row._sum.totalTokens,
+        })),
+      ),
       daily,
     }
   }
@@ -119,7 +133,9 @@ function clampDays(days: number): number {
   return Math.min(MAX_SUMMARY_DAYS, Math.floor(days))
 }
 
-function toBreakdown(rows: Array<{ key: string; count: number; tokens: number | null }>): AiUsageBreakdownItem[] {
+function toBreakdown(
+  rows: Array<{ key: string; count: number; tokens: number | null }>,
+): AiUsageBreakdownItem[] {
   return rows
     .map((row) => ({ key: row.key, calls: row.count, totalTokens: row.tokens ?? 0 }))
     .sort((a, b) => b.totalTokens - a.totalTokens)

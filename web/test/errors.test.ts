@@ -10,14 +10,20 @@ function asAxiosError(partial: Partial<AxiosError<ApiErrorPayload>>): AxiosError
 describe('resolveApiErrorMessage', () => {
   it('优先取后端返回的 message', () => {
     const error = asAxiosError({
-      response: { data: { message: '账号或密码不正确' }, status: 401 } as AxiosError<ApiErrorPayload>['response'],
+      response: {
+        data: { message: '账号或密码不正确' },
+        status: 401,
+      } as AxiosError<ApiErrorPayload>['response'],
     })
     expect(resolveApiErrorMessage(error)).toBe('账号或密码不正确')
   })
 
   it('message 为数组时用「；」拼接', () => {
     const error = asAxiosError({
-      response: { data: { message: ['邮箱不能为空', '密码太短'] }, status: 400 } as AxiosError<ApiErrorPayload>['response'],
+      response: {
+        data: { message: ['邮箱不能为空', '密码太短'] },
+        status: 400,
+      } as AxiosError<ApiErrorPayload>['response'],
     })
     expect(resolveApiErrorMessage(error)).toBe('邮箱不能为空；密码太短')
   })
@@ -30,7 +36,9 @@ describe('resolveApiErrorMessage', () => {
   })
 
   it('超时错误', () => {
-    expect(resolveApiErrorMessage(asAxiosError({ code: 'ECONNABORTED' }))).toBe('请求超时，请稍后重试')
+    expect(resolveApiErrorMessage(asAxiosError({ code: 'ECONNABORTED' }))).toBe(
+      '请求超时，请稍后重试',
+    )
   })
 
   it('网络错误', () => {

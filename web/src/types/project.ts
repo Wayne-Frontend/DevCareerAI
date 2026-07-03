@@ -1,31 +1,7 @@
-export interface ProjectOptimizePayload {
-  rawContent: string
-  targetRole?: string
-  techStack?: string[]
-  style?: string
-}
-
-export interface ProjectOptimizationResult {
-  projectName: string
-  projectDescription: string
-  techStack: string[]
-  responsibilities: string[]
-  highlights: string[]
-  difficulties: string[]
-  interviewQuestions: string[]
-}
-
-export interface AiResponseMeta {
-  cached?: boolean
-  status: 'success' | 'parse_error'
-}
-
-export interface ProjectOptimizationRecord {
-  id: string
-  rawContent: string
-  targetRole?: string
-  techStack?: string[]
-  style?: string
-  resultJson: ProjectOptimizationResult
-  createdAt: string
-}
+// 契约类型已下沉到 @devcareer/shared（前后端单一事实源），此处仅转发以保持既有 import 路径稳定。
+export type {
+  ProjectOptimizePayload,
+  ProjectOptimizationResult,
+  ProjectOptimizationRecord,
+  AiResponseMeta,
+} from '@devcareer/shared'

@@ -1,6 +1,8 @@
 import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator'
+import type { RegisterPayload } from '@devcareer/shared'
 
-export class RegisterDto {
+// implements 共享契约：契约改字段时此处编译期报错，防止前后端漂移。
+export class RegisterDto implements RegisterPayload {
   @IsString()
   @MinLength(2)
   @MaxLength(32)

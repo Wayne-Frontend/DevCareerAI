@@ -15,15 +15,15 @@ import {
   UploadCloud,
   X,
 } from 'lucide-vue-next'
-import EmptyState from '../../components/EmptyState/index.vue'
-import GlassCard from '../../components/GlassCard/index.vue'
-import InlineStatus from '../../components/InlineStatus/index.vue'
-import LoadingButton from '../../components/LoadingButton/index.vue'
-import { createResume, deleteResume, getResumes, updateResume, uploadResume } from '../../api/resume'
-import type { ResumePayload, ResumeRecord } from '../../types/resume'
-import { formatDateTime } from '../../utils/format'
-import { messageBox } from '../../utils/messageBox'
-import { notify } from '../../utils/notify'
+import EmptyState from '@/components/EmptyState/index.vue'
+import GlassCard from '@/components/GlassCard/index.vue'
+import InlineStatus from '@/components/InlineStatus/index.vue'
+import LoadingButton from '@/components/LoadingButton/index.vue'
+import { createResume, deleteResume, getResumes, updateResume, uploadResume } from '@/api/resume'
+import type { ResumePayload, ResumeRecord } from '@/types/resume'
+import { formatDateTime } from '@/utils/format'
+import { messageBox } from '@/utils/messageBox'
+import { notify } from '@/utils/notify'
 
 type PanelMode = 'view' | 'create' | 'edit'
 
@@ -45,10 +45,16 @@ const form = reactive<ResumePayload>({
   experienceLevel: '',
 })
 
-const selectedResume = computed(() => resumes.value.find((item) => item.id === selectedId.value) || null)
+const selectedResume = computed(
+  () => resumes.value.find((item) => item.id === selectedId.value) || null,
+)
 const isEditing = computed(() => mode.value === 'create' || mode.value === 'edit')
 const sortedResumes = computed(() =>
-  [...resumes.value].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()),
+  [...resumes.value].sort(
+    (a, b) =>
+      new Date(b.updatedAt || b.createdAt || 0).getTime() -
+      new Date(a.updatedAt || a.createdAt || 0).getTime(),
+  ),
 )
 
 onMounted(() => {
@@ -60,9 +66,10 @@ async function loadResumes(preferredId = selectedId.value) {
   errorMessage.value = ''
   try {
     resumes.value = await getResumes()
-    const nextSelected = preferredId && resumes.value.some((item) => item.id === preferredId)
-      ? preferredId
-      : sortedResumes.value[0]?.id || ''
+    const nextSelected =
+      preferredId && resumes.value.some((item) => item.id === preferredId)
+        ? preferredId
+        : sortedResumes.value[0]?.id || ''
     selectedId.value = nextSelected
     if (nextSelected && mode.value === 'view') {
       fillForm(resumes.value.find((item) => item.id === nextSelected) || null)
@@ -158,9 +165,10 @@ async function saveResume() {
       targetRole: form.targetRole?.trim() || '',
       experienceLevel: form.experienceLevel || '',
     }
-    const saved = mode.value === 'edit' && selectedResume.value
-      ? await updateResume(selectedResume.value.id, payload)
-      : await createResume(payload)
+    const saved =
+      mode.value === 'edit' && selectedResume.value
+        ? await updateResume(selectedResume.value.id, payload)
+        : await createResume(payload)
     notify(mode.value === 'edit' ? '简历已更新' : '简历已保存', 'success')
     mode.value = 'view'
     selectedId.value = saved.id
@@ -219,7 +227,9 @@ function goInterview() {
       </div>
       <div>
         <h1 class="m-0 text-[26px] font-black text-[#0f172a]">简历管理</h1>
-        <p class="mt-1.5 text-sm font-semibold text-[#64748b]">集中维护简历资产，并快速进入诊断、岗位匹配和模拟面试。</p>
+        <p class="mt-1.5 text-sm font-semibold text-[#64748b]">
+          集中维护简历资产，并快速进入诊断、岗位匹配和模拟面试。
+        </p>
       </div>
       <button class="btn-primary ml-auto min-w-[132px]" type="button" @click="startCreate">
         <FilePlus2 :size="18" />
@@ -227,7 +237,12 @@ function goInterview() {
       </button>
     </header>
 
-    <InlineStatus v-if="errorMessage" type="error" title="简历加载失败" :description="errorMessage" />
+    <InlineStatus
+      v-if="errorMessage"
+      type="error"
+      title="简历加载失败"
+      :description="errorMessage"
+    />
 
     <div class="resume-manage-grid">
       <GlassCard class="resume-list-pane soft-scrollbar">
@@ -236,7 +251,12 @@ function goInterview() {
           <span class="soft-tag">{{ resumes.length }} 份</span>
         </div>
 
-        <InlineStatus v-if="loading" type="loading" title="正在加载简历" description="稍等一下，简历列表马上回来。" />
+        <InlineStatus
+          v-if="loading"
+          type="loading"
+          title="正在加载简历"
+          description="稍等一下，简历列表马上回来。"
+        />
         <EmptyState
           v-else-if="resumes.length === 0"
           title="暂无简历"
@@ -269,7 +289,11 @@ function goInterview() {
               {{ mode === 'create' ? '新建简历' : mode === 'edit' ? '编辑简历' : '简历详情' }}
             </h2>
             <p class="mb-0 mt-1 text-sm font-semibold text-[#64748b]">
-              {{ isEditing ? '保存后可在诊断、匹配和面试流程中复用。' : '查看简历正文，并选择下一步 AI 工作流。' }}
+              {{
+                isEditing
+                  ? '保存后可在诊断、匹配和面试流程中复用。'
+                  : '查看简历正文，并选择下一步 AI 工作流。'
+              }}
             </p>
           </div>
           <div v-if="selectedResume && mode === 'view'" class="flex flex-wrap gap-3">
@@ -277,7 +301,12 @@ function goInterview() {
               <Pencil :size="17" />
               编辑
             </button>
-            <LoadingButton variant="danger" :loading="deleting" loading-text="删除中..." @click="removeResume">
+            <LoadingButton
+              variant="danger"
+              :loading="deleting"
+              loading-text="删除中..."
+              @click="removeResume"
+            >
               <template #icon><Trash2 :size="17" /></template>
               删除
             </LoadingButton>
@@ -292,22 +321,55 @@ function goInterview() {
 
         <div v-else class="grid gap-4">
           <section v-if="isEditing" class="section-card">
-            <label class="mb-4 grid min-h-[102px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40" :class="{ 'pointer-events-none opacity-70': uploadLoading }">
-              <input class="hidden" type="file" accept=".pdf,.docx,.txt,.md" :disabled="uploadLoading" @change="onFileChange" />
+            <label
+              class="mb-4 grid min-h-[102px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40"
+              :class="{ 'pointer-events-none opacity-70': uploadLoading }"
+            >
+              <input
+                class="hidden"
+                type="file"
+                accept=".pdf,.docx,.txt,.md"
+                :disabled="uploadLoading"
+                @change="onFileChange"
+              />
               <UploadCloud :size="34" class="text-indigo-500" />
-              <span class="mt-2 block text-sm font-extrabold text-[#26324f]">{{ uploadLoading ? '解析中...' : '上传 PDF / DOCX / TXT / MD 并填入正文' }}</span>
-              <InlineStatus v-if="uploadLoading" class="mt-3" type="loading" title="正在解析文件" description="完成后会自动填入简历正文。" />
-              <InlineStatus v-if="uploadError" class="mt-3" type="error" title="上传失败" :description="uploadError" />
+              <span class="mt-2 block text-sm font-extrabold text-[#26324f]">{{
+                uploadLoading ? '解析中...' : '上传 PDF / DOCX / TXT / MD 并填入正文'
+              }}</span>
+              <InlineStatus
+                v-if="uploadLoading"
+                class="mt-3"
+                type="loading"
+                title="正在解析文件"
+                description="完成后会自动填入简历正文。"
+              />
+              <InlineStatus
+                v-if="uploadError"
+                class="mt-3"
+                type="error"
+                title="上传失败"
+                :description="uploadError"
+              />
             </label>
 
             <div class="grid gap-3">
               <label>
                 <span class="field-label">简历标题</span>
-                <input v-model="form.title" class="input-base" maxlength="120" placeholder="例如：前端开发工程师简历" />
+                <input
+                  v-model="form.title"
+                  class="input-base"
+                  maxlength="120"
+                  placeholder="例如：前端开发工程师简历"
+                />
               </label>
               <label>
                 <span class="field-label">目标岗位</span>
-                <input v-model="form.targetRole" class="input-base" maxlength="80" placeholder="例如：前端开发工程师" />
+                <input
+                  v-model="form.targetRole"
+                  class="input-base"
+                  maxlength="80"
+                  placeholder="例如：前端开发工程师"
+                />
               </label>
               <label>
                 <span class="field-label">经验年限</span>
@@ -321,8 +383,15 @@ function goInterview() {
               </label>
               <label>
                 <span class="field-label">简历正文</span>
-                <textarea v-model="form.content" class="textarea-base min-h-[280px]" maxlength="30000" placeholder="粘贴或上传简历正文..." />
-                <span class="mt-1 block text-right text-xs font-semibold text-[#64748b]">{{ form.content.length }} / 30000</span>
+                <textarea
+                  v-model="form.content"
+                  class="textarea-base min-h-[280px]"
+                  maxlength="30000"
+                  placeholder="粘贴或上传简历正文..."
+                />
+                <span class="mt-1 block text-right text-xs font-semibold text-[#64748b]"
+                  >{{ form.content.length }} / 30000</span
+                >
               </label>
             </div>
 
@@ -331,7 +400,13 @@ function goInterview() {
                 <X :size="17" />
                 取消
               </button>
-              <LoadingButton class="min-w-[132px]" :loading="saving" loading-text="保存中..." :disabled="uploadLoading" @click="saveResume">
+              <LoadingButton
+                class="min-w-[132px]"
+                :loading="saving"
+                loading-text="保存中..."
+                :disabled="uploadLoading"
+                @click="saveResume"
+              >
                 <template #icon><Save :size="18" /></template>
                 保存
               </LoadingButton>
@@ -342,15 +417,20 @@ function goInterview() {
             <section class="section-card">
               <div class="flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0">
-                  <h3 class="mb-2 mt-0 truncate text-xl font-black text-[#0f172a]">{{ selectedResume.title }}</h3>
+                  <h3 class="mb-2 mt-0 truncate text-xl font-black text-[#0f172a]">
+                    {{ selectedResume.title }}
+                  </h3>
                   <div class="flex flex-wrap gap-2">
                     <span class="soft-tag">{{ selectedResume.targetRole || '未指定岗位' }}</span>
-                    <span class="soft-tag">{{ selectedResume.experienceLevel || '未指定经验' }}</span>
+                    <span class="soft-tag">{{
+                      selectedResume.experienceLevel || '未指定经验'
+                    }}</span>
                     <span class="soft-tag">{{ selectedResume.content.length }} 字</span>
                   </div>
                 </div>
                 <span class="text-xs font-bold text-[#64748b]">
-                  更新于 {{ formatDateTime(selectedResume.updatedAt || selectedResume.createdAt || '') }}
+                  更新于
+                  {{ formatDateTime(selectedResume.updatedAt || selectedResume.createdAt || '') }}
                 </span>
               </div>
             </section>
@@ -415,7 +495,11 @@ function goInterview() {
   padding: 14px;
   color: #0f172a;
   text-align: left;
-  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .resume-card:hover,

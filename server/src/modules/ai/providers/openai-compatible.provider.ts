@@ -3,7 +3,13 @@ import { ConfigService } from '@nestjs/config'
 import axios, { AxiosError } from 'axios'
 import type { Readable } from 'stream'
 import { isConfiguredApiKey, resolveAiConfig, type ResolvedAiConfig } from '../ai-config'
-import type { AiUsage, ChatOptions, ChatResult, ChatStreamOptions, ChatStreamResult } from '../ai.types'
+import type {
+  AiUsage,
+  ChatOptions,
+  ChatResult,
+  ChatStreamOptions,
+  ChatStreamResult,
+} from '../ai.types'
 import type { AiProvider } from './ai-provider.interface'
 
 interface ChatCompletionResponse {
@@ -46,10 +52,14 @@ export class OpenAiCompatibleProvider implements AiProvider {
     const model = this.getModel(options.modelTier)
 
     try {
-      const response = await axios.post<ChatCompletionResponse>(this.endpoint(), this.buildBody(options, model, false), {
-        headers: this.headers(),
-        timeout: 90000,
-      })
+      const response = await axios.post<ChatCompletionResponse>(
+        this.endpoint(),
+        this.buildBody(options, model, false),
+        {
+          headers: this.headers(),
+          timeout: 90000,
+        },
+      )
 
       return {
         text: response.data.choices?.[0]?.message?.content || '',
@@ -57,7 +67,9 @@ export class OpenAiCompatibleProvider implements AiProvider {
         model,
       }
     } catch (error) {
-      throw new ServiceUnavailableException(`AI service unavailable: ${readAxiosErrorMessage(error)}`)
+      throw new ServiceUnavailableException(
+        `AI service unavailable: ${readAxiosErrorMessage(error)}`,
+      )
     }
   }
 
@@ -66,12 +78,16 @@ export class OpenAiCompatibleProvider implements AiProvider {
     const model = this.getModel(options.modelTier)
 
     try {
-      const response = await axios.post<Readable>(this.endpoint(), this.buildBody(options, model, true), {
-        headers: this.headers(),
-        responseType: 'stream',
-        timeout: 120000,
-        signal: options.signal,
-      })
+      const response = await axios.post<Readable>(
+        this.endpoint(),
+        this.buildBody(options, model, true),
+        {
+          headers: this.headers(),
+          responseType: 'stream',
+          timeout: 120000,
+          signal: options.signal,
+        },
+      )
 
       const result = await readChatStream(response.data, options)
       return {
@@ -83,7 +99,9 @@ export class OpenAiCompatibleProvider implements AiProvider {
         throw new ServiceUnavailableException('AI request was cancelled')
       }
 
-      throw new ServiceUnavailableException(`AI service unavailable: ${readAxiosErrorMessage(error)}`)
+      throw new ServiceUnavailableException(
+        `AI service unavailable: ${readAxiosErrorMessage(error)}`,
+      )
     }
   }
 

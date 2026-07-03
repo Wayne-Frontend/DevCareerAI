@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import MarkdownIt from 'markdown-it'
-import FeedbackCard from '../FeedbackCard/index.vue'
+import FeedbackCard from '@/components/FeedbackCard/index.vue'
 
 const props = defineProps<{
   role: 'ai' | 'user' | 'system'
@@ -49,12 +49,23 @@ const renderedContent = computed(() =>
       <div v-if="role === 'ai' && !content" class="typing-dots" aria-label="AI 正在思考">
         <span /><span /><span />
       </div>
+      <!-- 安全性依据：renderedContent 由 markdown-it({ html: false }) 生成，原始 HTML 已被转义，
+           不存在 XSS 注入面；若未来开启 html: true，必须先接入 DOMPurify 再解除本处禁用。
+           注：元素为多行，disable-next-line 罩不到 v-html 属性所在行，故用块级 disable/enable。 -->
+      <!-- eslint-disable vue/no-v-html -->
       <div
         v-else-if="markdown && role === 'ai'"
         class="markdown-body text-sm leading-7 text-[#243044]"
         v-html="renderedContent"
       />
-      <p v-else class="m-0 whitespace-pre-wrap text-sm leading-7 text-[#243044]" :class="{ 'text-white': role === 'user' }">{{ content }}</p>
+      <!-- eslint-enable vue/no-v-html -->
+      <p
+        v-else
+        class="m-0 whitespace-pre-wrap text-sm leading-7 text-[#243044]"
+        :class="{ 'text-white': role === 'user' }"
+      >
+        {{ content }}
+      </p>
       <FeedbackCard
         v-if="feedback"
         class="mt-3"

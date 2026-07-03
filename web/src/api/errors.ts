@@ -1,5 +1,5 @@
 ﻿import type { AxiosError } from 'axios'
-import { notify } from '../utils/notify'
+import { notify } from '@/utils/notify'
 
 export interface ApiErrorPayload {
   message?: string | string[]
@@ -9,7 +9,11 @@ export interface ApiErrorPayload {
 
 export function resolveApiErrorMessage(error: AxiosError<ApiErrorPayload>) {
   if (error.response) {
-    return normalizeMessage(error.response.data?.message || error.response.data?.error || getStatusMessage(error.response.status))
+    return normalizeMessage(
+      error.response.data?.message ||
+        error.response.data?.error ||
+        getStatusMessage(error.response.status),
+    )
   }
 
   if (error.code === 'ECONNABORTED') {

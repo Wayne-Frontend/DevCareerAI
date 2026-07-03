@@ -1,6 +1,6 @@
 ﻿import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
-import { getAuthToken } from '../utils/authSession'
-import { redirectToLogin } from '../utils/redirectToLogin'
+import { getAuthToken } from '@/utils/authSession'
+import { redirectToLogin } from '@/utils/redirectToLogin'
 import { notifyApiError, resolveApiErrorMessage, type ApiErrorPayload } from './errors'
 
 const service = axios.create({

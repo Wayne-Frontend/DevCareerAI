@@ -1,57 +1,15 @@
-export interface InterviewCreatePayload {
-  resumeContent: string
-  resumeId?: string
-  jobDescription?: string
-  jobDescriptionId?: string
-  targetRole: string
-  interviewType: string
-  difficulty: string
-}
+// 契约类型已下沉到 @devcareer/shared（前后端单一事实源），此处仅转发以保持既有 import 路径稳定。
+export type {
+  InterviewCreatePayload,
+  SubmitAnswerPayload,
+  InterviewCreateResponse,
+  InterviewFeedbackResult,
+  InterviewMessageResponse,
+  InterviewFinishResponse,
+  AiResponseMeta,
+} from '@devcareer/shared'
 
-export interface InterviewCreateResponse {
-  sessionId: string
-  firstQuestion: string
-  expectedPoints: string[]
-  cached?: boolean
-  meta?: AiResponseMeta
-}
-
-export interface InterviewFeedbackResult {
-  score: number
-  comment: string
-  problems: string[]
-  betterAnswer: string
-  followUpQuestion: string
-}
-
-export interface InterviewMessageResponse {
-  feedback: {
-    score: number
-    comment: string
-    problems: string[]
-    betterAnswer: string
-  }
-  nextQuestion: string
-  cached?: boolean
-  meta?: AiResponseMeta
-}
-
-export interface InterviewFinishResponse {
-  totalScore: number
-  summary: string
-  strengths: string[]
-  weaknesses: string[]
-  studyPlan: string[]
-  sessionId?: string
-  cached?: boolean
-  meta?: AiResponseMeta
-}
-
-export interface AiResponseMeta {
-  cached?: boolean
-  status: 'success' | 'parse_error'
-}
-
+// 纯前端视图模型（面试聊天气泡的渲染形状），不属于 API 契约，保留在 web 侧。
 export interface ChatMessage {
   id: string
   role: 'ai' | 'user' | 'system'

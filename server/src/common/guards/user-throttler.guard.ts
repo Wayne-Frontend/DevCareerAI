@@ -24,7 +24,12 @@ export function resolveThrottleTracker(req: {
  */
 @Injectable()
 export class UserThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Record<string, any>): Promise<string> {
+  // 基类签名是 Record<string, any>，这里收窄为实际读取的字段（方法参数双变，覆写合法）。
+  protected async getTracker(req: {
+    user?: { id?: string }
+    ips?: string[]
+    ip?: string
+  }): Promise<string> {
     return resolveThrottleTracker(req)
   }
 }

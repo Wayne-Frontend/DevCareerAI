@@ -2,12 +2,14 @@ import { createParamDecorator, ExecutionContext, UnauthorizedException } from '@
 import type { Request } from 'express'
 import type { AuthUserResponse } from './auth.types'
 
-export const CurrentUser = createParamDecorator((_data: unknown, context: ExecutionContext): AuthUserResponse => {
-  const request = context.switchToHttp().getRequest<Request & { user?: AuthUserResponse }>()
+export const CurrentUser = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): AuthUserResponse => {
+    const request = context.switchToHttp().getRequest<Request & { user?: AuthUserResponse }>()
 
-  if (!request.user) {
-    throw new UnauthorizedException('请先登录')
-  }
+    if (!request.user) {
+      throw new UnauthorizedException('请先登录')
+    }
 
-  return request.user
-})
+    return request.user
+  },
+)

@@ -1,4 +1,11 @@
-﻿import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common'
+﻿import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common'
 import type { Request, Response } from 'express'
 
 interface ErrorResponseBody {
@@ -76,7 +83,11 @@ function readHttpExceptionMessage(exception: HttpException) {
 }
 
 function isMulterError(exception: unknown): exception is UnknownErrorLike {
-  return typeof exception === 'object' && exception !== null && (exception as UnknownErrorLike).name === 'MulterError'
+  return (
+    typeof exception === 'object' &&
+    exception !== null &&
+    (exception as UnknownErrorLike).name === 'MulterError'
+  )
 }
 
 function readMulterMessage(error: UnknownErrorLike) {

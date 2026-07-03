@@ -6,7 +6,7 @@ import type {
   JobMatchPayload,
   JobMatchResponse,
   UpdateJobDescriptionPayload,
-} from '../types/job'
+} from '@/types/job'
 
 export function matchJob(data: JobMatchPayload) {
   return request<JobMatchResponse>({
@@ -16,8 +16,15 @@ export function matchJob(data: JobMatchPayload) {
   })
 }
 
-export function matchJobStream(data: JobMatchPayload, handlers?: StreamHandlers<JobMatchResponse & { cached?: boolean }>) {
-  return streamRequest<JobMatchResponse & { cached?: boolean }>('/jobs/match/stream', data, handlers)
+export function matchJobStream(
+  data: JobMatchPayload,
+  handlers?: StreamHandlers<JobMatchResponse & { cached?: boolean }>,
+) {
+  return streamRequest<JobMatchResponse & { cached?: boolean }>(
+    '/jobs/match/stream',
+    data,
+    handlers,
+  )
 }
 
 export function getJobDescriptions() {

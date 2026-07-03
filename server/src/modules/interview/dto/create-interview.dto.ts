@@ -1,7 +1,8 @@
 import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator'
+import type { InterviewCreatePayload } from '@devcareer/shared'
 import { AI_TEXT_LIMITS } from '../../../common/utils/text-limit.util'
 
-export class CreateInterviewDto {
+export class CreateInterviewDto implements InterviewCreatePayload {
   @IsString()
   @MinLength(1)
   @MaxLength(20000)

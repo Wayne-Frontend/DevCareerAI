@@ -1,7 +1,8 @@
 import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator'
+import type { UpdateResumePayload } from '@devcareer/shared'
 import { MAX_PARSED_TEXT_LENGTH } from '../../../common/utils/text-limit.util'
 
-export class UpdateResumeDto {
+export class UpdateResumeDto implements UpdateResumePayload {
   @IsOptional()
   @IsString()
   @MinLength(1)

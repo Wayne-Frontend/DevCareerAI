@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  Eye,
-  EyeOff,
-  LockKeyhole,
-  Mail,
-  Sparkles,
-  UserRound,
-} from 'lucide-vue-next'
-import { login, register } from '../../api/auth'
-import { useAuthStore } from '../../stores/auth'
-import { notify } from '../../utils/notify'
+import { Eye, EyeOff, LockKeyhole, Mail, Sparkles, UserRound } from 'lucide-vue-next'
+import { login, register } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
+import { notify } from '@/utils/notify'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,11 +25,15 @@ const form = reactive({
 const isRegister = computed(() => mode.value === 'register')
 const title = computed(() => (isRegister.value ? '创建账号' : '欢迎回来'))
 const subtitle = computed(() =>
-  isRegister.value ? '注册 DevCareer AI，开启你的智能求职工作台。' : '登录 DevCareer AI，开启你的智能求职工作台。',
+  isRegister.value
+    ? '注册 DevCareer AI，开启你的智能求职工作台。'
+    : '登录 DevCareer AI，开启你的智能求职工作台。',
 )
 const submitLabel = computed(() => (isRegister.value ? '注册' : '登录'))
 const passwordValid = computed(() => form.password.length >= 6)
-const registerPasswordMatched = computed(() => !isRegister.value || form.password === form.confirmPassword)
+const registerPasswordMatched = computed(
+  () => !isRegister.value || form.password === form.confirmPassword,
+)
 
 async function submit() {
   if (loading.value) return
@@ -90,7 +87,6 @@ function switchMode(nextMode: 'login' | 'register') {
   form.password = ''
   form.confirmPassword = ''
 }
-
 </script>
 
 <template>
@@ -136,8 +132,12 @@ function switchMode(nextMode: 'login' | 'register') {
         </div>
 
         <div class="mode-switch" role="tablist" aria-label="切换登录或注册">
-          <button type="button" :class="{ active: !isRegister }" @click="switchMode('login')">登录</button>
-          <button type="button" :class="{ active: isRegister }" @click="switchMode('register')">注册</button>
+          <button type="button" :class="{ active: !isRegister }" @click="switchMode('login')">
+            登录
+          </button>
+          <button type="button" :class="{ active: isRegister }" @click="switchMode('register')">
+            注册
+          </button>
         </div>
 
         <form class="auth-form" @submit.prevent="submit">
@@ -160,7 +160,12 @@ function switchMode(nextMode: 'login' | 'register') {
                 placeholder="请输入邮箱"
                 type="email"
               />
-              <input v-else v-model="form.account" autocomplete="username" placeholder="请输入邮箱或用户名" />
+              <input
+                v-else
+                v-model="form.account"
+                autocomplete="username"
+                placeholder="请输入邮箱或用户名"
+              />
             </div>
           </label>
 
@@ -174,12 +179,21 @@ function switchMode(nextMode: 'login' | 'register') {
                 :placeholder="isRegister ? '请设置至少 6 位密码' : '请输入密码'"
                 :type="showPassword ? 'text' : 'password'"
               />
-              <button type="button" class="eye-btn" aria-label="切换密码可见性" @click="showPassword = !showPassword">
+              <button
+                type="button"
+                class="eye-btn"
+                aria-label="切换密码可见性"
+                @click="showPassword = !showPassword"
+              >
                 <EyeOff v-if="showPassword" :size="21" />
                 <Eye v-else :size="21" />
               </button>
             </div>
-            <span v-if="isRegister" class="helper-text" :class="{ 'text-emerald-600': passwordValid }">
+            <span
+              v-if="isRegister"
+              class="helper-text"
+              :class="{ 'text-emerald-600': passwordValid }"
+            >
               {{ passwordValid ? '密码长度符合要求' : '至少 6 位密码' }}
             </span>
           </label>
@@ -195,12 +209,19 @@ function switchMode(nextMode: 'login' | 'register') {
                 :type="showPassword ? 'text' : 'password'"
               />
             </div>
-            <span v-if="form.confirmPassword" class="helper-text" :class="registerPasswordMatched ? 'text-emerald-600' : 'text-red-500'">
+            <span
+              v-if="form.confirmPassword"
+              class="helper-text"
+              :class="registerPasswordMatched ? 'text-emerald-600' : 'text-red-500'"
+            >
               {{ registerPasswordMatched ? '两次密码一致' : '两次输入的密码不一致' }}
             </span>
           </label>
 
-          <div v-if="!isRegister" class="flex items-center text-[14px] font-extrabold text-[#344054]">
+          <div
+            v-if="!isRegister"
+            class="flex items-center text-[14px] font-extrabold text-[#344054]"
+          >
             <label class="flex cursor-pointer items-center gap-3">
               <input v-model="form.remember" class="remember-checkbox" type="checkbox" />
               记住我
@@ -241,7 +262,7 @@ function switchMode(nextMode: 'login' | 'register') {
 
 .login-page::before,
 .login-page::after {
-  content: "";
+  content: '';
   position: fixed;
   pointer-events: none;
   filter: blur(18px);
@@ -254,7 +275,12 @@ function switchMode(nextMode: 'login' | 'register') {
   height: 680px;
   border-radius: 80px;
   background:
-    linear-gradient(122deg, rgba(255, 255, 255, 0.64), rgba(183, 211, 246, 0.18) 48%, transparent 49%),
+    linear-gradient(
+      122deg,
+      rgba(255, 255, 255, 0.64),
+      rgba(183, 211, 246, 0.18) 48%,
+      transparent 49%
+    ),
     radial-gradient(circle at 60% 20%, rgba(255, 255, 255, 0.72), transparent 36%);
   opacity: 0.72;
   transform: rotate(-8deg);
@@ -301,7 +327,7 @@ function switchMode(nextMode: 'login' | 'register') {
 }
 
 .login-brand-panel::after {
-  content: "";
+  content: '';
   position: absolute;
   top: 34px;
   right: 0;
@@ -512,7 +538,10 @@ function switchMode(nextMode: 'login' | 'register') {
   color: #425b84;
   font-size: 14px;
   font-weight: 850;
-  transition: background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+  transition:
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
 }
 
 .mode-switch button.active {
@@ -551,7 +580,10 @@ function switchMode(nextMode: 'login' | 'register') {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.86),
     0 8px 20px rgba(31, 73, 125, 0.035);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
 
 .input-wrap:focus-within {
@@ -601,7 +633,11 @@ function switchMode(nextMode: 'login' | 'register') {
   font-size: 16px;
   font-weight: 900;
   box-shadow: 0 16px 30px rgba(37, 99, 235, 0.24);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease,
+    filter 0.18s ease;
 }
 
 .login-submit:hover:not(:disabled) {

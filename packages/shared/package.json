@@ -1,0 +1,7 @@
+{
+  "name": "@devcareer/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "前后端共享的 API 契约类型。纯类型包：只允许 .d.ts 声明（无运行时代码、无构建步骤），web 与 server 均在编译期消费。",
+  "types": "./index.d.ts"
+}

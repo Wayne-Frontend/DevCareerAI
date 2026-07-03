@@ -109,12 +109,11 @@ npm run dev:server
 - Web：http://localhost:5173
 - API：http://localhost:3000/api
 
-需要保留启动日志时用 `npm run dev:log`，日志写入 `logs/dev.log`；清理日志用 `npm run clean:logs`。
-
 ## 工程校验
 
 ```bash
-npm run typecheck   # 前后端类型检查（lint 复用此命令）
+npm run typecheck   # 前后端类型检查
+npm run lint        # ESLint（零警告基线，--max-warnings 0）
 npm run test        # 后端测试
 npm run build       # 前后端构建
 npm run check       # 依次执行 typecheck、test、build
@@ -154,14 +153,14 @@ npm run check       # 依次执行 typecheck、test、build
 
 模型分级：诊断、项目优化、岗位匹配用 quality 档，面试出题、点评、总结用 fast 档。
 
-| 功能 | 档位 | temperature | maxTokens |
-|------|------|------|------|
-| 简历诊断 | quality | 0.2 | 2600 |
-| 项目优化 | quality | 0.25 | 2400 |
-| 岗位匹配 | quality | 0.2 | 2400 |
-| 面试出题 | fast | 0.35 | 1200 |
-| 回答点评 | fast | 0.3 | 1800 |
-| 面试总结 | fast | 0.25 | 1800 |
+| 功能     | 档位    | temperature | maxTokens |
+| -------- | ------- | ----------- | --------- |
+| 简历诊断 | quality | 0.2         | 2600      |
+| 项目优化 | quality | 0.25        | 2400      |
+| 岗位匹配 | quality | 0.2         | 2400      |
+| 面试出题 | fast    | 0.35        | 1200      |
+| 回答点评 | fast    | 0.3         | 1800      |
+| 面试总结 | fast    | 0.25        | 1800      |
 
 ### 结果缓存
 

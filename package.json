@@ -5,23 +5,47 @@
   "description": "DevCareer AI monorepo for a Vue 3 web client and NestJS API server.",
   "workspaces": [
     "web",
-    "server"
+    "server",
+    "packages/*"
   ],
   "scripts": {
     "dev:web": "npm --prefix web run dev",
     "dev:server": "npm --prefix server run start:dev",
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:server\"",
-    "dev:log": "node scripts/dev-log.mjs",
-    "clean:logs": "node scripts/clean-logs.mjs",
     "typecheck": "npm --prefix web run typecheck && npm --prefix server run typecheck",
-    "lint": "npm run typecheck",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "npm --prefix server run test",
-    "check": "npm run typecheck && npm run test && npm run build",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
     "build": "npm --prefix web run build && npm --prefix server run build",
     "prisma:migrate": "npm --prefix server run prisma:migrate",
-    "prisma:generate": "npm --prefix server run prisma:generate"
+    "prisma:generate": "npm --prefix server run prisma:generate",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,vue}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,mjs,json,md,css}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@eslint/js": "^9.30.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.30.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-vue": "^10.3.0",
+    "globals": "^16.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
+    "prettier": "^3.6.2",
+    "typescript-eslint": "^8.35.0",
+    "vue-eslint-parser": "^10.2.0"
   }
 }

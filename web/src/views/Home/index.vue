@@ -17,8 +17,8 @@ import {
   Star,
   Target,
 } from 'lucide-vue-next'
-import { getDashboardOverview } from '../../api/dashboard'
-import type { DashboardOverview } from '../../types/dashboard'
+import { getDashboardOverview } from '@/api/dashboard'
+import type { DashboardOverview } from '@/types/dashboard'
 
 // 综合得分环的周长，与 <style> 中 .ring-value 的 stroke-dasharray(414) 保持一致。
 const RING_CIRCUMFERENCE = 414
@@ -66,10 +66,38 @@ function formatDateTime(value: string | null | undefined) {
 const metrics = computed(() => {
   const data = overview.value
   return [
-    { label: '简历综合得分', value: formatScore(data?.resume.score), unit: '/100', change: formatDelta(data?.resume.delta), icon: FileSearch, tone: 'blue' },
-    { label: '岗位匹配度', value: formatScore(data?.jobMatch.score), unit: '%', change: formatDelta(data?.jobMatch.delta, '%'), icon: Target, tone: 'green' },
-    { label: '模拟面试得分', value: formatScore(data?.interview.score), unit: '/100', change: formatDelta(data?.interview.delta), icon: Mic, tone: 'purple' },
-    { label: '累计记录', value: String(data?.recordCount ?? 0), unit: '', change: `简历 / 匹配 / 面试共 ${data?.recordCount ?? 0} 条`, icon: Send, tone: 'cyan' },
+    {
+      label: '简历综合得分',
+      value: formatScore(data?.resume.score),
+      unit: '/100',
+      change: formatDelta(data?.resume.delta),
+      icon: FileSearch,
+      tone: 'blue',
+    },
+    {
+      label: '岗位匹配度',
+      value: formatScore(data?.jobMatch.score),
+      unit: '%',
+      change: formatDelta(data?.jobMatch.delta, '%'),
+      icon: Target,
+      tone: 'green',
+    },
+    {
+      label: '模拟面试得分',
+      value: formatScore(data?.interview.score),
+      unit: '/100',
+      change: formatDelta(data?.interview.delta),
+      icon: Mic,
+      tone: 'purple',
+    },
+    {
+      label: '累计记录',
+      value: String(data?.recordCount ?? 0),
+      unit: '',
+      change: `简历 / 匹配 / 面试共 ${data?.recordCount ?? 0} 条`,
+      icon: Send,
+      tone: 'cyan',
+    },
   ]
 })
 
@@ -159,14 +187,21 @@ const actionCards = [
     </header>
 
     <section class="metric-grid" aria-label="关键指标">
-      <article v-for="metric in metrics" :key="metric.label" class="glass-panel metric-card" :class="`tone-${metric.tone}`">
+      <article
+        v-for="metric in metrics"
+        :key="metric.label"
+        class="glass-panel metric-card"
+        :class="`tone-${metric.tone}`"
+      >
         <div class="metric-copy">
           <span class="icon-block">
             <component :is="metric.icon" :size="28" stroke-width="1.95" />
           </span>
           <div>
             <p>{{ metric.label }}</p>
-            <strong>{{ metric.value }}<small>{{ metric.unit }}</small></strong>
+            <strong
+              >{{ metric.value }}<small>{{ metric.unit }}</small></strong
+            >
             <em>{{ metric.change }}</em>
           </div>
         </div>
@@ -188,14 +223,27 @@ const actionCards = [
             <div class="score-ring">
               <svg viewBox="0 0 160 160" aria-hidden="true">
                 <defs>
-                  <linearGradient id="scoreGradient" x1="20" y1="20" x2="140" y2="140" gradientUnits="userSpaceOnUse">
+                  <linearGradient
+                    id="scoreGradient"
+                    x1="20"
+                    y1="20"
+                    x2="140"
+                    y2="140"
+                    gradientUnits="userSpaceOnUse"
+                  >
                     <stop offset="0%" stop-color="#74a8ff" />
                     <stop offset="58%" stop-color="#2563eb" />
                     <stop offset="100%" stop-color="#4f7cff" />
                   </linearGradient>
                 </defs>
                 <circle cx="80" cy="80" r="66" class="ring-track" />
-                <circle cx="80" cy="80" r="66" class="ring-value" :style="{ strokeDashoffset: ringOffset }" />
+                <circle
+                  cx="80"
+                  cy="80"
+                  r="66"
+                  class="ring-value"
+                  :style="{ strokeDashoffset: ringOffset }"
+                />
               </svg>
               <div>
                 <strong>{{ formatScore(resumeScore) }}</strong>
@@ -207,7 +255,10 @@ const actionCards = [
 
           <div v-if="scoreDimensions.length" class="dimension-panel">
             <div v-for="item in scoreDimensions" :key="item.label" class="dimension-row">
-              <span class="dimension-icon" :style="{ color: item.color, background: `${item.color}18` }">
+              <span
+                class="dimension-icon"
+                :style="{ color: item.color, background: `${item.color}18` }"
+              >
                 <component :is="item.icon" :size="17" />
               </span>
               <div>
@@ -222,7 +273,9 @@ const actionCards = [
             </div>
           </div>
           <div v-else class="dimension-panel dimension-panel--empty">
-            <p>{{ loading ? '正在加载维度得分…' : '完成一次简历诊断后，这里会展示各维度得分。' }}</p>
+            <p>
+              {{ loading ? '正在加载维度得分…' : '完成一次简历诊断后，这里会展示各维度得分。' }}
+            </p>
           </div>
 
           <div class="resume-illustration" aria-hidden="true">
@@ -288,7 +341,12 @@ const actionCards = [
     </section>
 
     <section class="action-grid" aria-label="快捷入口">
-      <article v-for="card in actionCards" :key="card.title" class="glass-panel action-card" :class="`tone-${card.tone}`">
+      <article
+        v-for="card in actionCards"
+        :key="card.title"
+        class="glass-panel action-card"
+        :class="`tone-${card.tone}`"
+      >
         <div class="action-copy">
           <span class="icon-block">
             <component :is="card.icon" :size="30" />
@@ -370,14 +428,21 @@ const actionCards = [
   border: 1px solid rgba(255, 255, 255, 0.78);
   background: rgba(255, 255, 255, 0.46);
   color: #38517d;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88), 0 12px 28px rgba(31, 73, 125, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 12px 28px rgba(31, 73, 125, 0.08);
   backdrop-filter: blur(22px);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
 
   &:hover {
     transform: translateY(-2px);
     color: #2563eb;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 18px 38px rgba(31, 73, 125, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.94),
+      0 18px 38px rgba(31, 73, 125, 0.12);
   }
 }
 
@@ -421,7 +486,9 @@ const actionCards = [
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.64), rgba(247, 251, 255, 0.38)),
     rgba(255, 255, 255, 0.5);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 14px 34px rgba(31, 73, 125, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 14px 34px rgba(31, 73, 125, 0.09);
   backdrop-filter: blur(24px) saturate(132%);
 }
 
@@ -437,11 +504,15 @@ const actionCards = [
   min-height: 118px;
   align-items: center;
   padding: 18px 18px;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 
   &:hover {
     transform: translateY(-3px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 20px 44px rgba(31, 73, 125, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.94),
+      0 20px 44px rgba(31, 73, 125, 0.12);
   }
 }
 
@@ -494,7 +565,9 @@ const actionCards = [
   place-items: center;
   border-radius: 12px;
   color: #fff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 14px 26px rgba(37, 99, 235, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 14px 26px rgba(37, 99, 235, 0.22);
 }
 
 .tone-blue {
@@ -610,7 +683,7 @@ const actionCards = [
   }
 
   .ring-value {
-    stroke: url("#scoreGradient");
+    stroke: url('#scoreGradient');
     stroke-dasharray: 414;
     stroke-dashoffset: 91;
     animation: ringIn 0.85s ease both;
@@ -659,7 +732,9 @@ const actionCards = [
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.5);
   padding: 13px 14px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 14px 34px rgba(31, 73, 125, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 14px 34px rgba(31, 73, 125, 0.08);
 }
 
 .dimension-row {
@@ -742,7 +817,9 @@ const actionCards = [
   position: absolute;
   border: 1px solid rgba(255, 255, 255, 0.74);
   background: linear-gradient(145deg, rgba(187, 216, 255, 0.4), rgba(255, 255, 255, 0.18));
-  box-shadow: 0 18px 38px rgba(37, 99, 235, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 18px 38px rgba(37, 99, 235, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
 }
 
@@ -803,7 +880,9 @@ const actionCards = [
   height: 54px;
   border: 6px solid rgba(74, 129, 236, 0.58);
   border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 12px 24px rgba(37, 99, 235, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 12px 24px rgba(37, 99, 235, 0.16);
 }
 
 .lens::after {
@@ -963,7 +1042,10 @@ const actionCards = [
   background: rgba(255, 255, 255, 0.54);
   padding: 11px 12px;
   box-shadow: 0 10px 24px rgba(31, 73, 125, 0.06);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 
   &:hover {
     transform: translateX(3px);
@@ -1131,7 +1213,10 @@ const actionCards = [
   font-size: 14px;
   font-weight: 850;
   box-shadow: 0 10px 22px rgba(31, 73, 125, 0.08);
-  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
 
   &:hover {
     transform: translateY(-2px);

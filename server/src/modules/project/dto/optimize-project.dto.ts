@@ -1,7 +1,16 @@
-import { ArrayMaxSize, IsArray, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator'
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator'
+import type { ProjectOptimizePayload } from '@devcareer/shared'
 import { AI_TEXT_LIMITS } from '../../../common/utils/text-limit.util'
 
-export class OptimizeProjectDto {
+export class OptimizeProjectDto implements ProjectOptimizePayload {
   @IsString()
   @MinLength(1)
   @MaxLength(AI_TEXT_LIMITS.project)

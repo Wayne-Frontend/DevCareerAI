@@ -1,8 +1,13 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { getCurrentUser } from '../api/auth'
-import type { AuthSession, AuthUser } from '../types/auth'
-import { clearStoredAuthSession, getStoredAuthSession, setStoredAuthSession, updateStoredAuthUser } from '../utils/authSession'
+import { getCurrentUser } from '@/api/auth'
+import type { AuthSession, AuthUser } from '@/types/auth'
+import {
+  clearStoredAuthSession,
+  getStoredAuthSession,
+  setStoredAuthSession,
+  updateStoredAuthUser,
+} from '@/utils/authSession'
 
 export const useAuthStore = defineStore('auth', () => {
   const session = ref<AuthSession | null>(getStoredAuthSession())

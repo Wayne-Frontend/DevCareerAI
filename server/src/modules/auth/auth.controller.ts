@@ -1,4 +1,14 @@
-﻿import { BadRequestException, Body, Controller, Get, Patch, Post, Req, UploadedFile, UseInterceptors } from '@nestjs/common'
+﻿import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Req,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import type { Request } from 'express'
@@ -48,7 +58,10 @@ export class AuthController {
       limits: { fileSize: 5 * 1024 * 1024 },
       fileFilter: (_request, file, callback) => {
         const accepted = AVATAR_MIME_TYPES.has(file.mimetype)
-        callback(accepted ? null : new BadRequestException('头像仅支持 JPG、PNG、WebP 或 GIF 图片'), accepted)
+        callback(
+          accepted ? null : new BadRequestException('头像仅支持 JPG、PNG、WebP 或 GIF 图片'),
+          accepted,
+        )
       },
     }),
   )

@@ -16,7 +16,12 @@ withDefaults(
       <span class="skeleton-pill" />
     </div>
     <span class="skeleton-line skeleton-line--wide" />
-    <span v-for="index in rows" :key="index" class="skeleton-line" :style="{ width: `${88 - index * 12}%` }" />
+    <span
+      v-for="index in rows"
+      :key="index"
+      class="skeleton-line"
+      :style="{ width: `${88 - index * 12}%` }"
+    />
     <div class="skeleton-card__actions">
       <span />
       <span />
@@ -52,7 +57,12 @@ withDefaults(
 .skeleton-card__actions span {
   display: block;
   border-radius: 999px;
-  background: linear-gradient(110deg, rgba(255, 255, 255, 0.42), rgba(191, 219, 254, 0.55), rgba(255, 255, 255, 0.42));
+  background: linear-gradient(
+    110deg,
+    rgba(255, 255, 255, 0.42),
+    rgba(191, 219, 254, 0.55),
+    rgba(255, 255, 255, 0.42)
+  );
   background-size: 220% 100%;
   animation: skeleton-shimmer 1.35s ease-in-out infinite;
 }

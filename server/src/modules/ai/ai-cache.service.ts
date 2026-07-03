@@ -77,7 +77,10 @@ export class AiCacheService {
    * 非流式与流式调用共用同一份缓存。仅当生成结果为合法 JSON（status=success）时才写入，
    * 避免把解析失败的降级文本缓存下来。
    */
-  async resolve<T>(input: CacheLookupInput, generate: () => Promise<AiGeneration<T>>): Promise<AiResolveResult<T>> {
+  async resolve<T>(
+    input: CacheLookupInput,
+    generate: () => Promise<AiGeneration<T>>,
+  ): Promise<AiResolveResult<T>> {
     const cached = await this.get<T>(input)
     if (cached) {
       return { result: cached.result, cached: true, status: 'success' }

@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from '@/stores/auth'
 
 defineProps<{ open?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
@@ -112,7 +112,9 @@ watch(avatarUrl, () => {
     linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(246, 250, 255, 0.25)),
     rgba(255, 255, 255, 0.34);
   padding: 28px 16px 30px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 14px 0 42px rgba(64, 104, 164, 0.11);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    14px 0 42px rgba(64, 104, 164, 0.11);
   backdrop-filter: blur(24px) saturate(132%);
 }
 
@@ -164,7 +166,12 @@ watch(avatarUrl, () => {
   color: #071b4a;
   font-size: 16px;
   font-weight: 820;
-  transition: transform 0.18s ease, color 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    color 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 
   &:hover {
     transform: translateX(2px);
@@ -177,7 +184,9 @@ watch(avatarUrl, () => {
     border-color: rgba(255, 255, 255, 0.82);
     background: rgba(255, 255, 255, 0.42);
     color: #0b55e8;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 0 14px 28px rgba(37, 99, 235, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.96),
+      0 14px 28px rgba(37, 99, 235, 0.08);
   }
 }
 
@@ -193,13 +202,20 @@ watch(avatarUrl, () => {
   background: rgba(255, 255, 255, 0.4);
   padding: 14px;
   color: #071b4a;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 16px 34px rgba(31, 73, 125, 0.09);
-  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 16px 34px rgba(31, 73, 125, 0.09);
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
 
   &:hover {
     transform: translateY(-2px);
     background: rgba(255, 255, 255, 0.55);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 20px 42px rgba(31, 73, 125, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.94),
+      0 20px 42px rgba(31, 73, 125, 0.12);
   }
 }
 
@@ -260,7 +276,9 @@ watch(avatarUrl, () => {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.7);
   color: #0b55e8;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px rgba(31, 73, 125, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 8px 18px rgba(31, 73, 125, 0.08);
 }
 
 @media (max-width: 980px) {

@@ -5,7 +5,7 @@ import type {
   InterviewCreateResponse,
   InterviewFinishResponse,
   InterviewMessageResponse,
-} from '../types/interview'
+} from '@/types/interview'
 
 export function createInterview(data: InterviewCreatePayload) {
   return request<InterviewCreateResponse>({

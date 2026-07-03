@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@devcareer/shared": "0.1.0",
     "axios": "^1.13.2",
     "echarts": "^6.0.0",
     "lucide-vue-next": "^1.0.0",

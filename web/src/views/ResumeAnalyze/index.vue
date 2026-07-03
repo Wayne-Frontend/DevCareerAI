@@ -1,22 +1,37 @@
 ﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CheckCircle2, Copy, FileSearch, Mic, Search, Square, Target, UploadCloud } from 'lucide-vue-next'
-import BeforeAfterCompare from '../../components/BeforeAfterCompare/index.vue'
-import EmptyState from '../../components/EmptyState/index.vue'
-import GlassCard from '../../components/GlassCard/index.vue'
-import InlineStatus from '../../components/InlineStatus/index.vue'
-import LoadingButton from '../../components/LoadingButton/index.vue'
-import ScoreCard from '../../components/ScoreCard/index.vue'
-import StreamPreview from '../../components/StreamPreview/index.vue'
-import SuggestionList from '../../components/SuggestionList/index.vue'
-import { analyzeResumeStream, createResume, getResume, getResumes, uploadResume } from '../../api/resume'
-import { useResumeStore } from '../../stores/resume'
-import { useWorkflowStore } from '../../stores/workflow'
-import type { ResumeAnalysisResult, ResumePayload, ResumeRecord } from '../../types/resume'
-import { messageBox } from '../../utils/messageBox'
-import { notify } from '../../utils/notify'
-import { buildResumeSuggestionCopy } from '../../utils/resultCopy'
+import {
+  CheckCircle2,
+  Copy,
+  FileSearch,
+  Mic,
+  Search,
+  Square,
+  Target,
+  UploadCloud,
+} from 'lucide-vue-next'
+import BeforeAfterCompare from '@/components/BeforeAfterCompare/index.vue'
+import EmptyState from '@/components/EmptyState/index.vue'
+import GlassCard from '@/components/GlassCard/index.vue'
+import InlineStatus from '@/components/InlineStatus/index.vue'
+import LoadingButton from '@/components/LoadingButton/index.vue'
+import ScoreCard from '@/components/ScoreCard/index.vue'
+import StreamPreview from '@/components/StreamPreview/index.vue'
+import SuggestionList from '@/components/SuggestionList/index.vue'
+import {
+  analyzeResumeStream,
+  createResume,
+  getResume,
+  getResumes,
+  uploadResume,
+} from '@/api/resume'
+import { useResumeStore } from '@/stores/resume'
+import { useWorkflowStore } from '@/stores/workflow'
+import type { ResumeAnalysisResult, ResumePayload, ResumeRecord } from '@/types/resume'
+import { messageBox } from '@/utils/messageBox'
+import { notify } from '@/utils/notify'
+import { buildResumeSuggestionCopy } from '@/utils/resultCopy'
 
 const resumeStore = useResumeStore()
 const workflowStore = useWorkflowStore()
@@ -118,7 +133,8 @@ async function applyResume(id: string, allowFetch = false) {
     return
   }
 
-  const resume = resumeOptions.value.find((item) => item.id === id) || (allowFetch ? await getResume(id) : null)
+  const resume =
+    resumeOptions.value.find((item) => item.id === id) || (allowFetch ? await getResume(id) : null)
   if (!resume) {
     throw new Error('Resume not found')
   }
@@ -203,7 +219,9 @@ async function submit() {
   errorMessage.value = ''
 
   try {
-    const resume = isUsingSelectedResume() ? await getResume(selectedResumeId.value) : await createResume({ ...form })
+    const resume = isUsingSelectedResume()
+      ? await getResume(selectedResumeId.value)
+      : await createResume({ ...form })
     selectedResumeId.value = resume.id
     selectedResumeSnapshot.value = {
       title: resume.title,
@@ -278,36 +296,87 @@ function goInterviewFromResume() {
       </div>
       <div>
         <h1 class="m-0 text-[26px] font-black text-[#0f172a]">简历诊断</h1>
-        <p class="mt-1.5 text-sm font-semibold text-[#64748b]">上传或粘贴简历，获得 AI 评分、问题定位和优化建议。</p>
+        <p class="mt-1.5 text-sm font-semibold text-[#64748b]">
+          上传或粘贴简历，获得 AI 评分、问题定位和优化建议。
+        </p>
       </div>
     </header>
 
     <div class="feature-workspace">
       <GlassCard class="feature-pane-left">
         <div class="mb-5 flex items-center gap-3">
-          <span class="grid h-7 w-7 place-items-center rounded-full bg-indigo-50 text-xs font-black text-indigo-600">1</span>
+          <span
+            class="grid h-7 w-7 place-items-center rounded-full bg-indigo-50 text-xs font-black text-indigo-600"
+            >1</span
+          >
           <h2 class="m-0 text-lg font-black text-[#0f172a]">简历输入</h2>
         </div>
 
-        <InlineStatus v-if="resumesLoading" class="mb-4" type="loading" title="正在加载已有简历" description="稍等一下，简历列表马上回来。" />
-        <InlineStatus v-else-if="resumesError" class="mb-4" type="warning" title="已有简历加载失败" :description="resumesError" />
+        <InlineStatus
+          v-if="resumesLoading"
+          class="mb-4"
+          type="loading"
+          title="正在加载已有简历"
+          description="稍等一下，简历列表马上回来。"
+        />
+        <InlineStatus
+          v-else-if="resumesError"
+          class="mb-4"
+          type="warning"
+          title="已有简历加载失败"
+          :description="resumesError"
+        />
 
         <label v-if="resumeOptions.length" class="mb-4 block">
           <span class="field-label">选择已有简历</span>
-          <select v-model="selectedResumeId" class="select-base" :disabled="loading || uploadLoading" @change="onResumeSelect">
+          <select
+            v-model="selectedResumeId"
+            class="select-base"
+            :disabled="loading || uploadLoading"
+            @change="onResumeSelect"
+          >
             <option value="">手动输入 / 上传新简历</option>
-            <option v-for="resume in resumeOptions" :key="resume.id" :value="resume.id">{{ resume.title }}</option>
+            <option v-for="resume in resumeOptions" :key="resume.id" :value="resume.id">
+              {{ resume.title }}
+            </option>
           </select>
         </label>
 
         <label class="field-label">上传简历</label>
-        <label class="mb-4 grid min-h-[110px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40" :class="{ 'is-uploading': uploadLoading }">
-          <input class="hidden" type="file" accept=".pdf,.docx,.txt,.md" :disabled="uploadLoading" @change="onFileChange" />
+        <label
+          class="mb-4 grid min-h-[110px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40"
+          :class="{ 'is-uploading': uploadLoading }"
+        >
+          <input
+            class="hidden"
+            type="file"
+            accept=".pdf,.docx,.txt,.md"
+            :disabled="uploadLoading"
+            @change="onFileChange"
+          />
           <UploadCloud :size="40" class="text-indigo-500" />
-          <span class="mt-3 block text-sm font-extrabold text-[#26324f]">{{ uploadLoading ? '解析中...' : '点击上传 PDF / DOCX / TXT / MD' }}</span>
-          <InlineStatus v-if="uploadLoading" class="mt-3" type="loading" title="正在解析文件" description="完成后会自动填入简历正文。" />
-          <InlineStatus v-if="uploadError" class="mt-3" type="error" title="上传失败" :description="uploadError" />
-          <span v-if="selectedFileName" class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600">{{ selectedFileName }}</span>
+          <span class="mt-3 block text-sm font-extrabold text-[#26324f]">{{
+            uploadLoading ? '解析中...' : '点击上传 PDF / DOCX / TXT / MD'
+          }}</span>
+          <InlineStatus
+            v-if="uploadLoading"
+            class="mt-3"
+            type="loading"
+            title="正在解析文件"
+            description="完成后会自动填入简历正文。"
+          />
+          <InlineStatus
+            v-if="uploadError"
+            class="mt-3"
+            type="error"
+            title="上传失败"
+            :description="uploadError"
+          />
+          <span
+            v-if="selectedFileName"
+            class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600"
+            >{{ selectedFileName }}</span
+          >
         </label>
 
         <div class="grid gap-3">
@@ -317,7 +386,11 @@ function goInterviewFromResume() {
           </label>
           <label>
             <span class="field-label">目标岗位</span>
-            <input v-model="form.targetRole" class="input-base" placeholder="例如：前端开发工程师" />
+            <input
+              v-model="form.targetRole"
+              class="input-base"
+              placeholder="例如：前端开发工程师"
+            />
           </label>
           <label>
             <span class="field-label">经验年限</span>
@@ -331,15 +404,35 @@ function goInterviewFromResume() {
           </label>
           <label>
             <span class="field-label">简历内容</span>
-            <textarea v-model="form.content" class="textarea-base min-h-[150px]" maxlength="30000" placeholder="将你的简历内容粘贴到这里..." :disabled="loading || uploadLoading" />
-            <span class="mt-1 block text-right text-xs text-[#64748b]">{{ form.content.length }} / 30000</span>
+            <textarea
+              v-model="form.content"
+              class="textarea-base min-h-[150px]"
+              maxlength="30000"
+              placeholder="将你的简历内容粘贴到这里..."
+              :disabled="loading || uploadLoading"
+            />
+            <span class="mt-1 block text-right text-xs text-[#64748b]"
+              >{{ form.content.length }} / 30000</span
+            >
           </label>
         </div>
 
-        <InlineStatus v-if="errorMessage" class="mt-4" type="error" title="暂时无法开始分析" :description="errorMessage" />
+        <InlineStatus
+          v-if="errorMessage"
+          class="mt-4"
+          type="error"
+          title="暂时无法开始分析"
+          :description="errorMessage"
+        />
 
         <div class="mt-5 grid gap-3">
-          <LoadingButton class="w-full" :loading="loading" :disabled="uploadLoading" loading-text="分析中..." @click="submit">
+          <LoadingButton
+            class="w-full"
+            :loading="loading"
+            :disabled="uploadLoading"
+            loading-text="分析中..."
+            @click="submit"
+          >
             <template #icon><Search :size="18" /></template>
             {{ loading ? '分析中...' : '开始分析' }}
           </LoadingButton>
@@ -352,11 +445,20 @@ function goInterviewFromResume() {
 
       <GlassCard class="feature-pane-right soft-scrollbar">
         <div class="mb-5 flex items-center gap-3">
-          <span class="grid h-7 w-7 place-items-center rounded-full bg-indigo-50 text-xs font-black text-indigo-600">2</span>
+          <span
+            class="grid h-7 w-7 place-items-center rounded-full bg-indigo-50 text-xs font-black text-indigo-600"
+            >2</span
+          >
           <h2 class="m-0 text-lg font-black text-[#0f172a]">诊断结果</h2>
         </div>
 
-        <InlineStatus v-if="loading" class="mb-4" type="loading" title="AI 正在生成诊断" :description="streamStatus || '正在连接服务，请稍候。'" />
+        <InlineStatus
+          v-if="loading"
+          class="mb-4"
+          type="loading"
+          title="AI 正在生成诊断"
+          :description="streamStatus || '正在连接服务，请稍候。'"
+        />
         <StreamPreview v-if="loading" :status="streamStatus" :content="streamPreview" />
 
         <EmptyState
@@ -369,7 +471,9 @@ function goInterviewFromResume() {
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 class="m-0 text-base font-black text-[#0f172a]">下一步建议</h3>
-                <p class="mb-0 mt-1 text-sm font-semibold text-[#64748b]">先吸收优化建议，再做岗位匹配或进入模拟面试检验表达。</p>
+                <p class="mb-0 mt-1 text-sm font-semibold text-[#64748b]">
+                  先吸收优化建议，再做岗位匹配或进入模拟面试检验表达。
+                </p>
               </div>
               <div class="flex flex-wrap gap-3">
                 <button class="btn-secondary min-h-10" @click="copySuggestions">
@@ -387,7 +491,10 @@ function goInterviewFromResume() {
               </div>
             </div>
           </section>
-          <p v-if="resultStatus === 'parse_error'" class="m-0 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-7 text-amber-700">
+          <p
+            v-if="resultStatus === 'parse_error'"
+            class="m-0 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-7 text-amber-700"
+          >
             AI 返回内容不是合法 JSON，已保留原文整理结果，建议重试生成。
           </p>
 
@@ -398,7 +505,11 @@ function goInterviewFromResume() {
           <section class="section-card">
             <h3 class="mb-4 mt-0 text-lg font-black text-[#0f172a]">维度评分</h3>
             <div class="grid grid-cols-[repeat(auto-fit,minmax(88px,1fr))] gap-3">
-              <div v-for="(score, key) in result.dimensionScores" :key="key" class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-center">
+              <div
+                v-for="(score, key) in result.dimensionScores"
+                :key="key"
+                class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-center"
+              >
                 <strong class="block text-2xl text-indigo-600">{{ score }}</strong>
                 <span class="text-xs font-bold text-[#64748b]">{{ key }}</span>
               </div>
@@ -416,7 +527,11 @@ function goInterviewFromResume() {
               优化建议
             </h3>
             <ul class="m-0 grid list-none gap-3 p-0">
-              <li v-for="(item, index) in result.suggestions" :key="item" class="grid grid-cols-[34px_1fr] gap-3 rounded-2xl border border-slate-200 bg-white/60 p-3 text-sm leading-7 text-[#334155]">
+              <li
+                v-for="(item, index) in result.suggestions"
+                :key="item"
+                class="grid grid-cols-[34px_1fr] gap-3 rounded-2xl border border-slate-200 bg-white/60 p-3 text-sm leading-7 text-[#334155]"
+              >
                 <span class="icon-tile h-8 w-8 rounded-xl">{{ index + 1 }}</span>
                 <span>{{ item }}</span>
               </li>
@@ -438,10 +553,8 @@ function goInterviewFromResume() {
 <style scoped>
 .is-uploading {
   background: rgba(239, 246, 255, 0.72);
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08), 0 14px 30px rgba(37, 99, 235, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(37, 99, 235, 0.08),
+    0 14px 30px rgba(37, 99, 235, 0.08);
 }
 </style>
-
-
-
-

@@ -14,7 +14,9 @@ withDefaults(
 </script>
 
 <template>
-  <div class="grid min-h-[190px] place-items-center content-center gap-2.5 rounded-[20px] border border-dashed border-indigo-200/80 bg-white/45 p-6 text-center">
+  <div
+    class="grid min-h-[190px] place-items-center content-center gap-2.5 rounded-[20px] border border-dashed border-indigo-200/80 bg-white/45 p-6 text-center"
+  >
     <div class="icon-tile h-[56px] w-[56px] rounded-[18px] text-2xl">
       <Sparkles :size="26" />
     </div>

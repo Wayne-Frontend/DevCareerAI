@@ -1,6 +1,7 @@
 import { IsOptional, IsString, Matches, MaxLength, MinLength, ValidateIf } from 'class-validator'
+import type { UpdateChatSessionPayload } from '@devcareer/shared'
 
-export class UpdateChatSessionDto {
+export class UpdateChatSessionDto implements UpdateChatSessionPayload {
   @IsOptional()
   @IsString()
   @MinLength(1)

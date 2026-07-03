@@ -20,7 +20,9 @@ const safeScore = computed(() => Math.max(0, Math.min(100, props.score || 0)))
   <div class="grid grid-cols-[118px_1fr] items-center gap-5">
     <div
       class="grid h-[112px] w-[112px] place-items-center rounded-full p-2 shadow-[0_14px_28px_rgba(99,102,241,0.18)]"
-      :style="{ background: `conic-gradient(#6d5dfc 0deg, #2f80ff ${safeScore * 3.6}deg, #edf2ff ${safeScore * 3.6}deg 360deg)` }"
+      :style="{
+        background: `conic-gradient(#6d5dfc 0deg, #2f80ff ${safeScore * 3.6}deg, #edf2ff ${safeScore * 3.6}deg 360deg)`,
+      }"
     >
       <div class="grid h-full w-full place-items-center content-center rounded-full bg-white">
         <strong class="text-[32px] font-black leading-none text-[#13214a]">{{ safeScore }}</strong>

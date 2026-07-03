@@ -1,5 +1,5 @@
-﻿import { getAuthToken } from '../utils/authSession'
-import { redirectToLogin } from '../utils/redirectToLogin'
+﻿import { getAuthToken } from '@/utils/authSession'
+import { redirectToLogin } from '@/utils/redirectToLogin'
 import { notifyApiError, resolveFetchErrorMessage } from './errors'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
@@ -114,10 +114,17 @@ export async function streamRequest<TDone>(
   return donePayload
 }
 
-export function parseSseEvent<TDone>(block: string): { event: string; data: unknown | TDone } | null {
+export function parseSseEvent<TDone>(
+  block: string,
+): { event: string; data: unknown | TDone } | null {
   const lines = block.split(/\r?\n/)
-  const event = lines.find((line) => line.startsWith('event:'))?.replace(/^event:\s*/, '').trim()
-  const dataLines = lines.filter((line) => line.startsWith('data:')).map((line) => line.replace(/^data:\s*/, ''))
+  const event = lines
+    .find((line) => line.startsWith('event:'))
+    ?.replace(/^event:\s*/, '')
+    .trim()
+  const dataLines = lines
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.replace(/^data:\s*/, ''))
 
   if (!event || dataLines.length === 0) return null
 

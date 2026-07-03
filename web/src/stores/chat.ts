@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { ChatMessage } from '../types/interview'
-import type { ChatMessageRecord, ChatSessionSummary } from '../types/chat'
+import type { ChatMessage } from '@/types/interview'
+import type { ChatMessageRecord, ChatSessionSummary } from '@/types/chat'
 
 /**
  * 职业顾问（通用聊天）状态。与面试 store 类似，但额外维护会话列表，

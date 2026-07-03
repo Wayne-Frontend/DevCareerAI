@@ -2,11 +2,11 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { AtSign, CalendarDays, LogOut, Mail, Save, UploadCloud, UserRound } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
-import LoadingButton from '../../components/LoadingButton/index.vue'
-import { logout as logoutRequest, updateProfile, uploadAvatar } from '../../api/auth'
-import { useAuthStore } from '../../stores/auth'
-import { messageBox } from '../../utils/messageBox'
-import { notify } from '../../utils/notify'
+import LoadingButton from '@/components/LoadingButton/index.vue'
+import { logout as logoutRequest, updateProfile, uploadAvatar } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
+import { messageBox } from '@/utils/messageBox'
+import { notify } from '@/utils/notify'
 
 const AVATAR_MAX_SIZE = 5 * 1024 * 1024
 
@@ -22,7 +22,9 @@ const form = reactive({
 })
 
 const avatarPreview = computed(() => authStore.user?.avatarUrl?.trim() || '')
-const userInitial = computed(() => (authStore.user?.username || authStore.user?.email || 'D').slice(0, 1).toUpperCase())
+const userInitial = computed(() =>
+  (authStore.user?.username || authStore.user?.email || 'D').slice(0, 1).toUpperCase(),
+)
 const createdAt = computed(() => {
   if (!authStore.user?.createdAt) return '-'
 
@@ -143,13 +145,22 @@ async function logout() {
           <span v-if="avatarUploading" class="mini-spinner" />
           <UploadCloud v-else :size="17" />
           <span>{{ avatarUploading ? '上传中...' : '上传头像' }}</span>
-          <input type="file" accept="image/*" :disabled="avatarUploading" @change="onAvatarFileChange" />
+          <input
+            type="file"
+            accept="image/*"
+            :disabled="avatarUploading"
+            @change="onAvatarFileChange"
+          />
         </label>
         <p class="avatar-tip">支持 JPG、PNG、WebP、GIF，最大 5MB。</p>
 
         <div class="min-w-0 text-center">
-          <h2 class="m-0 truncate text-[22px] font-black text-[#0f172a]">{{ authStore.user?.username || '用户' }}</h2>
-          <p class="mt-2 truncate text-sm font-semibold text-[#64748b]">{{ authStore.user?.email || '-' }}</p>
+          <h2 class="m-0 truncate text-[22px] font-black text-[#0f172a]">
+            {{ authStore.user?.username || '用户' }}
+          </h2>
+          <p class="mt-2 truncate text-sm font-semibold text-[#64748b]">
+            {{ authStore.user?.email || '-' }}
+          </p>
         </div>
 
         <div class="summary-list">
@@ -191,19 +202,40 @@ async function logout() {
         <form class="grid gap-4" @submit.prevent="saveProfile">
           <label>
             <span class="field-label">用户名</span>
-            <input class="input-base read-only-input" :value="authStore.user?.username || ''" readonly />
+            <input
+              class="input-base read-only-input"
+              :value="authStore.user?.username || ''"
+              readonly
+            />
           </label>
 
           <label>
             <span class="field-label">邮箱</span>
-            <input v-model="form.email" class="input-base" type="email" autocomplete="email" placeholder="name@example.com" />
+            <input
+              v-model="form.email"
+              class="input-base"
+              type="email"
+              autocomplete="email"
+              placeholder="name@example.com"
+            />
           </label>
           <div class="form-actions">
-            <LoadingButton class="min-w-[132px]" type="submit" :loading="loading" loading-text="保存中...">
+            <LoadingButton
+              class="min-w-[132px]"
+              type="submit"
+              :loading="loading"
+              loading-text="保存中..."
+            >
               <template #icon><Save :size="18" /></template>
               {{ loading ? '保存中...' : '保存修改' }}
             </LoadingButton>
-            <LoadingButton variant="danger" class="min-w-[132px]" :loading="logoutLoading" loading-text="退出中..." @click="logout">
+            <LoadingButton
+              variant="danger"
+              class="min-w-[132px]"
+              :loading="logoutLoading"
+              loading-text="退出中..."
+              @click="logout"
+            >
               <template #icon><LogOut :size="18" /></template>
               {{ logoutLoading ? '退出中...' : '退出登录' }}
             </LoadingButton>
@@ -247,7 +279,9 @@ async function logout() {
   color: #fff;
   font-size: 44px;
   font-weight: 950;
-  box-shadow: 0 18px 38px rgba(43, 55, 96, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 18px 38px rgba(43, 55, 96, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 .avatar-preview img {
@@ -272,7 +306,10 @@ async function logout() {
   font-size: 14px;
   font-weight: 850;
   box-shadow: 0 12px 22px rgba(31, 73, 125, 0.08);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
 
 .avatar-upload:hover {

@@ -2,7 +2,7 @@
 import { CheckCircle2, Info, Loader2, TriangleAlert, X } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { Component } from 'vue'
-import type { MessageBoxRequest, MessageBoxType } from '../../utils/messageBox'
+import type { MessageBoxRequest, MessageBoxType } from '@/utils/messageBox'
 
 type MessageBoxState = MessageBoxRequest & {
   previousFocus: Element | null
@@ -151,7 +151,9 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <p v-if="currentOptions.message" class="message-box__message">{{ currentOptions.message }}</p>
+          <p v-if="currentOptions.message" class="message-box__message">
+            {{ currentOptions.message }}
+          </p>
 
           <div class="message-box__actions">
             <button
@@ -204,12 +206,14 @@ onBeforeUnmount(() => {
     rgba(255, 255, 255, 0.78);
   padding: 22px;
   color: #0f172a;
-  box-shadow: 0 30px 72px rgba(31, 73, 125, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  box-shadow:
+    0 30px 72px rgba(31, 73, 125, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(24px) saturate(140%);
 }
 
 .message-box::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0 auto 0 0;
   width: 5px;
@@ -228,7 +232,10 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.62);
   color: #64748b;
-  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .message-box__close:hover:not(:disabled) {
@@ -301,7 +308,10 @@ onBeforeUnmount(() => {
   padding: 0 16px;
   font-size: 14px;
   font-weight: 850;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
 
 .message-box__button:hover:not(:disabled) {
@@ -317,7 +327,9 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(255, 255, 255, 0.82);
   background: rgba(255, 255, 255, 0.66);
   color: #475569;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88), 0 10px 22px rgba(31, 73, 125, 0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 10px 22px rgba(31, 73, 125, 0.07);
 }
 
 .message-box__button--primary {
@@ -369,7 +381,9 @@ onBeforeUnmount(() => {
 
 .message-box-enter-active .message-box,
 .message-box-leave-active .message-box {
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
 }
 
 .message-box-enter-from,

@@ -1,7 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import pdfParse from 'pdf-parse'
 import * as mammoth from 'mammoth'
-import { matchesDocumentSignature, type DocumentExtension } from '../../common/utils/file-signature.util'
+import {
+  matchesDocumentSignature,
+  type DocumentExtension,
+} from '../../common/utils/file-signature.util'
 import { limitText } from '../../common/utils/text-limit.util'
 
 const SUPPORTED_EXTENSIONS: DocumentExtension[] = ['pdf', 'docx', 'txt', 'md']
@@ -65,7 +68,9 @@ export class FileService {
         throw error
       }
 
-      throw new BadRequestException('File parsing failed. Please check the file format and try again.')
+      throw new BadRequestException(
+        'File parsing failed. Please check the file format and try again.',
+      )
     }
   }
 }

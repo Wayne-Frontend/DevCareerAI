@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { ChatMessage } from '../types/interview'
+import type { ChatMessage } from '@/types/interview'
 
 export const useInterviewStore = defineStore('interview', () => {
   const sessionId = ref('')

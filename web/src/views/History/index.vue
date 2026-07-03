@@ -1,18 +1,34 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Clock3, Code2, Copy, FileSearch, History, Mic, RefreshCw, Search, Target, Trash2 } from 'lucide-vue-next'
-import EmptyState from '../../components/EmptyState/index.vue'
-import InlineStatus from '../../components/InlineStatus/index.vue'
-import LoadingButton from '../../components/LoadingButton/index.vue'
-import SkeletonCard from '../../components/SkeletonCard/index.vue'
-import { deleteHistoryRecord, getHistory } from '../../api/history'
-import type { HistoryRecord, HistoryType } from '../../types/history'
-import { formatDateTime } from '../../utils/format'
-import { messageBox } from '../../utils/messageBox'
-import { notify } from '../../utils/notify'
-import { useWorkflowStore } from '../../stores/workflow'
-import { buildInterviewStudyPlanCopy, buildJobMatchCopy, buildProjectCopy, buildResumeSuggestionCopy } from '../../utils/resultCopy'
+import {
+  Clock3,
+  Code2,
+  Copy,
+  FileSearch,
+  History,
+  Mic,
+  RefreshCw,
+  Search,
+  Target,
+  Trash2,
+} from 'lucide-vue-next'
+import EmptyState from '@/components/EmptyState/index.vue'
+import InlineStatus from '@/components/InlineStatus/index.vue'
+import LoadingButton from '@/components/LoadingButton/index.vue'
+import SkeletonCard from '@/components/SkeletonCard/index.vue'
+import { deleteHistoryRecord, getHistory } from '@/api/history'
+import type { HistoryRecord, HistoryType } from '@/types/history'
+import { formatDateTime } from '@/utils/format'
+import { messageBox } from '@/utils/messageBox'
+import { notify } from '@/utils/notify'
+import { useWorkflowStore } from '@/stores/workflow'
+import {
+  buildInterviewStudyPlanCopy,
+  buildJobMatchCopy,
+  buildProjectCopy,
+  buildResumeSuggestionCopy,
+} from '@/utils/resultCopy'
 
 type FilterType = 'all' | HistoryType
 type DetailSection = {
@@ -41,7 +57,10 @@ const tabs: Array<{ label: string; value: FilterType; icon?: typeof FileSearch }
   { label: '模拟面试', value: 'interview', icon: Mic },
 ]
 
-const typeMeta: Record<HistoryType, { label: string; icon: typeof FileSearch; tagClass: string; scoreClass: string }> = {
+const typeMeta: Record<
+  HistoryType,
+  { label: string; icon: typeof FileSearch; tagClass: string; scoreClass: string }
+> = {
   'resume-analysis': {
     label: '简历诊断',
     icon: FileSearch,
@@ -69,7 +88,10 @@ const typeMeta: Record<HistoryType, { label: string; icon: typeof FileSearch; ta
 }
 
 const displayRecords = computed(() => {
-  const filtered = activeType.value === 'all' ? records.value : records.value.filter((record) => record.type === activeType.value)
+  const filtered =
+    activeType.value === 'all'
+      ? records.value
+      : records.value.filter((record) => record.type === activeType.value)
   if (!keyword.value.trim()) return filtered
   const query = keyword.value.toLowerCase()
   return filtered.filter((record) => searchText(record).toLowerCase().includes(query))
@@ -118,7 +140,9 @@ function rawDetailText(record: HistoryRecord) {
 }
 
 function detailObject(record: HistoryRecord | null) {
-  return record?.detail && typeof record.detail === 'object' ? (record.detail as Record<string, unknown>) : {}
+  return record?.detail && typeof record.detail === 'object'
+    ? (record.detail as Record<string, unknown>)
+    : {}
 }
 
 function detailString(record: HistoryRecord | null, key: string) {
@@ -137,7 +161,8 @@ function detailList(record: HistoryRecord | null, key: string) {
         const objectItem = item as Record<string, unknown>
         const before = typeof objectItem.before === 'string' ? objectItem.before : ''
         const after = typeof objectItem.after === 'string' ? objectItem.after : ''
-        if (before || after) return [before && `原：${before}`, after && `优化：${after}`].filter(Boolean).join('\n')
+        if (before || after)
+          return [before && `原：${before}`, after && `优化：${after}`].filter(Boolean).join('\n')
         return JSON.stringify(item)
       }
       return String(item)
@@ -148,7 +173,9 @@ function detailList(record: HistoryRecord | null, key: string) {
 function dimensionItems(record: HistoryRecord | null) {
   const dimensions = detailObject(record).dimensionScores
   if (!dimensions || typeof dimensions !== 'object' || Array.isArray(dimensions)) return []
-  return Object.entries(dimensions as Record<string, unknown>).map(([key, value]) => `${key}：${value}`)
+  return Object.entries(dimensions as Record<string, unknown>).map(
+    ([key, value]) => `${key}：${value}`,
+  )
 }
 
 function detailScore(record: HistoryRecord | null) {
@@ -159,13 +186,19 @@ function detailScore(record: HistoryRecord | null) {
 }
 
 function displayTitle(record: HistoryRecord) {
-  return detailString(record, 'projectName') || detailString(record, 'jobTitle') || record.title || typeMeta[record.type].label
+  return (
+    detailString(record, 'projectName') ||
+    detailString(record, 'jobTitle') ||
+    record.title ||
+    typeMeta[record.type].label
+  )
 }
 
 function searchText(record: HistoryRecord) {
   const detail = detailObject(record)
   const values = Object.values(detail).flatMap((value) => {
-    if (Array.isArray(value)) return value.map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
+    if (Array.isArray(value))
+      return value.map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
     if (value && typeof value === 'object') return [JSON.stringify(value)]
     return [String(value ?? '')]
   })
@@ -283,9 +316,17 @@ onMounted(() => load())
       </div>
       <div>
         <h1 class="m-0 text-[34px] font-black text-[#0f172a]">历史记录</h1>
-        <p class="mt-2 text-base font-semibold text-[#64748b]">查看和删除简历诊断、项目优化、岗位匹配和模拟面试记录。</p>
+        <p class="mt-2 text-base font-semibold text-[#64748b]">
+          查看和删除简历诊断、项目优化、岗位匹配和模拟面试记录。
+        </p>
       </div>
-      <LoadingButton class="ml-auto" variant="secondary" :loading="loading" loading-text="刷新中..." @click="load(activeType)">
+      <LoadingButton
+        class="ml-auto"
+        variant="secondary"
+        :loading="loading"
+        loading-text="刷新中..."
+        @click="load(activeType)"
+      >
         <template #icon><RefreshCw :size="17" /></template>
         {{ loading ? '刷新中...' : '刷新' }}
       </LoadingButton>
@@ -299,17 +340,27 @@ onMounted(() => load())
             :key="tab.value"
             type="button"
             class="inline-flex h-10 items-center gap-2 rounded-[13px] px-5 text-sm font-black transition"
-            :class="activeType === tab.value ? 'bg-indigo-100 text-indigo-600' : 'bg-white/70 text-[#64748b] hover:text-indigo-600'"
+            :class="
+              activeType === tab.value
+                ? 'bg-indigo-100 text-indigo-600'
+                : 'bg-white/70 text-[#64748b] hover:text-indigo-600'
+            "
             :disabled="loading"
             @click="changeType(tab.value)"
           >
-            <component v-if="tab.icon" :is="tab.icon" :size="16" />
+            <component :is="tab.icon" v-if="tab.icon" :size="16" />
             {{ tab.label }}
           </button>
         </div>
 
-        <label class="flex h-11 w-[min(100%,280px)] items-center gap-3 rounded-[13px] border border-[rgba(203,213,225,0.82)] bg-white/68 px-4">
-          <input v-model="keyword" class="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-[#94a3b8]" placeholder="搜索记录标题..." />
+        <label
+          class="flex h-11 w-[min(100%,280px)] items-center gap-3 rounded-[13px] border border-[rgba(203,213,225,0.82)] bg-white/68 px-4"
+        >
+          <input
+            v-model="keyword"
+            class="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-[#94a3b8]"
+            placeholder="搜索记录标题..."
+          />
           <Search :size="18" class="text-[#64748b]" />
         </label>
       </div>
@@ -319,20 +370,43 @@ onMounted(() => load())
       <SkeletonCard v-for="index in 4" :key="index" />
     </section>
 
-    <InlineStatus v-else-if="loadError" type="error" title="历史记录加载失败" description="可能是网络或服务异常，请重试。">
-      <button type="button" class="btn-secondary mt-3 min-h-9 text-sm" @click="load(activeType)">重新加载</button>
+    <InlineStatus
+      v-else-if="loadError"
+      type="error"
+      title="历史记录加载失败"
+      description="可能是网络或服务异常，请重试。"
+    >
+      <button type="button" class="btn-secondary mt-3 min-h-9 text-sm" @click="load(activeType)">
+        重新加载
+      </button>
     </InlineStatus>
 
-    <EmptyState v-else-if="displayRecords.length === 0" title="暂无历史记录" description="完成一次 AI 分析或模拟面试后，记录会出现在这里。" />
+    <EmptyState
+      v-else-if="displayRecords.length === 0"
+      title="暂无历史记录"
+      description="完成一次 AI 分析或模拟面试后，记录会出现在这里。"
+    />
 
     <section v-else class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5">
-      <article v-for="record in displayRecords" :key="record.id" class="section-card flex h-[250px] flex-col p-5">
+      <article
+        v-for="record in displayRecords"
+        :key="record.id"
+        class="section-card flex h-[250px] flex-col p-5"
+      >
         <div class="flex items-center justify-between">
-          <span class="inline-flex h-10 items-center gap-2 rounded-[12px] px-3 text-sm font-black" :class="typeMeta[record.type].tagClass">
+          <span
+            class="inline-flex h-10 items-center gap-2 rounded-[12px] px-3 text-sm font-black"
+            :class="typeMeta[record.type].tagClass"
+          >
             <component :is="typeMeta[record.type].icon" :size="17" />
             {{ typeMeta[record.type].label }}
           </span>
-          <strong v-if="record.score !== undefined" class="rounded-[10px] px-3 py-2 text-sm font-black" :class="typeMeta[record.type].scoreClass">{{ record.score }} 分</strong>
+          <strong
+            v-if="record.score !== undefined"
+            class="rounded-[10px] px-3 py-2 text-sm font-black"
+            :class="typeMeta[record.type].scoreClass"
+            >{{ record.score }} 分</strong
+          >
         </div>
 
         <h2 class="mb-3 mt-5 text-lg font-black text-[#0f172a]">{{ displayTitle(record) }}</h2>
@@ -341,8 +415,19 @@ onMounted(() => load())
           {{ formatDateTime(record.createdAt) }}
         </p>
         <div class="mt-auto grid grid-cols-2 gap-3 pt-4">
-          <button class="btn-secondary min-h-10 whitespace-nowrap text-sm" @click="activeDetail = record">查看</button>
-          <LoadingButton variant="danger" class="min-h-10 whitespace-nowrap text-sm" :loading="deletingId === record.id" loading-text="删除中..." @click="remove(record)">
+          <button
+            class="btn-secondary min-h-10 whitespace-nowrap text-sm"
+            @click="activeDetail = record"
+          >
+            查看
+          </button>
+          <LoadingButton
+            variant="danger"
+            class="min-h-10 whitespace-nowrap text-sm"
+            :loading="deletingId === record.id"
+            loading-text="删除中..."
+            @click="remove(record)"
+          >
             <template #icon><Trash2 :size="16" /></template>
             {{ deletingId === record.id ? '删除中...' : '删除' }}
           </LoadingButton>
@@ -358,7 +443,11 @@ onMounted(() => load())
             <Copy :size="18" />
             {{ copyLabel(activeDetail) }}
           </button>
-          <button v-if="canGoInterview(activeDetail)" class="btn-secondary min-h-10" @click="goInterviewFromRecord(activeDetail)">
+          <button
+            v-if="canGoInterview(activeDetail)"
+            class="btn-secondary min-h-10"
+            @click="goInterviewFromRecord(activeDetail)"
+          >
             <Mic :size="18" />
             去模拟面试
           </button>
@@ -367,9 +456,16 @@ onMounted(() => load())
       </div>
 
       <div class="grid gap-4">
-        <div class="grid grid-cols-[120px_1fr] gap-4 rounded-2xl border border-slate-200 bg-white/70 p-4">
-          <div v-if="detailScore(activeDetail) !== undefined" class="grid h-[104px] w-[104px] place-items-center rounded-full bg-indigo-50">
-            <strong class="text-3xl font-black text-indigo-600">{{ detailScore(activeDetail) }}</strong>
+        <div
+          class="grid grid-cols-[120px_1fr] gap-4 rounded-2xl border border-slate-200 bg-white/70 p-4"
+        >
+          <div
+            v-if="detailScore(activeDetail) !== undefined"
+            class="grid h-[104px] w-[104px] place-items-center rounded-full bg-indigo-50"
+          >
+            <strong class="text-3xl font-black text-indigo-600">{{
+              detailScore(activeDetail)
+            }}</strong>
             <span class="-mt-7 text-xs font-bold text-[#64748b]">分</span>
           </div>
           <div v-else class="icon-tile h-[104px] w-[104px] rounded-[24px]">
@@ -380,22 +476,48 @@ onMounted(() => load())
               <span class="soft-tag">{{ typeMeta[activeDetail.type].label }}</span>
               <span class="soft-tag">{{ formatDateTime(activeDetail.createdAt) }}</span>
             </div>
-            <p class="mb-0 mt-3 text-sm leading-7 text-[#475569]">{{ summaryText(activeDetail) }}</p>
+            <p class="mb-0 mt-3 text-sm leading-7 text-[#475569]">
+              {{ summaryText(activeDetail) }}
+            </p>
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-          <section v-for="section in detailSections(activeDetail)" :key="section.title" class="section-card">
+          <section
+            v-for="section in detailSections(activeDetail)"
+            :key="section.title"
+            class="section-card"
+          >
             <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">{{ section.title }}</h3>
-            <p v-if="section.text" class="m-0 whitespace-pre-wrap text-sm font-semibold leading-7 text-[#334155]">{{ section.text }}</p>
+            <p
+              v-if="section.text"
+              class="m-0 whitespace-pre-wrap text-sm font-semibold leading-7 text-[#334155]"
+            >
+              {{ section.text }}
+            </p>
             <div v-else-if="section.tags?.length" class="flex flex-wrap gap-2">
-              <span v-for="tag in section.tags" :key="tag" class="rounded-[10px] border border-slate-200 bg-white/70 px-3 py-1.5 text-sm font-bold text-indigo-600">{{ tag }}</span>
+              <span
+                v-for="tag in section.tags"
+                :key="tag"
+                class="rounded-[10px] border border-slate-200 bg-white/70 px-3 py-1.5 text-sm font-bold text-indigo-600"
+                >{{ tag }}</span
+              >
             </div>
-            <ol v-else-if="section.items?.length && section.ordered" class="m-0 grid gap-2 pl-5 text-sm font-semibold leading-7 text-[#334155]">
-              <li v-for="item in section.items" :key="item" class="whitespace-pre-wrap">{{ item }}</li>
+            <ol
+              v-else-if="section.items?.length && section.ordered"
+              class="m-0 grid gap-2 pl-5 text-sm font-semibold leading-7 text-[#334155]"
+            >
+              <li v-for="item in section.items" :key="item" class="whitespace-pre-wrap">
+                {{ item }}
+              </li>
             </ol>
-            <ul v-else-if="section.items?.length" class="m-0 grid list-disc gap-2 pl-5 text-sm font-semibold leading-7 text-[#334155]">
-              <li v-for="item in section.items" :key="item" class="whitespace-pre-wrap">{{ item }}</li>
+            <ul
+              v-else-if="section.items?.length"
+              class="m-0 grid list-disc gap-2 pl-5 text-sm font-semibold leading-7 text-[#334155]"
+            >
+              <li v-for="item in section.items" :key="item" class="whitespace-pre-wrap">
+                {{ item }}
+              </li>
             </ul>
             <p v-else class="m-0 text-sm font-semibold text-[#94a3b8]">暂无内容</p>
           </section>
@@ -403,10 +525,11 @@ onMounted(() => load())
 
         <details class="section-card">
           <summary class="cursor-pointer text-base font-black text-[#0f172a]">查看原始数据</summary>
-          <pre class="mt-4 max-h-[320px] overflow-auto rounded-2xl bg-slate-950 p-5 text-sm leading-7 text-slate-100">{{ rawDetailText(activeDetail) }}</pre>
+          <pre
+            class="mt-4 max-h-[320px] overflow-auto rounded-2xl bg-slate-950 p-5 text-sm leading-7 text-slate-100"
+            >{{ rawDetailText(activeDetail) }}</pre>
         </details>
       </div>
     </section>
   </div>
 </template>
-

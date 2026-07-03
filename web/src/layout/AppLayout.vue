@@ -88,7 +88,9 @@ onBeforeUnmount(() => {
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.7);
     color: #0b55e8;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px rgba(31, 73, 125, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 8px 18px rgba(31, 73, 125, 0.08);
   }
 
   .mobile-brand {

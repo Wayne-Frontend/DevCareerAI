@@ -58,7 +58,10 @@ describe('setStoredAuthSession / getStoredAuthSession', () => {
 
 describe('过期与容错', () => {
   it('过期会话读取时返回 null 并清除', () => {
-    setStoredAuthSession(makeSession({ expiresAt: new Date(Date.now() - 1000).toISOString() }), true)
+    setStoredAuthSession(
+      makeSession({ expiresAt: new Date(Date.now() - 1000).toISOString() }),
+      true,
+    )
     expect(getStoredAuthSession()).toBeNull()
     expect(localStorage.getItem('devcareer-auth-session')).toBeNull()
   })

@@ -8,7 +8,9 @@ defineProps<{
 </script>
 
 <template>
-  <div class="grid grid-cols-[86px_1fr] gap-3.5 rounded-[18px] border border-indigo-200/70 bg-indigo-50/70 p-3.5">
+  <div
+    class="grid grid-cols-[86px_1fr] gap-3.5 rounded-[18px] border border-indigo-200/70 bg-indigo-50/70 p-3.5"
+  >
     <div class="grid min-h-[74px] place-items-center rounded-2xl bg-white/75">
       <strong class="text-[28px] leading-none text-indigo-600">{{ score }}</strong>
       <span class="text-xs text-[#64748b]">点评分</span>

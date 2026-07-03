@@ -1,6 +1,7 @@
 import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator'
+import type { LoginPayload } from '@devcareer/shared'
 
-export class LoginDto {
+export class LoginDto implements LoginPayload {
   @IsString()
   @MinLength(1)
   @MaxLength(120)

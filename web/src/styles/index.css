@@ -1,7 +1,9 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --font-sans: Inter, "SF Pro Display", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans:
+    Inter, 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', ui-sans-serif, system-ui,
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --color-primary: #2563eb;
   --color-secondary: #38bdf8;
   --color-ink: #07163f;
@@ -99,7 +101,7 @@
 
   .app-bg::before,
   .app-bg::after {
-    content: "";
+    content: '';
     position: fixed;
     pointer-events: none;
     border-radius: 999px;
@@ -113,7 +115,12 @@
     height: 680px;
     border-radius: 80px;
     background:
-      linear-gradient(122deg, rgba(255, 255, 255, 0.64), rgba(183, 211, 246, 0.18) 48%, transparent 49%),
+      linear-gradient(
+        122deg,
+        rgba(255, 255, 255, 0.64),
+        rgba(183, 211, 246, 0.18) 48%,
+        transparent 49%
+      ),
       radial-gradient(circle at 60% 20%, rgba(255, 255, 255, 0.72), transparent 36%);
     opacity: 0.72;
     transform: rotate(-8deg);
@@ -381,205 +388,220 @@
   }
 }
 
-
-  /* 桌面外壳定位：保持 unlayered，使底部移动端媒体查询（同为 unlayered !important）能按源码顺序覆盖它，
+/* 桌面外壳定位：保持 unlayered，使底部移动端媒体查询（同为 unlayered !important）能按源码顺序覆盖它，
      避免 @layer 内的 !important 反转优先级导致移动端无法解除固定侧栏。 */
-  .app-bg > .app-sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    width: var(--app-sidebar-width) !important;
-    height: 100dvh !important;
-    flex: 0 0 var(--app-sidebar-width) !important;
-  }
+.app-bg > .app-sidebar {
+  position: fixed !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: var(--app-sidebar-width) !important;
+  height: 100dvh !important;
+  flex: 0 0 var(--app-sidebar-width) !important;
+}
 
-  .app-bg > .app-main {
-    position: relative !important;
-    top: 0 !important;
-    margin-left: var(--app-sidebar-width) !important;
-    width: calc(100% - var(--app-sidebar-width)) !important;
-    height: 100dvh !important;
-  }
+.app-bg > .app-main {
+  position: relative !important;
+  top: 0 !important;
+  margin-left: var(--app-sidebar-width) !important;
+  width: calc(100% - var(--app-sidebar-width)) !important;
+  height: 100dvh !important;
+}
 
-  /* Unified AI workspace styling for feature pages */
-  .page {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    min-height: 100dvh;
-    width: 100%;
-    max-width: var(--app-content-max-width);
-    flex-direction: column;
-    gap: var(--page-gap);
-    margin-inline: auto;
-    padding: var(--page-padding-y) var(--page-padding-x) calc(var(--page-padding-y) + 8px);
-  }
+/* Unified AI workspace styling for feature pages */
+.page {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: var(--app-content-max-width);
+  flex-direction: column;
+  gap: var(--page-gap);
+  margin-inline: auto;
+  padding: var(--page-padding-y) var(--page-padding-x) calc(var(--page-padding-y) + 8px);
+}
 
-  .page > header {
-    position: relative;
-    min-height: var(--page-header-min-height);
-    padding-bottom: 10px;
-    align-items: center !important;
-    gap: 14px !important;
-    margin-top: 0 !important;
-  }
+.page > header {
+  position: relative;
+  min-height: var(--page-header-min-height);
+  padding-bottom: 10px;
+  align-items: center !important;
+  gap: 14px !important;
+  margin-top: 0 !important;
+}
 
-  .page > header::after {
-    content: "";
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: 1px;
-    background: linear-gradient(90deg, rgba(37, 99, 235, 0.18), rgba(255, 255, 255, 0.1));
-  }
+.page > header::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.18), rgba(255, 255, 255, 0.1));
+}
 
-  .page > header > .icon-tile,
-  .page > header > div:first-child.icon-tile {
-    width: 48px !important;
-    height: 48px !important;
-    flex: 0 0 auto;
-    border-radius: 15px !important;
-    background: linear-gradient(145deg, rgba(91, 140, 255, 0.16), rgba(255, 255, 255, 0.62)) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 18px 34px rgba(37, 99, 235, 0.12) !important;
-    color: #4f7cff !important;
-  }
+.page > header > .icon-tile,
+.page > header > div:first-child.icon-tile {
+  width: 48px !important;
+  height: 48px !important;
+  flex: 0 0 auto;
+  border-radius: 15px !important;
+  background: linear-gradient(
+    145deg,
+    rgba(91, 140, 255, 0.16),
+    rgba(255, 255, 255, 0.62)
+  ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 18px 34px rgba(37, 99, 235, 0.12) !important;
+  color: #4f7cff !important;
+}
 
-  .page > header h1 {
-    margin: 0 !important;
-    background: linear-gradient(135deg, #07163f 0%, #102e6d 58%, #2563eb 100%);
-    background-clip: text;
-    color: transparent !important;
-    font-size: var(--page-title-size) !important;
-    font-weight: 950 !important;
-    letter-spacing: -0.04em !important;
-    line-height: 1.05 !important;
-    text-wrap: balance;
-  }
+.page > header h1 {
+  margin: 0 !important;
+  background: linear-gradient(135deg, #07163f 0%, #102e6d 58%, #2563eb 100%);
+  background-clip: text;
+  color: transparent !important;
+  font-size: var(--page-title-size) !important;
+  font-weight: 950 !important;
+  letter-spacing: -0.04em !important;
+  line-height: 1.05 !important;
+  text-wrap: balance;
+}
 
-  .page > header p {
-    margin-top: 7px !important;
-    color: #425b84 !important;
-    font-size: var(--page-subtitle-size) !important;
-    font-weight: 720 !important;
-    letter-spacing: 0 !important;
-  }
+.page > header p {
+  margin-top: 7px !important;
+  color: #425b84 !important;
+  font-size: var(--page-subtitle-size) !important;
+  font-weight: 720 !important;
+  letter-spacing: 0 !important;
+}
 
-  .glass-card {
-    border-color: rgba(255, 255, 255, 0.78) !important;
-    border-radius: var(--glass-radius) !important;
-    background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.68), rgba(246, 250, 255, 0.4)),
-      rgba(255, 255, 255, 0.52) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 22px 54px rgba(31, 73, 125, 0.1) !important;
-  }
+.glass-card {
+  border-color: rgba(255, 255, 255, 0.78) !important;
+  border-radius: var(--glass-radius) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.68), rgba(246, 250, 255, 0.4)),
+    rgba(255, 255, 255, 0.52) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 22px 54px rgba(31, 73, 125, 0.1) !important;
+}
 
-  .feature-workspace,
-  .feature-workspace-balanced,
-  .feature-workspace-compact {
-    display: grid;
-    align-items: stretch;
-    gap: var(--page-gap);
-    flex: 1;
-    min-height: 0;
-  }
+.feature-workspace,
+.feature-workspace-balanced,
+.feature-workspace-compact {
+  display: grid;
+  align-items: stretch;
+  gap: var(--page-gap);
+  flex: 1;
+  min-height: 0;
+}
 
-  .feature-workspace {
-    grid-template-columns: minmax(var(--feature-left-min), 0.36fr) minmax(0, 1fr);
-  }
+.feature-workspace {
+  grid-template-columns: minmax(var(--feature-left-min), 0.36fr) minmax(0, 1fr);
+}
 
-  .feature-workspace-balanced {
-    grid-template-columns: minmax(var(--feature-balanced-left-min), 0.44fr) minmax(0, 0.56fr);
-  }
+.feature-workspace-balanced {
+  grid-template-columns: minmax(var(--feature-balanced-left-min), 0.44fr) minmax(0, 0.56fr);
+}
 
-  .feature-workspace-compact {
-    grid-template-columns: minmax(var(--feature-compact-left-min), 0.3fr) minmax(0, 1fr);
-  }
+.feature-workspace-compact {
+  grid-template-columns: minmax(var(--feature-compact-left-min), 0.3fr) minmax(0, 1fr);
+}
 
-  .feature-pane-left,
-  .feature-pane-right {
-    min-height: 0;
-    overflow-y: auto;
-  }
+.feature-pane-left,
+.feature-pane-right {
+  min-height: 0;
+  overflow-y: auto;
+}
 
-  .feature-pane-left {
-    padding: var(--panel-padding) !important;
-  }
+.feature-pane-left {
+  padding: var(--panel-padding) !important;
+}
 
-  .feature-pane-right {
-    padding: var(--panel-padding) !important;
-  }
+.feature-pane-right {
+  padding: var(--panel-padding) !important;
+}
 
-  .feature-pane-left h2,
-  .feature-pane-right h2,
-  .section-title {
-    color: #07163f !important;
-    font-size: 18px !important;
-    font-weight: 900 !important;
-    letter-spacing: -0.02em;
-  }
+.feature-pane-left h2,
+.feature-pane-right h2,
+.section-title {
+  color: #07163f !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.02em;
+}
 
-  .field-label {
-    margin-bottom: 8px !important;
-    color: #18345f !important;
-    font-size: 13px !important;
-    font-weight: 850 !important;
-  }
+.field-label {
+  margin-bottom: 8px !important;
+  color: #18345f !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+}
 
-  .input-base,
-  .select-base,
-  .textarea-base {
-    border-color: rgba(171, 190, 218, 0.48) !important;
-    border-radius: 13px !important;
-    background: rgba(255, 255, 255, 0.58) !important;
-    color: #10204a !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 8px 20px rgba(31, 73, 125, 0.035) !important;
-  }
+.input-base,
+.select-base,
+.textarea-base {
+  border-color: rgba(171, 190, 218, 0.48) !important;
+  border-radius: 13px !important;
+  background: rgba(255, 255, 255, 0.58) !important;
+  color: #10204a !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 8px 20px rgba(31, 73, 125, 0.035) !important;
+}
 
-  .input-base,
-  .select-base {
-    min-height: var(--control-height) !important;
-  }
+.input-base,
+.select-base {
+  min-height: var(--control-height) !important;
+}
 
-  .textarea-base {
-    line-height: 1.75 !important;
-  }
+.textarea-base {
+  line-height: 1.75 !important;
+}
 
-  .input-base:focus,
-  .select-base:focus,
-  .textarea-base:focus {
-    border-color: rgba(79, 124, 255, 0.48) !important;
-    box-shadow: 0 0 0 4px rgba(79, 124, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
-  }
+.input-base:focus,
+.select-base:focus,
+.textarea-base:focus {
+  border-color: rgba(79, 124, 255, 0.48) !important;
+  box-shadow:
+    0 0 0 4px rgba(79, 124, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
 
-  .btn-primary,
-  .primary-gradient-btn {
-    border-radius: 13px !important;
-    background: linear-gradient(135deg, #6ea8ff 0%, #2563eb 100%) !important;
-    box-shadow: 0 16px 30px rgba(37, 99, 235, 0.24) !important;
-  }
+.btn-primary,
+.primary-gradient-btn {
+  border-radius: 13px !important;
+  background: linear-gradient(135deg, #6ea8ff 0%, #2563eb 100%) !important;
+  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.24) !important;
+}
 
-  .btn-secondary {
-    border-color: rgba(255, 255, 255, 0.78) !important;
-    border-radius: 13px !important;
-    background: rgba(255, 255, 255, 0.58) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 22px rgba(31, 73, 125, 0.07) !important;
-  }
+.btn-secondary {
+  border-color: rgba(255, 255, 255, 0.78) !important;
+  border-radius: 13px !important;
+  background: rgba(255, 255, 255, 0.58) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 10px 22px rgba(31, 73, 125, 0.07) !important;
+}
 
-  .section-card {
-    border-color: rgba(255, 255, 255, 0.76) !important;
-    border-radius: var(--card-radius) !important;
-    background: rgba(255, 255, 255, 0.55) !important;
-    padding: var(--panel-padding) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 14px 30px rgba(31, 73, 125, 0.07) !important;
-  }
+.section-card {
+  border-color: rgba(255, 255, 255, 0.76) !important;
+  border-radius: var(--card-radius) !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+  padding: var(--panel-padding) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 14px 30px rgba(31, 73, 125, 0.07) !important;
+}
 
-  .icon-tile {
-    border-color: rgba(79, 124, 255, 0.16) !important;
-    background: rgba(79, 124, 255, 0.12) !important;
-    color: #4f7cff !important;
-  }
+.icon-tile {
+  border-color: rgba(79, 124, 255, 0.16) !important;
+  background: rgba(79, 124, 255, 0.12) !important;
+  color: #4f7cff !important;
+}
 @media (max-width: 1180px) {
   .work-grid,
   .feature-workspace,

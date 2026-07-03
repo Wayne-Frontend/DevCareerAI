@@ -1,7 +1,8 @@
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator'
+import type { UpdateJobDescriptionPayload } from '@devcareer/shared'
 import { AI_TEXT_LIMITS } from '../../../common/utils/text-limit.util'
 
-export class UpdateJobDescriptionDto {
+export class UpdateJobDescriptionDto implements UpdateJobDescriptionPayload {
   @IsOptional()
   @IsString()
   @MinLength(1)

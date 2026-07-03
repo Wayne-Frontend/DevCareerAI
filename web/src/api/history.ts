@@ -1,5 +1,5 @@
 import { request } from './request'
-import type { HistoryRecord, HistoryType } from '../types/history'
+import type { HistoryRecord, HistoryType } from '@/types/history'
 
 export function getHistory(type?: HistoryType) {
   return request<HistoryRecord[]>({

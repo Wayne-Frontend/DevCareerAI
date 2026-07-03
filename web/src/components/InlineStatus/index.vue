@@ -24,7 +24,12 @@ function iconForType() {
 
 <template>
   <div class="inline-status" :class="`inline-status--${type}`">
-    <component :is="iconForType()" class="inline-status__icon" :class="{ 'is-spinning': type === 'loading' }" :size="18" />
+    <component
+      :is="iconForType()"
+      class="inline-status__icon"
+      :class="{ 'is-spinning': type === 'loading' }"
+      :size="18"
+    />
     <div>
       <strong v-if="title">{{ title }}</strong>
       <p v-if="description">{{ description }}</p>

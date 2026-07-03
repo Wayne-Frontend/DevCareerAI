@@ -1,7 +1,8 @@
 import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator'
+import type { JobMatchPayload } from '@devcareer/shared'
 import { AI_TEXT_LIMITS } from '../../../common/utils/text-limit.util'
 
-export class MatchJobDto {
+export class MatchJobDto implements JobMatchPayload {
   @IsString()
   @MinLength(1)
   @MaxLength(20000)

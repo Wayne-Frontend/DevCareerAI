@@ -64,6 +64,6 @@ onMounted(async () => {
       class="soft-scrollbar m-0 overflow-auto whitespace-pre-wrap rounded-[14px] bg-white/70 p-4 text-xs leading-6 text-[#475569]"
       :style="{ maxHeight: `${maxHeight}px` }"
       @scroll="onScroll"
-    >{{ content || placeholder }}</pre>
+      >{{ content || placeholder }}</pre>
   </section>
 </template>

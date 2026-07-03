@@ -22,14 +22,22 @@ export class InterviewController {
   }
 
   @Post('stream')
-  createStream(@Body() dto: CreateInterviewDto, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
+  createStream(
+    @Body() dto: CreateInterviewDto,
+    @CurrentUser() user: AuthUserResponse,
+    @Res() res: Response,
+  ) {
     return runSseStream(res, 'Interview session generation started', (callbacks) =>
       this.interviewService.createStream(dto, user.id, callbacks),
     )
   }
 
   @Post(':sessionId/messages')
-  submitAnswer(@Param('sessionId') sessionId: string, @Body() dto: SubmitAnswerDto, @CurrentUser() user: AuthUserResponse) {
+  submitAnswer(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: SubmitAnswerDto,
+    @CurrentUser() user: AuthUserResponse,
+  ) {
     return this.interviewService.submitAnswer(sessionId, dto, user.id)
   }
 
@@ -51,7 +59,11 @@ export class InterviewController {
   }
 
   @Post(':sessionId/finish/stream')
-  finishStream(@Param('sessionId') sessionId: string, @CurrentUser() user: AuthUserResponse, @Res() res: Response) {
+  finishStream(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: AuthUserResponse,
+    @Res() res: Response,
+  ) {
     return runSseStream(res, 'Interview summary generation started', (callbacks) =>
       this.interviewService.finishStream(sessionId, user.id, callbacks),
     )

@@ -1,30 +1,8 @@
-﻿export interface AuthUser {
-  id: string
-  username: string
-  email: string
-  avatarUrl?: string | null
-  role: string
-  createdAt: string
-}
-
-export interface AuthSession {
-  token: string
-  expiresAt: string
-  user: AuthUser
-}
-
-export interface LoginPayload {
-  account: string
-  password: string
-  remember?: boolean
-}
-
-export interface RegisterPayload {
-  username: string
-  email: string
-  password: string
-}
-
-export interface UpdateProfilePayload {
-  email: string
-}
+// 契约类型已下沉到 @devcareer/shared（前后端单一事实源），此处仅转发以保持既有 import 路径稳定。
+export type {
+  AuthUser,
+  AuthSession,
+  LoginPayload,
+  RegisterPayload,
+  UpdateProfilePayload,
+} from '@devcareer/shared'

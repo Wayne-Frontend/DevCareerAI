@@ -38,7 +38,9 @@ export class JobService {
   }
 
   async matchStream(dto: MatchJobDto, userId: string, callbacks: AiStreamCallbacks = {}) {
-    return this.produceMatch(dto, userId, (payload) => this.generateWithStream(payload, callbacks, userId))
+    return this.produceMatch(dto, userId, (payload) =>
+      this.generateWithStream(payload, callbacks, userId),
+    )
   }
 
   findDescriptions(userId: string) {
@@ -117,7 +119,10 @@ export class JobService {
     )
 
     // 缓存命中说明输入未变、结果与此前完全一致：复用同一简历+JD 下的已有记录，避免重复历史。
-    if (!cached || !(await this.hasReusableMatchAnalysis(resumeRecord.id, jobDescription.id, result))) {
+    if (
+      !cached ||
+      !(await this.hasReusableMatchAnalysis(resumeRecord.id, jobDescription.id, result))
+    ) {
       await this.createMatchAnalysis(resumeRecord.id, jobDescription.id, result)
     }
 
@@ -129,8 +134,16 @@ export class JobService {
     }
   }
 
-  private async generateWithChat(payload: MatchPayload, userId: string): Promise<AiGeneration<JobMatchResult>> {
-    const text = await this.aiService.chat({ ...payload, modelTier: 'quality', feature: MATCH_FEATURE, userId })
+  private async generateWithChat(
+    payload: MatchPayload,
+    userId: string,
+  ): Promise<AiGeneration<JobMatchResult>> {
+    const text = await this.aiService.chat({
+      ...payload,
+      modelTier: 'quality',
+      feature: MATCH_FEATURE,
+      userId,
+    })
     return this.toGeneration(text)
   }
 
@@ -226,7 +239,11 @@ export class JobService {
   }
 
   // 在同一简历+JD 的近期记录中查找 resultJson 完全一致的一条，命中则说明已存在无需再写。
-  private async hasReusableMatchAnalysis(resumeId: string, jobDescriptionId: string, result: JobMatchResult) {
+  private async hasReusableMatchAnalysis(
+    resumeId: string,
+    jobDescriptionId: string,
+    result: JobMatchResult,
+  ) {
     const target = stableStringify(result)
     const recent = await this.prisma.jobMatchAnalysis.findMany({
       where: { resumeId, jobDescriptionId },
@@ -239,7 +256,9 @@ export class JobService {
   }
 }
 
-export function normalizeJobMatchResult(value: JobMatchResult | { rawText: string; parseError: true }): JobMatchResult {
+export function normalizeJobMatchResult(
+  value: JobMatchResult | { rawText: string; parseError: true },
+): JobMatchResult {
   if ('parseError' in value) {
     return {
       matchScore: 0,

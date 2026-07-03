@@ -9,7 +9,10 @@ import { AiCacheService, type AiGeneration } from '../ai/ai-cache.service'
 import { AiService } from '../ai/ai.service'
 import type { AiStreamCallbacks, ResumeAnalysisResult } from '../ai/ai.types'
 import { PrismaService } from '../../prisma/prisma.service'
-import { buildResumeAnalyzePrompt, CAREER_ASSISTANT_SYSTEM_PROMPT } from '../../prompts/resume.prompt'
+import {
+  buildResumeAnalyzePrompt,
+  CAREER_ASSISTANT_SYSTEM_PROMPT,
+} from '../../prompts/resume.prompt'
 import { CreateResumeDto } from './dto/create-resume.dto'
 import { UpdateResumeDto } from './dto/update-resume.dto'
 
@@ -89,7 +92,9 @@ export class ResumeService {
   async analyzeStream(id: string, userId: string, callbacks: AiStreamCallbacks = {}) {
     const resume = await this.findResume(id, userId)
 
-    return this.produceAnalysis(resume, (payload) => this.generateWithStream(payload, callbacks, userId))
+    return this.produceAnalysis(resume, (payload) =>
+      this.generateWithStream(payload, callbacks, userId),
+    )
   }
 
   private async produceAnalysis(
@@ -121,8 +126,16 @@ export class ResumeService {
     }
   }
 
-  private async generateWithChat(payload: AnalysisPayload, userId: string): Promise<AiGeneration<ResumeAnalysisResult>> {
-    const text = await this.aiService.chat({ ...payload, modelTier: 'quality', feature: ANALYSIS_FEATURE, userId })
+  private async generateWithChat(
+    payload: AnalysisPayload,
+    userId: string,
+  ): Promise<AiGeneration<ResumeAnalysisResult>> {
+    const text = await this.aiService.chat({
+      ...payload,
+      modelTier: 'quality',
+      feature: ANALYSIS_FEATURE,
+      userId,
+    })
     return this.toGeneration(text)
   }
 
@@ -194,7 +207,9 @@ export class ResumeService {
   }
 }
 
-export function normalizeResumeAnalysisResult(value: ResumeAnalysisResult | { rawText: string; parseError: true }): ResumeAnalysisResult {
+export function normalizeResumeAnalysisResult(
+  value: ResumeAnalysisResult | { rawText: string; parseError: true },
+): ResumeAnalysisResult {
   if ('parseError' in value) {
     return {
       score: 0,

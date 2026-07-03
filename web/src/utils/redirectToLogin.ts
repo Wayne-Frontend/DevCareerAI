@@ -1,5 +1,5 @@
-import router from '../router'
-import { useAuthStore } from '../stores/auth'
+import router from '@/router'
+import { useAuthStore } from '@/stores/auth'
 
 // 并发的多个请求可能同时返回 401，用一个开关避免连环 replace / 跳转循环。
 let redirecting = false

@@ -2,20 +2,24 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Clock3, Copy, Mic, PlayCircle, Square, UploadCloud } from 'lucide-vue-next'
-import ChatBox from '../../components/ChatBox/index.vue'
-import GlassCard from '../../components/GlassCard/index.vue'
-import InlineStatus from '../../components/InlineStatus/index.vue'
-import StreamPreview from '../../components/StreamPreview/index.vue'
-import { createInterviewStream, finishInterviewStream, submitInterviewAnswerStream } from '../../api/interview'
-import { getJobDescriptions } from '../../api/job'
-import { getResumes, uploadResume } from '../../api/resume'
-import { useInterviewStore } from '../../stores/interview'
-import { useWorkflowStore } from '../../stores/workflow'
-import type { JobDescriptionRecord } from '../../types/job'
-import type { ResumeRecord } from '../../types/resume'
-import { messageBox } from '../../utils/messageBox'
-import { notify } from '../../utils/notify'
-import { buildInterviewStudyPlanCopy } from '../../utils/resultCopy'
+import ChatBox from '@/components/ChatBox/index.vue'
+import GlassCard from '@/components/GlassCard/index.vue'
+import InlineStatus from '@/components/InlineStatus/index.vue'
+import StreamPreview from '@/components/StreamPreview/index.vue'
+import {
+  createInterviewStream,
+  finishInterviewStream,
+  submitInterviewAnswerStream,
+} from '@/api/interview'
+import { getJobDescriptions } from '@/api/job'
+import { getResumes, uploadResume } from '@/api/resume'
+import { useInterviewStore } from '@/stores/interview'
+import { useWorkflowStore } from '@/stores/workflow'
+import type { JobDescriptionRecord } from '@/types/job'
+import type { ResumeRecord } from '@/types/resume'
+import { messageBox } from '@/utils/messageBox'
+import { notify } from '@/utils/notify'
+import { buildInterviewStudyPlanCopy } from '@/utils/resultCopy'
 
 const MAX_RESUME_LENGTH = 20000
 const interviewStore = useInterviewStore()
@@ -142,8 +146,15 @@ function applyWorkflowContext() {
   if (context.projectContext && !form.resumeContent.trim()) {
     form.resumeContent = context.projectContext.slice(0, MAX_RESUME_LENGTH)
     applied = true
-  } else if (context.projectContext && form.resumeContent.trim() && !form.resumeContent.includes(context.projectContext.slice(0, 80))) {
-    form.resumeContent = `${form.resumeContent}\n\n${context.projectContext}`.slice(0, MAX_RESUME_LENGTH)
+  } else if (
+    context.projectContext &&
+    form.resumeContent.trim() &&
+    !form.resumeContent.includes(context.projectContext.slice(0, 80))
+  ) {
+    form.resumeContent = `${form.resumeContent}\n\n${context.projectContext}`.slice(
+      0,
+      MAX_RESUME_LENGTH,
+    )
     applied = true
   }
   if (context.jobDescription && !form.jobDescription.trim()) {
@@ -184,7 +195,12 @@ async function onResumeFileChange(event: Event) {
     selectedResumeId.value = ''
     selectedFileName.value = parsed.fileName
     form.resumeContent = parsed.content.slice(0, MAX_RESUME_LENGTH)
-    notify(parsed.truncated || parsed.content.length > MAX_RESUME_LENGTH ? '文件已解析，内容较长，已自动截断' : '文件已解析', 'success')
+    notify(
+      parsed.truncated || parsed.content.length > MAX_RESUME_LENGTH
+        ? '文件已解析，内容较长，已自动截断'
+        : '文件已解析',
+      'success',
+    )
   } catch {
     input.value = ''
     uploadError.value = '文件解析失败，请确认格式为 PDF、DOCX、TXT 或 MD 后重试。'
@@ -334,7 +350,9 @@ function appendDelta(delta: string) {
   streamPreview.value += delta
 }
 
-const studyPlanText = computed(() => (finalSummary.value ? buildInterviewStudyPlanCopy(finalSummary.value) : ''))
+const studyPlanText = computed(() =>
+  finalSummary.value ? buildInterviewStudyPlanCopy(finalSummary.value) : '',
+)
 
 function cancelStream() {
   controller.value?.abort()
@@ -360,7 +378,9 @@ async function copyStudyPlan() {
       </div>
       <div>
         <h1 class="m-0 text-[26px] font-black text-[#0f172a]">模拟面试</h1>
-        <p class="mt-1.5 text-sm font-semibold text-[#64748b]">根据简历和目标岗位生成问题、点评回答，并持续追问。</p>
+        <p class="mt-1.5 text-sm font-semibold text-[#64748b]">
+          根据简历和目标岗位生成问题、点评回答，并持续追问。
+        </p>
       </div>
       <RouterLink class="btn-secondary ml-auto" to="/history">
         <Clock3 :size="18" />
@@ -368,13 +388,30 @@ async function copyStudyPlan() {
       </RouterLink>
     </header>
 
-    <InlineStatus v-if="assetsError" type="warning" title="资料加载失败" :description="assetsError" />
+    <InlineStatus
+      v-if="assetsError"
+      type="warning"
+      title="资料加载失败"
+      :description="assetsError"
+    />
 
     <div class="feature-workspace-compact">
       <GlassCard class="feature-pane-left">
         <h2 class="section-title">面试配置</h2>
-        <InlineStatus v-if="assetsLoading" class="mb-4" type="loading" title="正在加载已有资料" description="稍等一下，简历和 JD 记录马上回来。" />
-        <InlineStatus v-if="workflowMessage" class="mb-4" type="success" title="资料已带入" :description="workflowMessage" />
+        <InlineStatus
+          v-if="assetsLoading"
+          class="mb-4"
+          type="loading"
+          title="正在加载已有资料"
+          description="稍等一下，简历和 JD 记录马上回来。"
+        />
+        <InlineStatus
+          v-if="workflowMessage"
+          class="mb-4"
+          type="success"
+          title="资料已带入"
+          :description="workflowMessage"
+        />
         <div class="grid gap-3">
           <label>
             <span class="field-label">目标岗位</span>
@@ -399,35 +436,101 @@ async function copyStudyPlan() {
           <div>
             <span class="field-label">简历内容</span>
             <label v-if="resumeOptions.length" class="mb-3 block">
-              <select v-model="selectedResumeId" class="select-base" :disabled="loading || uploadLoading" @change="applyResume(selectedResumeId)">
+              <select
+                v-model="selectedResumeId"
+                class="select-base"
+                :disabled="loading || uploadLoading"
+                @change="applyResume(selectedResumeId)"
+              >
                 <option value="">手动输入 / 上传新简历</option>
-                <option v-for="resume in resumeOptions" :key="resume.id" :value="resume.id">{{ resume.title }}</option>
+                <option v-for="resume in resumeOptions" :key="resume.id" :value="resume.id">
+                  {{ resume.title }}
+                </option>
               </select>
             </label>
-            <label class="mb-3 grid min-h-[90px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-3.5 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40" :class="{ 'pointer-events-none opacity-70': uploadLoading || loading }">
-              <input class="hidden" type="file" accept=".pdf,.docx,.txt,.md" :disabled="uploadLoading || loading" @change="onResumeFileChange" />
+            <label
+              class="mb-3 grid min-h-[90px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-3.5 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40"
+              :class="{ 'pointer-events-none opacity-70': uploadLoading || loading }"
+            >
+              <input
+                class="hidden"
+                type="file"
+                accept=".pdf,.docx,.txt,.md"
+                :disabled="uploadLoading || loading"
+                @change="onResumeFileChange"
+              />
               <UploadCloud :size="30" class="text-indigo-500" />
-              <span class="mt-2 block text-sm font-extrabold text-[#26324f]">{{ uploadLoading ? '解析中...' : '上传 PDF / DOCX / TXT / MD' }}</span>
-              <span v-if="selectedFileName" class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600">{{ selectedFileName }}</span>
+              <span class="mt-2 block text-sm font-extrabold text-[#26324f]">{{
+                uploadLoading ? '解析中...' : '上传 PDF / DOCX / TXT / MD'
+              }}</span>
+              <span
+                v-if="selectedFileName"
+                class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600"
+                >{{ selectedFileName }}</span
+              >
             </label>
-            <InlineStatus v-if="uploadError" class="mb-3" type="error" title="上传失败" :description="uploadError" />
-            <textarea v-model="form.resumeContent" class="textarea-base min-h-[120px]" :maxlength="MAX_RESUME_LENGTH" placeholder="粘贴或上传用于面试的简历、项目经历..." :disabled="loading || uploadLoading" @input="selectedResumeId = ''" />
-            <span class="mt-1 block text-right text-xs text-[#64748b]">{{ form.resumeContent.length }} / {{ MAX_RESUME_LENGTH }}</span>
+            <InlineStatus
+              v-if="uploadError"
+              class="mb-3"
+              type="error"
+              title="上传失败"
+              :description="uploadError"
+            />
+            <textarea
+              v-model="form.resumeContent"
+              class="textarea-base min-h-[120px]"
+              :maxlength="MAX_RESUME_LENGTH"
+              placeholder="粘贴或上传用于面试的简历、项目经历..."
+              :disabled="loading || uploadLoading"
+              @input="selectedResumeId = ''"
+            />
+            <span class="mt-1 block text-right text-xs text-[#64748b]"
+              >{{ form.resumeContent.length }} / {{ MAX_RESUME_LENGTH }}</span
+            >
           </div>
           <label>
             <span class="field-label">岗位 JD（可选）</span>
-            <select v-if="jobOptions.length" v-model="selectedJobDescriptionId" class="select-base mb-3" :disabled="loading" @change="applyJobDescription(selectedJobDescriptionId)">
+            <select
+              v-if="jobOptions.length"
+              v-model="selectedJobDescriptionId"
+              class="select-base mb-3"
+              :disabled="loading"
+              @change="applyJobDescription(selectedJobDescriptionId)"
+            >
               <option value="">手动输入新 JD</option>
-              <option v-for="job in jobOptions" :key="job.id" :value="job.id">{{ job.companyName ? `${job.companyName} - ${job.jobTitle}` : job.jobTitle }}</option>
+              <option v-for="job in jobOptions" :key="job.id" :value="job.id">
+                {{ job.companyName ? `${job.companyName} - ${job.jobTitle}` : job.jobTitle }}
+              </option>
             </select>
-            <textarea v-model="form.jobDescription" class="textarea-base min-h-[60px]" placeholder="粘贴 JD 后，问题会更贴近岗位要求。" :disabled="loading" @input="selectedJobDescriptionId = ''" />
+            <textarea
+              v-model="form.jobDescription"
+              class="textarea-base min-h-[60px]"
+              placeholder="粘贴 JD 后，问题会更贴近岗位要求。"
+              :disabled="loading"
+              @input="selectedJobDescriptionId = ''"
+            />
           </label>
-          <InlineStatus v-if="errorMessage" type="error" title="面试暂时无法继续" :description="errorMessage" />
-          <button class="btn-primary mt-2 w-full" :disabled="loading || uploadLoading" @click="start">
+          <InlineStatus
+            v-if="errorMessage"
+            type="error"
+            title="面试暂时无法继续"
+            :description="errorMessage"
+          />
+          <button
+            class="btn-primary mt-2 w-full"
+            :disabled="loading || uploadLoading"
+            @click="start"
+          >
             <PlayCircle :size="18" />
             {{ loading ? '生成中...' : '开始面试' }}
           </button>
-          <button class="btn-secondary w-full" :disabled="!interviewStore.sessionId || loading" @click="finish">结束面试</button>
+          <button
+            class="btn-secondary w-full"
+            :disabled="!interviewStore.sessionId || loading"
+            @click="finish"
+          >
+            结束面试
+          </button>
           <button v-if="loading" class="btn-secondary w-full" @click="cancelStream">
             <Square :size="16" />
             取消本次生成
@@ -452,37 +555,70 @@ async function copyStudyPlan() {
                 <Square :size="16" />
                 取消生成
               </button>
-              <button v-else-if="interviewStore.sessionId && !interviewStore.finished" class="btn-secondary min-h-10" @click="finish">结束面试</button>
-              <button v-if="interviewStore.finished" class="btn-secondary min-h-10" :disabled="!studyPlanText" @click="copyStudyPlan">
+              <button
+                v-else-if="interviewStore.sessionId && !interviewStore.finished"
+                class="btn-secondary min-h-10"
+                @click="finish"
+              >
+                结束面试
+              </button>
+              <button
+                v-if="interviewStore.finished"
+                class="btn-secondary min-h-10"
+                :disabled="!studyPlanText"
+                @click="copyStudyPlan"
+              >
                 <Copy :size="18" />
                 复制学习计划
               </button>
-              <RouterLink v-if="interviewStore.finished" class="btn-secondary min-h-10" to="/history">
+              <RouterLink
+                v-if="interviewStore.finished"
+                class="btn-secondary min-h-10"
+                to="/history"
+              >
                 <Clock3 :size="18" />
                 查看复盘记录
               </RouterLink>
             </div>
           </div>
 
-          <InlineStatus v-if="loading" class="mt-4" type="loading" title="AI 正在生成" :description="streamStatus || '正在连接服务，请稍候。'" />
-          <StreamPreview v-if="loading" class="mt-4" :status="streamStatus" :content="streamPreview" :max-height="140" />
+          <InlineStatus
+            v-if="loading"
+            class="mt-4"
+            type="loading"
+            title="AI 正在生成"
+            :description="streamStatus || '正在连接服务，请稍候。'"
+          />
+          <StreamPreview
+            v-if="loading"
+            class="mt-4"
+            :status="streamStatus"
+            :content="streamPreview"
+            :max-height="140"
+          />
         </div>
 
-        <section v-if="interviewStore.finished" class="section-card my-4 flex shrink-0 flex-wrap items-center justify-between gap-3">
+        <section
+          v-if="interviewStore.finished"
+          class="section-card my-4 flex shrink-0 flex-wrap items-center justify-between gap-3"
+        >
           <div>
             <h3 class="m-0 text-base font-black text-[#0f172a]">面试已结束</h3>
-            <p class="mb-0 mt-1 text-sm font-semibold text-[#64748b]">总结已保存到复盘中心，可以继续查看优势、短板和学习计划。</p>
+            <p class="mb-0 mt-1 text-sm font-semibold text-[#64748b]">
+              总结已保存到复盘中心，可以继续查看优势、短板和学习计划。
+            </p>
           </div>
         </section>
 
         <div class="min-h-0 flex-1 pt-4">
-          <ChatBox :messages="interviewStore.messages" :loading="loading" :disabled="interviewStore.finished" @send-answer="sendAnswer" />
+          <ChatBox
+            :messages="interviewStore.messages"
+            :loading="loading"
+            :disabled="interviewStore.finished"
+            @send-answer="sendAnswer"
+          />
         </div>
       </GlassCard>
     </div>
   </div>
 </template>
-
-
-
-

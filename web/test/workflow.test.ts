@@ -9,7 +9,11 @@ beforeEach(() => {
 describe('useWorkflowStore', () => {
   it('setInterviewContext 过滤空白与非字符串字段', () => {
     const store = useWorkflowStore()
-    store.setInterviewContext({ targetRole: '前端', resumeContent: '   ', jobDescription: 'JD 内容' })
+    store.setInterviewContext({
+      targetRole: '前端',
+      resumeContent: '   ',
+      jobDescription: 'JD 内容',
+    })
     expect(store.interviewContext).toEqual({ targetRole: '前端', jobDescription: 'JD 内容' })
   })
 

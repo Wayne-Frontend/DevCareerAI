@@ -37,7 +37,10 @@ function removeToast(id: number) {
 function addToast(message: string, type: ToastType = 'info') {
   const id = nextId++
   toasts.value = [...toasts.value, { id, message, type }].slice(-4)
-  timers.set(id, window.setTimeout(() => removeToast(id), type === 'error' ? 5600 : 4200))
+  timers.set(
+    id,
+    window.setTimeout(() => removeToast(id), type === 'error' ? 5600 : 4200),
+  )
 }
 
 function onNotify(event: Event) {
@@ -59,8 +62,19 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <TransitionGroup name="toast" tag="div" class="toast-stack" aria-live="polite" aria-label="操作通知">
-      <article v-for="toast in toasts" :key="toast.id" class="toast-card" :class="`toast-card--${toast.type}`">
+    <TransitionGroup
+      name="toast"
+      tag="div"
+      class="toast-stack"
+      aria-live="polite"
+      aria-label="操作通知"
+    >
+      <article
+        v-for="toast in toasts"
+        :key="toast.id"
+        class="toast-card"
+        :class="`toast-card--${toast.type}`"
+      >
         <span class="toast-card__icon">
           <component :is="iconForType(toast.type)" :size="18" stroke-width="2.2" />
         </span>
@@ -68,7 +82,12 @@ onBeforeUnmount(() => {
           <strong>{{ titleForType(toast.type) }}</strong>
           <span>{{ toast.message }}</span>
         </span>
-        <button class="toast-card__close" type="button" aria-label="关闭通知" @click="removeToast(toast.id)">
+        <button
+          class="toast-card__close"
+          type="button"
+          aria-label="关闭通知"
+          @click="removeToast(toast.id)"
+        >
           <X :size="16" />
         </button>
       </article>
@@ -101,13 +120,15 @@ onBeforeUnmount(() => {
     rgba(255, 255, 255, 0.72);
   padding: 13px 12px;
   color: #1d2d50;
-  box-shadow: 0 18px 42px rgba(31, 73, 125, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 18px 42px rgba(31, 73, 125, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(22px) saturate(135%);
   pointer-events: auto;
 }
 
 .toast-card::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
@@ -157,7 +178,9 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.62);
   color: #64748b;
   cursor: pointer;
-  transition: color 0.18s ease, background 0.18s ease;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
 }
 
 .toast-card__close:hover {
@@ -165,18 +188,37 @@ onBeforeUnmount(() => {
   color: #1e293b;
 }
 
-.toast-card--success::before { background: #16a34a; }
-.toast-card--warning::before { background: #f59e0b; }
-.toast-card--error::before { background: #ef4444; }
-.toast-card--info::before { background: #2563eb; }
+.toast-card--success::before {
+  background: #16a34a;
+}
+.toast-card--warning::before {
+  background: #f59e0b;
+}
+.toast-card--error::before {
+  background: #ef4444;
+}
+.toast-card--info::before {
+  background: #2563eb;
+}
 
-.toast-card--success .toast-card__icon { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
-.toast-card--warning .toast-card__icon { background: rgba(245, 158, 11, 0.12); color: #d97706; }
-.toast-card--error .toast-card__icon { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.toast-card--success .toast-card__icon {
+  background: rgba(22, 163, 74, 0.1);
+  color: #16a34a;
+}
+.toast-card--warning .toast-card__icon {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+.toast-card--error .toast-card__icon {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
 
 .toast-enter-active,
 .toast-leave-active {
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
 }
 
 .toast-enter-from,

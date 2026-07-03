@@ -1,5 +1,11 @@
 ﻿import { request } from './request'
-import type { AuthSession, AuthUser, LoginPayload, RegisterPayload, UpdateProfilePayload } from '../types/auth'
+import type {
+  AuthSession,
+  AuthUser,
+  LoginPayload,
+  RegisterPayload,
+  UpdateProfilePayload,
+} from '@/types/auth'
 
 export function login(data: LoginPayload) {
   return request<AuthSession>({

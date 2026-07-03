@@ -1,4 +1,10 @@
-﻿import { BadRequestException, ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common'
+﻿import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common'
 import { Prisma, User } from '@prisma/client'
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'crypto'
 import { join } from 'path'
@@ -160,7 +166,9 @@ export class AuthService {
     return this.toUserResponse(user)
   }
 
-  toUserResponse(user: Pick<User, 'id' | 'username' | 'email' | 'avatarUrl' | 'role' | 'createdAt'>): AuthUserResponse {
+  toUserResponse(
+    user: Pick<User, 'id' | 'username' | 'email' | 'avatarUrl' | 'role' | 'createdAt'>,
+  ): AuthUserResponse {
     return {
       id: user.id,
       username: user.username,
@@ -211,7 +219,10 @@ export function verifyPassword(password: string, storedHash: string) {
   const [algorithm, salt, key] = storedHash.split('$')
   if (algorithm !== 'scrypt' || !salt || !key) return false
 
-  const candidate = Buffer.from(scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString('hex'), 'hex')
+  const candidate = Buffer.from(
+    scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString('hex'),
+    'hex',
+  )
   const expected = Buffer.from(key, 'hex')
 
   return candidate.length === expected.length && timingSafeEqual(candidate, expected)
@@ -224,4 +235,3 @@ function hashToken(token: string) {
 function isUniqueConstraintError(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
 }
-

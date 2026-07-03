@@ -1,26 +1,7 @@
-export interface AiUsageTotals {
-  calls: number
-  promptTokens: number
-  completionTokens: number
-  totalTokens: number
-}
-
-export interface AiUsageBreakdownItem {
-  key: string
-  calls: number
-  totalTokens: number
-}
-
-export interface AiUsageDailyItem {
-  date: string
-  calls: number
-  totalTokens: number
-}
-
-export interface AiUsageSummary {
-  range: { since: string; days: number }
-  totals: AiUsageTotals
-  byFeature: AiUsageBreakdownItem[]
-  byModel: AiUsageBreakdownItem[]
-  daily: AiUsageDailyItem[]
-}
+// 契约类型已下沉到 @devcareer/shared（前后端单一事实源），此处仅转发以保持既有 import 路径稳定。
+export type {
+  AiUsageTotals,
+  AiUsageBreakdownItem,
+  AiUsageDailyItem,
+  AiUsageSummary,
+} from '@devcareer/shared'

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { MessagesSquare, Plus, Square, Trash2 } from 'lucide-vue-next'
-import ChatBox from '../../components/ChatBox/index.vue'
-import GlassCard from '../../components/GlassCard/index.vue'
-import InlineStatus from '../../components/InlineStatus/index.vue'
+import ChatBox from '@/components/ChatBox/index.vue'
+import GlassCard from '@/components/GlassCard/index.vue'
+import InlineStatus from '@/components/InlineStatus/index.vue'
 import {
   createChatSession,
   deleteChatSession,
@@ -11,15 +11,15 @@ import {
   getChatSessions,
   sendChatMessageStream,
   updateChatSession,
-} from '../../api/chat'
-import { getJobDescriptions } from '../../api/job'
-import { getResumes } from '../../api/resume'
-import { useChatStore } from '../../stores/chat'
-import type { JobDescriptionRecord } from '../../types/job'
-import type { ResumeRecord } from '../../types/resume'
-import { formatDateTime } from '../../utils/format'
-import { messageBox } from '../../utils/messageBox'
-import { notify } from '../../utils/notify'
+} from '@/api/chat'
+import { getJobDescriptions } from '@/api/job'
+import { getResumes } from '@/api/resume'
+import { useChatStore } from '@/stores/chat'
+import type { JobDescriptionRecord } from '@/types/job'
+import type { ResumeRecord } from '@/types/resume'
+import { formatDateTime } from '@/utils/format'
+import { messageBox } from '@/utils/messageBox'
+import { notify } from '@/utils/notify'
 
 const MAX_MESSAGE_LENGTH = 4000
 
@@ -89,7 +89,10 @@ async function loadSessions() {
   }
 }
 
-function syncContextFromSession(session?: { resumeId?: string | null; jobDescriptionId?: string | null }) {
+function syncContextFromSession(session?: {
+  resumeId?: string | null
+  jobDescriptionId?: string | null
+}) {
   selectedResumeId.value = session?.resumeId || ''
   selectedJobDescriptionId.value = session?.jobDescriptionId || ''
 }
@@ -192,7 +195,10 @@ async function sendMessage(content: string) {
     })
 
     chatStore.updateMessage(userTempId, { id: response.userMessage.id })
-    chatStore.updateMessage(aiTempId, { id: response.aiMessage.id, content: response.aiMessage.content })
+    chatStore.updateMessage(aiTempId, {
+      id: response.aiMessage.id,
+      content: response.aiMessage.content,
+    })
 
     const session = chatStore.sessions.find((item) => item.id === sessionId)
     chatStore.upsertSession({
@@ -232,11 +238,19 @@ function cancelStream() {
       </div>
       <div>
         <h1 class="m-0 text-[26px] font-black text-[#0f172a]">职业顾问</h1>
-        <p class="mt-1.5 text-sm font-semibold text-[#64748b]">求职路上的任何问题都可以聊：薪资谈判、offer 选择、职业规划、离职沟通……</p>
+        <p class="mt-1.5 text-sm font-semibold text-[#64748b]">
+          求职路上的任何问题都可以聊：薪资谈判、offer 选择、职业规划、离职沟通……
+        </p>
       </div>
     </header>
 
-    <InlineStatus v-if="assetsError" class="shrink-0" type="warning" title="资料加载失败" :description="assetsError" />
+    <InlineStatus
+      v-if="assetsError"
+      class="shrink-0"
+      type="warning"
+      title="资料加载失败"
+      :description="assetsError"
+    />
 
     <div class="feature-workspace-compact chat-workspace">
       <GlassCard class="feature-pane-left chat-pane flex flex-col">
@@ -251,23 +265,46 @@ function cancelStream() {
         <div class="mt-4 grid shrink-0 gap-3">
           <label>
             <span class="field-label">携带简历（可选）</span>
-            <select v-model="selectedResumeId" class="select-base" :disabled="loading" @change="onContextChange">
+            <select
+              v-model="selectedResumeId"
+              class="select-base"
+              :disabled="loading"
+              @change="onContextChange"
+            >
               <option value="">不携带简历</option>
-              <option v-for="resume in resumeOptions" :key="resume.id" :value="resume.id">{{ resume.title }}</option>
+              <option v-for="resume in resumeOptions" :key="resume.id" :value="resume.id">
+                {{ resume.title }}
+              </option>
             </select>
           </label>
           <label>
             <span class="field-label">携带岗位 JD（可选）</span>
-            <select v-model="selectedJobDescriptionId" class="select-base" :disabled="loading" @change="onContextChange">
+            <select
+              v-model="selectedJobDescriptionId"
+              class="select-base"
+              :disabled="loading"
+              @change="onContextChange"
+            >
               <option value="">不携带 JD</option>
-              <option v-for="job in jobOptions" :key="job.id" :value="job.id">{{ job.companyName ? `${job.companyName} - ${job.jobTitle}` : job.jobTitle }}</option>
+              <option v-for="job in jobOptions" :key="job.id" :value="job.id">
+                {{ job.companyName ? `${job.companyName} - ${job.jobTitle}` : job.jobTitle }}
+              </option>
             </select>
           </label>
-          <p class="m-0 truncate text-xs font-semibold text-[#64748b]" :title="contextSummary">{{ contextSummary }}</p>
+          <p class="m-0 truncate text-xs font-semibold text-[#64748b]" :title="contextSummary">
+            {{ contextSummary }}
+          </p>
         </div>
 
-        <div class="chat-session-list soft-scrollbar mt-4 grid min-h-0 flex-1 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1">
-          <p v-if="chatStore.sessions.length === 0" class="m-0 py-4 text-center text-xs font-semibold text-[#94a3b8]">还没有历史会话，发出第一条消息即可创建。</p>
+        <div
+          class="chat-session-list soft-scrollbar mt-4 grid min-h-0 flex-1 content-start gap-2 overflow-y-auto overflow-x-hidden pr-1"
+        >
+          <p
+            v-if="chatStore.sessions.length === 0"
+            class="m-0 py-4 text-center text-xs font-semibold text-[#94a3b8]"
+          >
+            还没有历史会话，发出第一条消息即可创建。
+          </p>
           <div
             v-for="session in chatStore.sessions"
             :key="session.id"
@@ -276,8 +313,12 @@ function cancelStream() {
             @click="openSession(session.id)"
           >
             <div class="min-w-0 flex-1">
-              <p class="m-0 truncate text-sm font-extrabold text-[#0f172a]" :title="session.title">{{ session.title }}</p>
-              <p class="m-0 mt-0.5 truncate text-xs font-semibold text-[#94a3b8]">{{ formatDateTime(session.updatedAt) }}</p>
+              <p class="m-0 truncate text-sm font-extrabold text-[#0f172a]" :title="session.title">
+                {{ session.title }}
+              </p>
+              <p class="m-0 mt-0.5 truncate text-xs font-semibold text-[#94a3b8]">
+                {{ formatDateTime(session.updatedAt) }}
+              </p>
             </div>
             <button
               class="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-[#94a3b8] opacity-0 transition hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100"
@@ -291,13 +332,17 @@ function cancelStream() {
       </GlassCard>
 
       <GlassCard class="feature-pane-right chat-pane flex flex-col">
-        <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[rgba(148,163,184,0.22)] pb-4">
+        <div
+          class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[rgba(148,163,184,0.22)] pb-4"
+        >
           <div class="flex min-w-0 items-center gap-3">
             <h2 class="m-0 flex items-center gap-2 text-lg font-black text-[#0f172a]">
               <MessagesSquare :size="18" class="text-indigo-500" />
               AI 职业顾问
             </h2>
-            <p class="m-0 hidden truncate text-xs text-[#64748b] md:block">勾选简历或 JD 后，建议会更贴合你的实际情况。</p>
+            <p class="m-0 hidden truncate text-xs text-[#64748b] md:block">
+              勾选简历或 JD 后，建议会更贴合你的实际情况。
+            </p>
           </div>
           <div class="flex shrink-0 items-center gap-2">
             <span class="soft-tag">{{ chatStatus }}</span>
@@ -308,8 +353,20 @@ function cancelStream() {
           </div>
         </div>
 
-        <InlineStatus v-if="sessionLoading" class="mt-4 shrink-0" type="loading" title="正在加载会话" description="马上就好。" />
-        <InlineStatus v-if="errorMessage" class="mt-4 shrink-0" type="error" title="出了点问题" :description="errorMessage" />
+        <InlineStatus
+          v-if="sessionLoading"
+          class="mt-4 shrink-0"
+          type="loading"
+          title="正在加载会话"
+          description="马上就好。"
+        />
+        <InlineStatus
+          v-if="errorMessage"
+          class="mt-4 shrink-0"
+          type="error"
+          title="出了点问题"
+          :description="errorMessage"
+        />
 
         <div class="min-h-0 flex-1 pt-4">
           <ChatBox
@@ -353,7 +410,9 @@ function cancelStream() {
 .chat-session-active {
   border-color: rgba(99, 102, 241, 0.38);
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(255, 255, 255, 0.85));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 10px 24px rgba(99, 102, 241, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 10px 24px rgba(99, 102, 241, 0.12);
 }
 
 /* 窄屏（全局样式在 1180px 处折叠为单列）：退回普通页面滚动，

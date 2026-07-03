@@ -115,7 +115,12 @@ export class ChatService {
     return this.persistExchange(session, dto.content, reply)
   }
 
-  async sendMessageStream(sessionId: string, dto: SendChatMessageDto, userId: string, callbacks: AiStreamCallbacks = {}) {
+  async sendMessageStream(
+    sessionId: string,
+    dto: SendChatMessageDto,
+    userId: string,
+    callbacks: AiStreamCallbacks = {},
+  ) {
     const session = await this.findSession(sessionId, userId)
     const stream = await this.aiService.chatStream({
       ...this.buildAiOptions(session, dto.content, userId),
@@ -201,13 +206,19 @@ export class ChatService {
   private async assertResumeOwnership(resumeId: string | undefined, userId: string) {
     if (!resumeId) return
 
-    const resume = await this.prisma.resume.findFirst({ where: { id: resumeId, userId }, select: { id: true } })
+    const resume = await this.prisma.resume.findFirst({
+      where: { id: resumeId, userId },
+      select: { id: true },
+    })
     if (!resume) {
       throw new NotFoundException('Resume not found')
     }
   }
 
-  private async assertJobDescriptionOwnership(jobDescriptionId: string | undefined, userId: string) {
+  private async assertJobDescriptionOwnership(
+    jobDescriptionId: string | undefined,
+    userId: string,
+  ) {
     if (!jobDescriptionId) return
 
     const jobDescription = await this.prisma.jobDescription.findFirst({
@@ -222,5 +233,7 @@ export class ChatService {
 
 function toSessionTitle(content: string) {
   const compact = content.replace(/\s+/g, ' ').trim()
-  return compact.length > TITLE_MAX_LENGTH ? `${compact.slice(0, TITLE_MAX_LENGTH)}…` : compact || '新的会话'
+  return compact.length > TITLE_MAX_LENGTH
+    ? `${compact.slice(0, TITLE_MAX_LENGTH)}…`
+    : compact || '新的会话'
 }

@@ -32,11 +32,15 @@ export class ProjectService {
   ) {}
 
   async optimize(dto: OptimizeProjectDto, userId: string) {
-    return this.produceOptimization(dto, userId, (payload) => this.generateWithChat(payload, dto, userId))
+    return this.produceOptimization(dto, userId, (payload) =>
+      this.generateWithChat(payload, dto, userId),
+    )
   }
 
   async optimizeStream(dto: OptimizeProjectDto, userId: string, callbacks: AiStreamCallbacks = {}) {
-    return this.produceOptimization(dto, userId, (payload) => this.generateWithStream(payload, dto, callbacks, userId))
+    return this.produceOptimization(dto, userId, (payload) =>
+      this.generateWithStream(payload, dto, callbacks, userId),
+    )
   }
 
   findOptimizations(userId: string) {
@@ -109,7 +113,12 @@ export class ProjectService {
     dto: OptimizeProjectDto,
     userId: string,
   ): Promise<AiGeneration<ProjectOptimizationResult>> {
-    const text = await this.aiService.chat({ ...payload, modelTier: 'quality', feature: OPTIMIZE_FEATURE, userId })
+    const text = await this.aiService.chat({
+      ...payload,
+      modelTier: 'quality',
+      feature: OPTIMIZE_FEATURE,
+      userId,
+    })
     return this.toGeneration(text, dto)
   }
 
@@ -131,7 +140,10 @@ export class ProjectService {
     return this.toGeneration(stream.text, dto)
   }
 
-  private toGeneration(text: string, dto: OptimizeProjectDto): AiGeneration<ProjectOptimizationResult> {
+  private toGeneration(
+    text: string,
+    dto: OptimizeProjectDto,
+  ): AiGeneration<ProjectOptimizationResult> {
     const parsed = safeParseJson<ProjectOptimizationResult>(text)
     return {
       result: normalizeProjectResult(parsed, dto),
@@ -147,7 +159,11 @@ export class ProjectService {
     })
   }
 
-  private createOptimization(dto: OptimizeProjectDto, result: ProjectOptimizationResult, userId: string) {
+  private createOptimization(
+    dto: OptimizeProjectDto,
+    result: ProjectOptimizationResult,
+    userId: string,
+  ) {
     return this.prisma.projectOptimization.create({
       data: {
         userId,

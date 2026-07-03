@@ -6,7 +6,7 @@ import type {
   ResumeRecord,
   UpdateResumePayload,
   ResumeUploadResponse,
-} from '../types/resume'
+} from '@/types/resume'
 
 export function createResume(data: ResumePayload) {
   return request<ResumeRecord>({
@@ -64,6 +64,13 @@ export function analyzeResume(id: string) {
   })
 }
 
-export function analyzeResumeStream(id: string, handlers?: StreamHandlers<ResumeAnalysisResponse & { cached?: boolean }>) {
-  return streamRequest<ResumeAnalysisResponse & { cached?: boolean }>(`/resumes/${id}/analyze/stream`, undefined, handlers)
+export function analyzeResumeStream(
+  id: string,
+  handlers?: StreamHandlers<ResumeAnalysisResponse & { cached?: boolean }>,
+) {
+  return streamRequest<ResumeAnalysisResponse & { cached?: boolean }>(
+    `/resumes/${id}/analyze/stream`,
+    undefined,
+    handlers,
+  )
 }

@@ -6,7 +6,7 @@ import type {
   ChatSessionSummary,
   CreateChatSessionPayload,
   UpdateChatSessionPayload,
-} from '../types/chat'
+} from '@/types/chat'
 
 export function createChatSession(data: CreateChatSessionPayload = {}) {
   return request<ChatSessionSummary>({
@@ -58,5 +58,9 @@ export function sendChatMessageStream(
   content: string,
   handlers?: StreamHandlers<ChatSendResponse>,
 ) {
-  return streamRequest<ChatSendResponse>(`/chat/sessions/${sessionId}/messages/stream`, { content }, handlers)
+  return streamRequest<ChatSendResponse>(
+    `/chat/sessions/${sessionId}/messages/stream`,
+    { content },
+    handlers,
+  )
 }

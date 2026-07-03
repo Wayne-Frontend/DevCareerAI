@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common'
 import { clampScore, toStringList } from '../../common/utils/normalize.util'
 import { PrismaService } from '../../prisma/prisma.service'
-import type { DashboardMetric, DashboardOverview, DashboardResumeDimensions } from './dashboard.types'
+import type {
+  DashboardMetric,
+  DashboardOverview,
+  DashboardResumeDimensions,
+} from './dashboard.types'
 
 const SUGGESTION_LIMIT = 4
 
@@ -10,29 +14,32 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getOverview(userId: string): Promise<DashboardOverview> {
-    const [resumeRows, jobRows, interviewRows, resumeCount, jobCount, interviewCount] = await Promise.all([
-      this.prisma.resumeAnalysis.findMany({
-        where: { resume: { userId } },
-        orderBy: { createdAt: 'desc' },
-        take: 2,
-        select: { score: true, createdAt: true, resultJson: true },
-      }),
-      this.prisma.jobMatchAnalysis.findMany({
-        where: { resume: { userId }, jobDescription: { userId } },
-        orderBy: { createdAt: 'desc' },
-        take: 2,
-        select: { matchScore: true },
-      }),
-      this.prisma.interviewSession.findMany({
-        where: { userId, status: 'finished' },
-        orderBy: { createdAt: 'desc' },
-        take: 2,
-        select: { summaryJson: true },
-      }),
-      this.prisma.resumeAnalysis.count({ where: { resume: { userId } } }),
-      this.prisma.jobMatchAnalysis.count({ where: { resume: { userId }, jobDescription: { userId } } }),
-      this.prisma.interviewSession.count({ where: { userId, status: 'finished' } }),
-    ])
+    const [resumeRows, jobRows, interviewRows, resumeCount, jobCount, interviewCount] =
+      await Promise.all([
+        this.prisma.resumeAnalysis.findMany({
+          where: { resume: { userId } },
+          orderBy: { createdAt: 'desc' },
+          take: 2,
+          select: { score: true, createdAt: true, resultJson: true },
+        }),
+        this.prisma.jobMatchAnalysis.findMany({
+          where: { resume: { userId }, jobDescription: { userId } },
+          orderBy: { createdAt: 'desc' },
+          take: 2,
+          select: { matchScore: true },
+        }),
+        this.prisma.interviewSession.findMany({
+          where: { userId, status: 'finished' },
+          orderBy: { createdAt: 'desc' },
+          take: 2,
+          select: { summaryJson: true },
+        }),
+        this.prisma.resumeAnalysis.count({ where: { resume: { userId } } }),
+        this.prisma.jobMatchAnalysis.count({
+          where: { resume: { userId }, jobDescription: { userId } },
+        }),
+        this.prisma.interviewSession.count({ where: { userId, status: 'finished' } }),
+      ])
 
     const latestResume = resumeRows[0]
     const interviewScores = interviewRows

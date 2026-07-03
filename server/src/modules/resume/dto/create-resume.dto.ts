@@ -1,7 +1,8 @@
 import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator'
+import type { ResumePayload } from '@devcareer/shared'
 import { MAX_PARSED_TEXT_LENGTH } from '../../../common/utils/text-limit.util'
 
-export class CreateResumeDto {
+export class CreateResumeDto implements ResumePayload {
   @IsString()
   @MinLength(1)
   @MaxLength(120)
