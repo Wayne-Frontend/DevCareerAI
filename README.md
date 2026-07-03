@@ -1,6 +1,6 @@
 # DevCareer AI
 
-面向开发者的 PC 端 Web 应用，用 AI 辅助简历诊断、项目经历优化、岗位 JD 匹配、模拟面试和历史复盘。Monorepo，`web` 是 Vue 3 前端，`server` 是 NestJS 后端。产品需求见 [devcareer-ai-mvp.md](./devcareer-ai-mvp.md)。
+面向开发者的 PC 端 Web 应用，用 AI 辅助简历诊断、项目经历优化、岗位 JD 匹配、模拟面试、职业顾问对话和历史复盘。Monorepo，`web` 是 Vue 3 前端，`server` 是 NestJS 后端，`packages/shared` 存放前后端共享的接口类型。产品需求见 [docs/devcareer-ai-mvp.md](./docs/devcareer-ai-mvp.md)。
 
 ## 技术栈
 
@@ -12,10 +12,10 @@
 
 ```txt
 DevCareerAI
-├── web                  Vue 3 + Vite 前端
-├── server               NestJS + Prisma 后端
-├── scripts              启动日志、清理日志脚本
-├── devcareer-ai-mvp.md  产品需求文档
+├── web              Vue 3 + Vite 前端
+├── server           NestJS + Prisma 后端
+├── packages/shared  前后端共享的接口类型
+├── docs             产品需求与设计说明
 └── README.md
 ```
 
@@ -24,17 +24,21 @@ DevCareerAI
 ```
 config/env.validation.ts   启动时校验环境变量
 common/filters             全局异常过滤器
+common/guards              限流守卫与 AI 限流装饰器
 common/utils               JSON 清洗、文本限制、SSE、结果状态判定
 prisma                     PrismaService
 prompts                    各功能 Prompt
-modules/auth               注册登录、会话、守卫
-modules/ai                 AiService、AiCacheService
+modules/auth               注册登录、会话、守卫、角色
+modules/ai                 AiService、AiCacheService、AI 用量统计
 modules/file               文件解析
 modules/resume             简历
 modules/project            项目优化
 modules/job                岗位匹配
 modules/interview          模拟面试
+modules/chat               职业顾问对话
+modules/dashboard          首页概览
 modules/history            历史记录
+modules/maintenance        定时清理过期数据
 main.ts                    入口
 ```
 
@@ -45,20 +49,26 @@ api          请求封装（request 走 axios，streamRequest 走 SSE）
 components    展示与交互组件
 layout        布局与侧栏
 router        路由与登录守卫
-stores        Pinia（auth / workflow / interview / resume）
-types         类型定义
+stores        Pinia（auth / workflow / interview / resume / chat）
+types         类型定义（转发自 @devcareer/shared 的契约类型 + 前端专用视图模型）
 utils         登录态持久化、格式化等
 views         各页面
 styles        Tailwind 与主题变量
 ```
+
+## 共享类型
+
+前后端的接口请求体和响应结构定义在 `packages/shared`，是一个只含类型声明、无运行时代码的包。前端在 `web/src/types` 下按域转发这些类型，后端 DTO 用 `implements` 约束对应的请求类型，改了契约两端会同时报类型错误，避免各写一份导致不一致。
 
 ## 环境变量
 
 前端 `web/.env.development`：
 
 ```env
-VITE_API_BASE_URL=http://localhost:3000/api
+VITE_API_BASE_URL=/api
 ```
+
+开发环境走 Vite 代理：前端请求 `/api` 由 `vite.config.ts` 中的 `server.proxy` 转发到 `http://localhost:3000`，因此不必依赖后端 CORS。部署到生产环境时把 `VITE_API_BASE_URL` 改成真实的 API 地址。
 
 后端复制 `server/.env.example` 为 `server/.env`。AI 服务用通用的 `AI_*` 变量，指向任意 OpenAI 兼容端点：
 
@@ -85,10 +95,10 @@ AI_SEND_THINKING="false"
 npm install
 ```
 
-初始化数据库（SQLite 文件创建在 `server/prisma/dev.db`）：
+初始化数据库（SQLite 文件创建在 `server/prisma/dev.db`）。首次拉取代码或换机器时，用 `prisma:deploy` 按已有迁移建表；只有在修改了 `schema.prisma` 需要生成新迁移时才用 `prisma:migrate`：
 
 ```bash
-npm run prisma:migrate
+npm --prefix server run prisma:deploy
 ```
 
 同时启动前后端：
@@ -114,14 +124,17 @@ npm run dev:server
 ```bash
 npm run typecheck   # 前后端类型检查
 npm run lint        # ESLint（零警告基线，--max-warnings 0）
+npm run format      # Prettier 格式化
 npm run test        # 后端测试
 npm run build       # 前后端构建
-npm run check       # 依次执行 typecheck、test、build
+npm run check       # 依次执行 typecheck、lint、test、build
 ```
+
+代码风格由 Prettier 统一（无分号、单引号、行宽 100），ESLint 用扁平配置管前后端，两者靠 `eslint-config-prettier` 分工，格式问题只归 Prettier。提交时 husky + lint-staged 只对暂存文件跑 `eslint --fix` 和 `prettier --write`，commitlint 校验提交信息为 Conventional Commits 格式。
 
 后端测试用 Node 内置的 `node:test`（无额外依赖），用例在 `server/test/*.test.ts`，由 `test/run-tests.ts` 汇总运行。当前覆盖：JSON 清洗与解析、文本长度限制、各 `normalize*` 的降级与分数 clamp、缓存键稳定性与 `AiCacheService.resolve` 的命中/未命中/解析失败三条路径、密码哈希往返、限流计数维度解析。
 
-后端启动时设置全局前缀 `api`、全局校验管道、全局异常过滤器，开启 CORS，并把 `/uploads` 作为静态目录用于头像访问。
+后端启动时设置全局前缀 `api`、全局校验管道、全局异常过滤器，启用 CORS，并把 `/uploads` 作为静态目录用于头像访问。
 
 ## 鉴权
 
@@ -132,10 +145,11 @@ npm run check       # 依次执行 typecheck、test、build
 - 会话默认 1 天，登录时 `remember=true` 为 30 天。
 - 密码用 scrypt 加盐哈希存储。
 - `AuthGuard` 为全局守卫，`@Public()` 放行注册、登录。token 无效或过期返回 401，前端会清除本地会话并跳转登录页。
+- 用户有 `role` 字段（`user` / `admin`）。空系统里第一个注册的用户自动成为管理员，此后注册均为普通用户。`@Roles('admin')` 用于限制管理员接口（如 AI 用量统计）。
 
-用户对象字段：`id`、`username`、`email`、`avatarUrl`、`createdAt`。
+用户对象字段：`id`、`username`、`email`、`avatarUrl`、`role`、`createdAt`。
 
-会话校验时按 10 分钟节流更新 `lastUsedAt`，避免每个请求都写库。
+会话校验时按 10 分钟节流更新 `lastUsedAt`，避免每个请求都写库。过期时间在创建会话时确定，当前不做滑动续期。
 
 ## 限流
 
@@ -143,7 +157,7 @@ npm run check       # 依次执行 typecheck、test、build
 
 ## 定时清理
 
-`MaintenanceService` 通过 `@nestjs/schedule` 在启动时及每天凌晨 3 点删除 `AiCache`、`AuthSession` 中已过期（`expiresAt` 早于当前时间）的行。
+`MaintenanceService` 通过 `@nestjs/schedule` 在启动时及每天凌晨 3 点执行清理：删除 `AiCache`、`AuthSession` 中已过期的行，以及无引用的 `auto` 简历 / JD（创建超过 24 小时且没有任何匹配、面试、对话关联）。启动时的清理失败只记日志、不阻断服务启动。
 
 ## AI 服务
 
@@ -174,7 +188,7 @@ npm run check       # 依次执行 typecheck、test、build
 
 Prisma + SQLite，主要表：
 
-- `User`：账号
+- `User`：账号，`role` 为 `user` / `admin`
 - `AuthSession`：登录会话，存 token 哈希与过期时间
 - `Resume`：简历，归属 `userId`；`source` 为 `manual`（用户保存）或 `auto`（匹配/面试按文本临时创建），列表只展示 `manual`
 - `ResumeAnalysis`：简历诊断记录
@@ -183,9 +197,12 @@ Prisma + SQLite，主要表：
 - `JobMatchAnalysis`：岗位匹配记录
 - `InterviewSession`：面试会话，状态 `ongoing` / `finished`
 - `InterviewMessage`：面试消息，`role` 为 `ai` / `user`
+- `ChatSession`：职业顾问对话会话，可关联一份简历和一份 JD 作为上下文
+- `ChatMessage`：对话消息，`role` 为 `ai` / `user`
 - `AiCache`：AI 结果缓存
+- `AiUsageLog`：每次 AI 调用的 token 用量记录，供用量统计汇总
 
-完整字段见 `server/prisma/schema.prisma`。
+无引用的 `auto` 简历 / JD（创建超过 24 小时且没有任何匹配、面试、对话记录关联）由 `MaintenanceService` 定时清理。完整字段见 `server/prisma/schema.prisma`。
 
 ## 接口
 
@@ -269,6 +286,34 @@ DELETE /api/history/:id        删除一条
 ```
 
 `type` 取值：`resume-analysis`、`project-optimization`、`job-match`、`interview`。
+
+### 职业顾问对话
+
+```
+POST   /api/chat/sessions                            新建会话
+GET    /api/chat/sessions                            会话列表
+GET    /api/chat/sessions/:sessionId                 会话详情（含消息）
+PATCH  /api/chat/sessions/:sessionId                 改标题或绑定的简历 / JD 上下文
+DELETE /api/chat/sessions/:sessionId                 删除会话
+POST   /api/chat/sessions/:sessionId/messages        发送消息
+POST   /api/chat/sessions/:sessionId/messages/stream 发送消息（SSE）
+```
+
+新建请求体：`resumeId?`、`jobDescriptionId?`（可选，作为对话上下文）。发送消息请求体：`content`（1–4000）。会话可关联一份简历和一份 JD，AI 回复时带上这些上下文。
+
+### 首页概览
+
+```
+GET    /api/dashboard/overview   汇总简历诊断、岗位匹配、面试的最新分数与趋势
+```
+
+### AI 用量（仅管理员）
+
+```
+GET    /api/ai-usage/summary?days=...   AI token 用量汇总（总计 / 按功能 / 按模型 / 按天）
+```
+
+`days` 省略时用默认统计窗口。该接口带 `@Roles('admin')`，非管理员访问返回 403。
 
 ## 文件解析与文本限制
 

@@ -6,8 +6,8 @@
 
 - `web`: Vue 3 + Vite + TypeScript 客户端。
 - `server`: NestJS + Prisma + SQLite API 服务。
+- `packages/shared`: 前后端共享的接口类型（纯类型声明，无运行时代码）。
 - `docs`: 产品、设计和实现说明。
-- `scripts`: 本地开发辅助脚本，例如日志启动与清理。
 
 ## 最高优先级规则
 
@@ -36,16 +36,17 @@
 
 - NestJS、TypeScript、Prisma、SQLite。
 - 全局 API 前缀为 `/api`。
-- 全局鉴权守卫为 `AuthGuard`，公开接口通过 `@Public()` 放行。
-- DTO 使用 `class-validator` / `class-transformer`，全局 `ValidationPipe` 开启 `whitelist` 与 `transform`。
+- 全局鉴权守卫为 `AuthGuard`，公开接口通过 `@Public()` 放行；管理员接口用 `@Roles('admin')` 限制。
+- DTO 使用 `class-validator` / `class-transformer`，全局 `ValidationPipe` 开启 `whitelist` 与 `transform`；DTO 用 `implements` 绑定 `@devcareer/shared` 里的请求类型。
 - AI 能力统一由 `server/src/modules/ai/AiService` 封装，包含普通请求和流式请求。
-- AI 结果缓存由 `AiCacheService` 和 Prisma `AiCache` 模型承载。
+- AI 结果缓存由 `AiCacheService` 和 Prisma `AiCache` 模型承载；AI 调用用量记入 `AiUsageLog`。
 - 文件解析由 `FileModule` / `FileService` 承载，支持简历上传解析场景。
+- 业务模块除简历、项目、岗位、面试、历史外，还包含职业顾问对话（`chat`）、首页概览（`dashboard`）和定时清理（`maintenance`）。
 
 ## 前端开发规则
 
 - 业务接口调用统一放在 `web/src/api`，页面和组件不要直接写 `axios` 或裸 `fetch`；流式接口复用 `streamRequest`。
-- 共享类型统一放在 `web/src/types`，避免在页面里临时复制接口类型。
+- 接口的请求体和响应类型定义在 `packages/shared`，`web/src/types` 按域转发，页面和组件从 `web/src/types` 引用，不要临时复制或在别处重复定义。改接口契约时改 `packages/shared`，前后端会同步类型报错。
 - 状态管理放在 `web/src/stores`，登录态优先复用 `auth` store 与 `web/src/utils/authSession.ts`。
 - Vue 组件使用 `<script setup lang="ts">`，样式沿用当前 scoped 样式和全局 Tailwind 工具类体系。
 - 路由配置在 `web/src/router/index.ts`；新增页面时同步考虑鉴权、标题、侧边栏入口和移动端表现。
@@ -64,6 +65,7 @@
 - 文本长度、AI 状态、响应格式等公共逻辑优先复用 `server/src/common/utils` 下已有工具。
 - 涉及用户数据的查询必须带上当前用户边界，避免跨用户读取历史、简历、岗位、项目优化或面试记录。
 - Prisma schema、migration 和 service 返回结构要同步维护；不要只改数据库不改类型或前端调用。
+- 接口请求体和响应结构的类型定义在 `packages/shared`，DTO 用 `implements` 绑定对应类型；改字段时同步改 `packages/shared`，不要让前后端各写一份。
 - 环境变量校验在 `server/src/config/env.validation.ts`，不要绕过校验或提交真实 `.env`。
 - 日志中不要打印完整简历、完整 JD、完整 AI prompt、完整 AI 返回内容、token、API Key 或密码哈希。
 
@@ -102,11 +104,15 @@
 后端：
 
 - `server/src/modules`: Nest 业务模块。
-- `server/src/modules/ai`: AI 服务与缓存。
+- `server/src/modules/ai`: AI 服务、缓存与用量统计。
 - `server/src/prompts`: Prompt 构造与系统提示。
-- `server/src/common`: 通用过滤器和工具。
+- `server/src/common`: 通用过滤器、限流守卫和工具。
 - `server/src/prisma`: PrismaService 与模块。
 - `server/prisma`: schema 与 migrations。
+
+其他：
+
+- `packages/shared`: 前后端共享的接口类型声明。
 
 ## 验证命令
 
@@ -117,11 +123,12 @@
 - 后端类型检查：`npm --prefix server run typecheck`
 - 后端测试：`npm --prefix server run test`
 - 后端构建：`npm --prefix server run build`
-- Prisma migration：`npm --prefix server run prisma:migrate`
-- 全量检查：`npm run check`
+- 代码检查：`npm run lint`（零警告基线，`--max-warnings 0`）
+- 格式化：`npm run format`
+- 按已有迁移建表：`npm --prefix server run prisma:deploy`
+- 生成新迁移（改了 schema 时）：`npm --prefix server run prisma:migrate`
+- 全量检查：`npm run check`（typecheck、lint、test、build）
 - 本地开发：`npm run dev`
-- 带日志本地开发：`npm run dev:log`
-- 清理开发日志：`npm run clean:logs`
 
 不要凭空编造验证结果。命令失败时，记录失败命令、关键错误和下一步建议。
 
