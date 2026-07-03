@@ -113,7 +113,7 @@ export class InterviewService {
     }
 
     const { result, cached, status } = await this.aiCacheService.resolve<InterviewQuestionResult>(
-      { feature: 'interview-question', model, version: 'interview-question-v2', payload },
+      { feature: 'interview-question', model, version: 'interview-question-v3', payload },
       async () => {
         const text = await getText(payload)
         const parsed = safeParseJson<InterviewQuestionResult>(text)
@@ -155,7 +155,7 @@ export class InterviewService {
     }
 
     const { result, cached, status } = await this.aiCacheService.resolve<InterviewFeedbackResult>(
-      { feature: 'interview-feedback', model, version: 'interview-feedback-v2', payload },
+      { feature: 'interview-feedback', model, version: 'interview-feedback-v3', payload },
       async () => {
         const text = await getText(payload)
         const parsed = safeParseJson<InterviewFeedbackResult>(text)
@@ -186,7 +186,7 @@ export class InterviewService {
     }
 
     const { result, cached, status } = await this.aiCacheService.resolve<InterviewSummaryResult>(
-      { feature: 'interview-summary', model, version: 'interview-summary-v2', payload },
+      { feature: 'interview-summary', model, version: 'interview-summary-v3', payload },
       async () => {
         const text = await getText(payload)
         const parsed = safeParseJson<InterviewSummaryResult>(text)

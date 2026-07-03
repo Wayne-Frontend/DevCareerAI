@@ -23,7 +23,7 @@ interface MatchPayload {
 }
 
 const MATCH_FEATURE = 'job-match'
-const MATCH_VERSION = 'job-match-v2'
+const MATCH_VERSION = 'job-match-v3'
 
 @Injectable()
 export class JobService {

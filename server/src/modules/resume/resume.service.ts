@@ -24,7 +24,7 @@ interface AnalysisPayload {
 }
 
 const ANALYSIS_FEATURE = 'resume-analysis'
-const ANALYSIS_VERSION = 'resume-analysis-v2'
+const ANALYSIS_VERSION = 'resume-analysis-v3'
 
 @Injectable()
 export class ResumeService {

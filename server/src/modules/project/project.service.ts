@@ -21,7 +21,7 @@ interface OptimizePayload {
 }
 
 const OPTIMIZE_FEATURE = 'project-optimization'
-const OPTIMIZE_VERSION = 'project-optimization-v2'
+const OPTIMIZE_VERSION = 'project-optimization-v3'
 
 @Injectable()
 export class ProjectService {
