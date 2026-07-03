@@ -1,7 +1,10 @@
 import { deepEqual, equal } from 'node:assert/strict'
 import { test } from 'node:test'
 import { normalizeJobMatchResult } from '../src/modules/job/job.service'
-import { normalizeFeedbackResult, normalizeSummaryResult } from '../src/modules/interview/interview.service'
+import {
+  normalizeFeedbackResult,
+  normalizeSummaryResult,
+} from '../src/modules/interview/interview.service'
 import { normalizeProjectResult } from '../src/modules/project/project.service'
 import { normalizeResumeAnalysisResult } from '../src/modules/resume/resume.service'
 
@@ -42,10 +45,13 @@ test('岗位匹配 parse_error 降级', () => {
 })
 
 test('项目优化 parse_error 用 dto 技术栈兜底', () => {
-  const result = normalizeProjectResult({ rawText: '原文', parseError: true }, {
-    rawContent: '',
-    techStack: ['Vue'],
-  })
+  const result = normalizeProjectResult(
+    { rawText: '原文', parseError: true },
+    {
+      rawContent: '',
+      techStack: ['Vue'],
+    },
+  )
   equal(result.projectDescription, '原文')
   deepEqual(result.techStack, ['Vue'])
 })

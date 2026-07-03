@@ -9,8 +9,18 @@ function createService(aiCache: unknown) {
 
 test('getCacheKey 与对象键顺序无关', () => {
   const service = createService({})
-  const a = service.getCacheKey({ feature: 'f', model: 'm', version: 'v1', payload: { a: 1, b: 2 } })
-  const b = service.getCacheKey({ feature: 'f', model: 'm', version: 'v1', payload: { b: 2, a: 1 } })
+  const a = service.getCacheKey({
+    feature: 'f',
+    model: 'm',
+    version: 'v1',
+    payload: { a: 1, b: 2 },
+  })
+  const b = service.getCacheKey({
+    feature: 'f',
+    model: 'm',
+    version: 'v1',
+    payload: { b: 2, a: 1 },
+  })
   equal(a, b)
 })
 
@@ -31,10 +41,13 @@ test('resolve 未命中则生成并写入缓存', async () => {
   })
 
   let generated = 0
-  const res = await service.resolve({ feature: 'f', model: 'm', version: 'v1', payload: { a: 1 } }, async () => {
-    generated += 1
-    return { result: { ok: true }, rawText: '{"ok":true}', status: 'success' as const }
-  })
+  const res = await service.resolve(
+    { feature: 'f', model: 'm', version: 'v1', payload: { a: 1 } },
+    async () => {
+      generated += 1
+      return { result: { ok: true }, rawText: '{"ok":true}', status: 'success' as const }
+    },
+  )
 
   equal(generated, 1)
   equal(res.cached, false)
