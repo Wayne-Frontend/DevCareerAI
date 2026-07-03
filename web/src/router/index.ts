@@ -74,6 +74,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: '个人中心' },
       },
       {
+        path: 'admin/users',
+        name: 'admin-users',
+        component: () => import('@/views/AdminUsers/index.vue'),
+        meta: { title: '用户管理', role: 'admin' },
+      },
+      {
         path: 'admin/ai-usage',
         name: 'ai-usage',
         component: () => import('@/views/AiUsage/index.vue'),

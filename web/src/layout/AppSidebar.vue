@@ -12,6 +12,7 @@ import {
   MessagesSquare,
   Mic,
   Sparkles,
+  Users,
   X,
 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
@@ -34,10 +35,14 @@ const baseMenuItems = [
   { path: '/history', label: '复盘中心', icon: BarChart3 },
 ]
 
-// 用量监控仅管理员可见，与后端 @Roles('admin') 对齐。
+// 用户管理、用量监控仅管理员可见，与后端 @Roles('admin') 对齐。
 const mainMenuItems = computed(() =>
   authStore.isAdmin
-    ? [...baseMenuItems, { path: '/admin/ai-usage', label: '用量监控', icon: Gauge }]
+    ? [
+        ...baseMenuItems,
+        { path: '/admin/users', label: '用户管理', icon: Users },
+        { path: '/admin/ai-usage', label: '用量监控', icon: Gauge },
+      ]
     : baseMenuItems,
 )
 

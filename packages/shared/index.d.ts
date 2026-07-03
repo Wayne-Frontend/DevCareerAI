@@ -8,6 +8,10 @@ export type {
   LoginPayload,
   RegisterPayload,
   UpdateProfilePayload,
+  AdminUserItem,
+  AdminUserListResult,
+  UpdateUserRolePayload,
+  UpdateUserStatusPayload,
 } from './auth'
 export type {
   ResumePayload,

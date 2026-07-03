@@ -5,4 +5,8 @@ export type {
   LoginPayload,
   RegisterPayload,
   UpdateProfilePayload,
+  AdminUserItem,
+  AdminUserListResult,
+  UpdateUserRolePayload,
+  UpdateUserStatusPayload,
 } from '@devcareer/shared'

@@ -1,6 +1,7 @@
 ﻿import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -82,6 +83,11 @@ export class AuthService {
       throw new UnauthorizedException('账号或密码不正确')
     }
 
+    // 密码正确但账号被禁用：拒绝签发会话。放在验密之后，避免用状态差异探测账号是否存在。
+    if (user.status === 'disabled') {
+      throw new ForbiddenException('账号已被禁用，请联系管理员')
+    }
+
     return this.createAuthResponse(user, Boolean(dto.remember))
   }
 
@@ -93,6 +99,12 @@ export class AuthService {
 
     const now = Date.now()
     if (!session || session.expiresAt.getTime() <= now) {
+      return null
+    }
+
+    // 存量会话的即时吊销：封禁时虽已删除其 AuthSession，这里对残留会话再兜一层，
+    // 确保被禁用账号在任何路径下都无法通过鉴权。
+    if (session.user.status === 'disabled') {
       return null
     }
 
@@ -167,7 +179,7 @@ export class AuthService {
   }
 
   toUserResponse(
-    user: Pick<User, 'id' | 'username' | 'email' | 'avatarUrl' | 'role' | 'createdAt'>,
+    user: Pick<User, 'id' | 'username' | 'email' | 'avatarUrl' | 'role' | 'status' | 'createdAt'>,
   ): AuthUserResponse {
     return {
       id: user.id,
@@ -175,6 +187,7 @@ export class AuthService {
       email: user.email,
       avatarUrl: user.avatarUrl,
       role: user.role,
+      status: user.status,
       createdAt: user.createdAt,
     }
   }

@@ -17,6 +17,7 @@ function makeSession(overrides: Partial<AuthSession> = {}): AuthSession {
       username: 'alice',
       email: 'alice@example.com',
       role: 'user',
+      status: 'active',
       createdAt: new Date().toISOString(),
     },
     ...overrides,
@@ -85,6 +86,7 @@ describe('updateStoredAuthUser', () => {
       username: 'alice2',
       email: 'alice2@example.com',
       role: 'admin',
+      status: 'active',
       createdAt: new Date().toISOString(),
     })
     const stored = getStoredAuthSession()

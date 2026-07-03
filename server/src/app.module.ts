@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { RolesGuard } from './common/guards/roles.guard'
 import { UserThrottlerGuard } from './common/guards/user-throttler.guard'
+import { AdminModule } from './modules/admin/admin.module'
 import { AiModule } from './modules/ai/ai.module'
 import { AuthGuard } from './modules/auth/auth.guard'
 import { AuthModule } from './modules/auth/auth.module'
@@ -27,6 +28,7 @@ import { validateEnv } from './config/env.validation'
     ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
+    AdminModule,
     AiModule,
     DashboardModule,
     FileModule,
