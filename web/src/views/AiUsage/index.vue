@@ -30,9 +30,11 @@ const summary = ref<AiUsageSummary | null>(null)
 const dailyEl = ref<HTMLDivElement | null>(null)
 const featureEl = ref<HTMLDivElement | null>(null)
 const modelEl = ref<HTMLDivElement | null>(null)
+const userEl = ref<HTMLDivElement | null>(null)
 const dailyChart = shallowRef<echarts.ECharts | null>(null)
 const featureChart = shallowRef<echarts.ECharts | null>(null)
 const modelChart = shallowRef<echarts.ECharts | null>(null)
+const userChart = shallowRef<echarts.ECharts | null>(null)
 
 const totals = computed(() => summary.value?.totals ?? null)
 const hasData = computed(() => (summary.value?.totals.calls ?? 0) > 0)
@@ -114,6 +116,16 @@ function renderCharts() {
       buildBarOption(
         data.byModel.map((item) => ({ name: item.key, value: item.totalTokens })),
         '#06b6d4',
+      ),
+      true,
+    )
+  }
+  if (userEl.value) {
+    userChart.value = ensureChart(userEl.value)
+    userChart.value.setOption(
+      buildBarOption(
+        data.byUser.map((item) => ({ name: item.username, value: item.totalTokens })),
+        '#8b5cf6',
       ),
       true,
     )
@@ -203,15 +215,18 @@ function resizeCharts() {
   dailyChart.value?.resize()
   featureChart.value?.resize()
   modelChart.value?.resize()
+  userChart.value?.resize()
 }
 
 function disposeCharts() {
   dailyChart.value?.dispose()
   featureChart.value?.dispose()
   modelChart.value?.dispose()
+  userChart.value?.dispose()
   dailyChart.value = null
   featureChart.value = null
   modelChart.value = null
+  userChart.value = null
 }
 
 // 数据或加载态变化后，等 DOM 渲染完再画图（v-if 容器需先挂载）。
@@ -324,6 +339,14 @@ onBeforeUnmount(() => {
           <h2 class="m-0 mb-4 text-lg font-black text-[#0f172a]">按模型分布</h2>
           <div ref="modelEl" class="h-[300px] w-full"></div>
         </div>
+      </section>
+
+      <section class="glass-card p-5">
+        <h2 class="m-0 mb-1 text-lg font-black text-[#0f172a]">用户消耗 Top 10</h2>
+        <p class="m-0 mb-4 text-sm font-semibold text-[#94a3b8]">
+          按 token 消耗排名，未登录调用归入“匿名”。
+        </p>
+        <div ref="userEl" class="h-[340px] w-full"></div>
       </section>
     </template>
   </div>

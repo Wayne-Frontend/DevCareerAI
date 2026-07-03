@@ -13,6 +13,21 @@ export interface DashboardResumeDimensions {
   professionalExpression: number
 }
 
+export interface DashboardScoreTrendPoint {
+  // 诊断时间（ISO 字符串），前端自行截取展示粒度
+  date: string
+  // 该次诊断的综合得分 0-100
+  score: number
+}
+
+export interface DashboardResumeTrend {
+  // 趋势对应的简历（取最近一次诊断的那份）；null 表示用户还没有任何诊断记录
+  resumeId: string | null
+  title: string | null
+  // 该简历历次诊断得分，按时间正序；长度为 1 时前端提示“再诊断一次即可看到趋势”
+  points: DashboardScoreTrendPoint[]
+}
+
 export interface DashboardOverview {
   // 用户是否已产生任何可展示的数据，前端据此决定是否显示空状态引导
   hasData: boolean

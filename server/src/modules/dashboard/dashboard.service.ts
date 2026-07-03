@@ -5,9 +5,12 @@ import type {
   DashboardMetric,
   DashboardOverview,
   DashboardResumeDimensions,
+  DashboardResumeTrend,
 } from './dashboard.types'
 
 const SUGGESTION_LIMIT = 4
+// 趋势最多展示最近这么多次诊断，够看清走势又不至于把 x 轴挤爆。
+const TREND_LIMIT = 12
 
 @Injectable()
 export class DashboardService {
@@ -57,6 +60,35 @@ export class DashboardService {
       interview: toMetric(interviewScores),
       recordCount: resumeCount + jobCount + interviewCount,
       suggestions: latestResume ? extractSuggestions(latestResume.resultJson) : [],
+    }
+  }
+
+  /**
+   * 用户最近若干次简历诊断的得分曲线，回答“我的简历在变好吗”。
+   * 刻意不按单份简历分组：诊断页每次几乎都会 fork 一份新简历（改动内容即新建），
+   * 按 resumeId 分组会让每条曲线只剩一个点。故与历史记录口径一致，跨简历按时间取最近 N 次。
+   */
+  async getResumeTrend(userId: string): Promise<DashboardResumeTrend> {
+    const analyses = await this.prisma.resumeAnalysis.findMany({
+      where: { resume: { userId } },
+      orderBy: { createdAt: 'desc' },
+      take: TREND_LIMIT,
+      select: { score: true, createdAt: true, resume: { select: { title: true } } },
+    })
+
+    if (analyses.length === 0) {
+      return { resumeId: null, title: null, points: [] }
+    }
+
+    // 查询按时间倒序取最近 N 条，画图需要正序，这里反转。
+    const ordered = [...analyses].reverse()
+    return {
+      resumeId: null,
+      title: analyses[0].resume.title,
+      points: ordered.map((row) => ({
+        date: row.createdAt.toISOString(),
+        score: row.score,
+      })),
     }
   }
 }

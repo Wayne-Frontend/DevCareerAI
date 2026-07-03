@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import type { AiUsage } from './ai.types'
-import type { AiUsageBreakdownItem, AiUsageDailyItem, AiUsageSummary } from './ai-usage.types'
+import type {
+  AiUsageBreakdownItem,
+  AiUsageDailyItem,
+  AiUsageSummary,
+  AiUsageUserItem,
+} from './ai-usage.types'
 
 interface RecordInput {
   feature?: string
@@ -12,6 +17,8 @@ interface RecordInput {
 
 const DEFAULT_SUMMARY_DAYS = 30
 const MAX_SUMMARY_DAYS = 365
+// 用户消耗排行只展示头部，避免用户量大时把整表拉进内存 / 传给前端。
+const TOP_USERS_LIMIT = 10
 
 @Injectable()
 export class AiUsageService {
@@ -51,7 +58,7 @@ export class AiUsageService {
     const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000)
     const where = { createdAt: { gte: since } }
 
-    const [totals, featureRows, modelRows, daily] = await Promise.all([
+    const [totals, featureRows, modelRows, userRows, daily] = await Promise.all([
       this.prisma.aiUsageLog.aggregate({
         where,
         _count: { _all: true },
@@ -68,6 +75,14 @@ export class AiUsageService {
         where,
         _count: { _all: true },
         _sum: { totalTokens: true },
+      }),
+      this.prisma.aiUsageLog.groupBy({
+        by: ['userId'],
+        where,
+        _count: { _all: true },
+        _sum: { totalTokens: true },
+        orderBy: { _sum: { totalTokens: 'desc' } },
+        take: TOP_USERS_LIMIT,
       }),
       this.getDailySeries(since),
     ])
@@ -94,8 +109,43 @@ export class AiUsageService {
           tokens: row._sum.totalTokens,
         })),
       ),
+      byUser: await this.resolveUserBreakdown(
+        userRows.map((row) => ({
+          userId: row.userId ?? null,
+          calls: row._count._all,
+          totalTokens: row._sum.totalTokens ?? 0,
+        })),
+      ),
       daily,
     }
+  }
+
+  /**
+   * 把按 userId 聚合的行补上用户名。userId 为空的是未登录调用，统一归入“匿名”桶；
+   * 已删除用户（id 查不到）回退为短 id 兜底，避免展示空白。groupBy 已按 token 降序，
+   * 这里只做映射不再排序。
+   */
+  private async resolveUserBreakdown(
+    rows: Array<{ userId: string | null; calls: number; totalTokens: number }>,
+  ): Promise<AiUsageUserItem[]> {
+    const ids = rows.map((row) => row.userId).filter((id): id is string => id !== null)
+    const users = ids.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, username: true },
+        })
+      : []
+    const nameById = new Map(users.map((user) => [user.id, user.username]))
+
+    return rows.map((row) => ({
+      userId: row.userId,
+      username:
+        row.userId === null
+          ? '匿名'
+          : (nameById.get(row.userId) ?? `已注销用户(${row.userId.slice(0, 6)})`),
+      calls: row.calls,
+      totalTokens: row.totalTokens,
+    }))
   }
 
   /**

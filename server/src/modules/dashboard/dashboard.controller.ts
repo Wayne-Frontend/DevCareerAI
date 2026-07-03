@@ -14,4 +14,9 @@ export class DashboardController {
   getOverview(@CurrentUser() user: AuthUserResponse) {
     return this.dashboardService.getOverview(user.id)
   }
+
+  @Get('resume-trend')
+  getResumeTrend(@CurrentUser() user: AuthUserResponse) {
+    return this.dashboardService.getResumeTrend(user.id)
+  }
 }

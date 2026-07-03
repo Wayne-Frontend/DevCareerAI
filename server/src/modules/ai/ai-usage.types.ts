@@ -3,5 +3,6 @@ export type {
   AiUsageTotals,
   AiUsageBreakdownItem,
   AiUsageDailyItem,
+  AiUsageUserItem,
   AiUsageSummary,
 } from '@devcareer/shared'

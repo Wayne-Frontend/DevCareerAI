@@ -49,7 +49,13 @@ export type {
   SendChatMessagePayload,
   ChatSendResponse,
 } from './chat'
-export type { DashboardMetric, DashboardResumeDimensions, DashboardOverview } from './dashboard'
+export type {
+  DashboardMetric,
+  DashboardResumeDimensions,
+  DashboardScoreTrendPoint,
+  DashboardResumeTrend,
+  DashboardOverview,
+} from './dashboard'
 export type {
   HistoryType,
   ProjectOptimizationHistoryDetail,
@@ -61,5 +67,6 @@ export type {
   AiUsageTotals,
   AiUsageBreakdownItem,
   AiUsageDailyItem,
+  AiUsageUserItem,
   AiUsageSummary,
 } from './ai-usage'

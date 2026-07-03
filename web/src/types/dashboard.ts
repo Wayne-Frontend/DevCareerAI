@@ -2,5 +2,7 @@
 export type {
   DashboardMetric,
   DashboardResumeDimensions,
+  DashboardScoreTrendPoint,
+  DashboardResumeTrend,
   DashboardOverview,
 } from '@devcareer/shared'
