@@ -68,12 +68,19 @@ export class InterviewService {
     return this.produceFeedback(session, dto, (payload) => this.chatText(payload, meta))
   }
 
-  async submitAnswerStream(sessionId: string, dto: SubmitAnswerDto, userId: string, callbacks: AiStreamCallbacks = {}) {
+  async submitAnswerStream(
+    sessionId: string,
+    dto: SubmitAnswerDto,
+    userId: string,
+    callbacks: AiStreamCallbacks = {},
+  ) {
     const session = await this.findSession(sessionId, userId)
     this.assertOngoingSession(session)
 
     const meta: AiCallMeta = { feature: 'interview-feedback', userId }
-    return this.produceFeedback(session, dto, (payload) => this.streamText(payload, callbacks, meta))
+    return this.produceFeedback(session, dto, (payload) =>
+      this.streamText(payload, callbacks, meta),
+    )
   }
 
   async finish(sessionId: string, userId: string) {
@@ -89,7 +96,9 @@ export class InterviewService {
     this.assertOngoingSession(session)
 
     const meta: AiCallMeta = { feature: 'interview-summary', userId }
-    return this.produceSummary(session, userId, (payload) => this.streamText(payload, callbacks, meta))
+    return this.produceSummary(session, userId, (payload) =>
+      this.streamText(payload, callbacks, meta),
+    )
   }
 
   private async produceQuestion(dto: CreateInterviewDto, userId: string, getText: GetText) {
@@ -108,11 +117,21 @@ export class InterviewService {
       async () => {
         const text = await getText(payload)
         const parsed = safeParseJson<InterviewQuestionResult>(text)
-        return { result: normalizeQuestionResult(parsed, dto), rawText: text, status: getAiResultStatus(parsed) }
+        return {
+          result: normalizeQuestionResult(parsed, dto),
+          rawText: text,
+          status: getAiResultStatus(parsed),
+        }
       },
     )
 
-    const response = await this.createSession(dto, resumeRecord.id, jobDescription?.id, result, userId)
+    const response = await this.createSession(
+      dto,
+      resumeRecord.id,
+      jobDescription?.id,
+      result,
+      userId,
+    )
 
     return {
       ...response,
@@ -121,7 +140,11 @@ export class InterviewService {
     }
   }
 
-  private async produceFeedback(session: SessionWithMessages, dto: SubmitAnswerDto, getText: GetText) {
+  private async produceFeedback(
+    session: SessionWithMessages,
+    dto: SubmitAnswerDto,
+    getText: GetText,
+  ) {
     const lastQuestion = [...session.messages].reverse().find((message) => message.role === 'ai')
     const model = this.aiService.getModel('fast')
     const payload: InterviewPayload = {
@@ -136,7 +159,11 @@ export class InterviewService {
       async () => {
         const text = await getText(payload)
         const parsed = safeParseJson<InterviewFeedbackResult>(text)
-        return { result: normalizeFeedbackResult(parsed), rawText: text, status: getAiResultStatus(parsed) }
+        return {
+          result: normalizeFeedbackResult(parsed),
+          rawText: text,
+          status: getAiResultStatus(parsed),
+        }
       },
     )
 
@@ -163,7 +190,11 @@ export class InterviewService {
       async () => {
         const text = await getText(payload)
         const parsed = safeParseJson<InterviewSummaryResult>(text)
-        return { result: normalizeSummaryResult(parsed), rawText: text, status: getAiResultStatus(parsed) }
+        return {
+          result: normalizeSummaryResult(parsed),
+          rawText: text,
+          status: getAiResultStatus(parsed),
+        }
       },
     )
 
@@ -178,10 +209,19 @@ export class InterviewService {
   }
 
   private chatText(payload: InterviewPayload, meta: AiCallMeta): Promise<string> {
-    return this.aiService.chat({ ...payload, modelTier: 'fast', feature: meta.feature, userId: meta.userId })
+    return this.aiService.chat({
+      ...payload,
+      modelTier: 'fast',
+      feature: meta.feature,
+      userId: meta.userId,
+    })
   }
 
-  private async streamText(payload: InterviewPayload, callbacks: AiStreamCallbacks, meta: AiCallMeta): Promise<string> {
+  private async streamText(
+    payload: InterviewPayload,
+    callbacks: AiStreamCallbacks,
+    meta: AiCallMeta,
+  ): Promise<string> {
     const stream = await this.aiService.chatStream({
       ...payload,
       modelTier: 'fast',
@@ -218,7 +258,9 @@ export class InterviewService {
 
   private async resolveJobDescription(dto: CreateInterviewDto, userId: string) {
     if (dto.jobDescriptionId) {
-      const jobDescription = await this.prisma.jobDescription.findFirst({ where: { id: dto.jobDescriptionId, userId } })
+      const jobDescription = await this.prisma.jobDescription.findFirst({
+        where: { id: dto.jobDescriptionId, userId },
+      })
 
       if (!jobDescription) {
         throw new NotFoundException('Job description not found')
@@ -259,7 +301,9 @@ export class InterviewService {
     })
   }
 
-  private buildSummaryPrompt(session: Pick<InterviewSession, 'targetRole'> & { messages: InterviewMessage[] }) {
+  private buildSummaryPrompt(
+    session: Pick<InterviewSession, 'targetRole'> & { messages: InterviewMessage[] },
+  ) {
     const prompt = buildInterviewSummaryPrompt({
       targetRole: session.targetRole || undefined,
       messages: session.messages.map((message) => ({
@@ -307,7 +351,11 @@ export class InterviewService {
     }
   }
 
-  private async findSession(sessionId: string, userId: string, includeResume = true): Promise<SessionWithMessages> {
+  private async findSession(
+    sessionId: string,
+    userId: string,
+    includeResume = true,
+  ): Promise<SessionWithMessages> {
     const session = await this.prisma.interviewSession.findFirst({
       where: { id: sessionId, userId },
       include: {
@@ -323,22 +371,34 @@ export class InterviewService {
     return session as SessionWithMessages
   }
 
-  private async createAnswerMessages(sessionId: string, answer: string, feedback: InterviewFeedbackResult) {
-    await this.prisma.interviewMessage.create({
-      data: {
-        sessionId,
-        role: 'user',
-        content: answer,
-      },
-    })
-    await this.prisma.interviewMessage.create({
-      data: {
-        sessionId,
-        role: 'ai',
-        content: feedback.followUpQuestion,
-        feedbackJson: feedback as unknown as Prisma.InputJsonValue,
-      },
-    })
+  // 用户回答与 AI 反馈必须同事务落库，避免第二次写入失败时留下"有回答、无反馈"的悬挂会话。
+  // createdAt 显式错开 1ms：事务内两次写入可能落在同一毫秒，按 createdAt 排序时会乱序。
+  private async createAnswerMessages(
+    sessionId: string,
+    answer: string,
+    feedback: InterviewFeedbackResult,
+  ) {
+    const now = new Date()
+
+    await this.prisma.$transaction([
+      this.prisma.interviewMessage.create({
+        data: {
+          sessionId,
+          role: 'user',
+          content: answer,
+          createdAt: now,
+        },
+      }),
+      this.prisma.interviewMessage.create({
+        data: {
+          sessionId,
+          role: 'ai',
+          content: feedback.followUpQuestion,
+          feedbackJson: feedback as unknown as Prisma.InputJsonValue,
+          createdAt: new Date(now.getTime() + 1),
+        },
+      }),
+    ])
   }
 
   private finishSession(sessionId: string, userId: string, summary: InterviewSummaryResult) {
@@ -377,20 +437,25 @@ function normalizeQuestionResult(
 ): InterviewQuestionResult {
   if ('parseError' in value) {
     return {
-      question: value.rawText || `请结合你的项目经历，介绍一个最能体现 ${dto.targetRole} 能力的项目。`,
+      question:
+        value.rawText || `请结合你的项目经历，介绍一个最能体现 ${dto.targetRole} 能力的项目。`,
       questionType: dto.interviewType,
       expectedPoints: [],
     }
   }
 
   return {
-    question: String(value.question || `请结合你的项目经历，介绍一个最能体现 ${dto.targetRole} 能力的项目。`),
+    question: String(
+      value.question || `请结合你的项目经历，介绍一个最能体现 ${dto.targetRole} 能力的项目。`,
+    ),
     questionType: String(value.questionType || dto.interviewType),
     expectedPoints: toStringList(value.expectedPoints),
   }
 }
 
-export function normalizeFeedbackResult(value: InterviewFeedbackResult | { rawText: string; parseError: true }): InterviewFeedbackResult {
+export function normalizeFeedbackResult(
+  value: InterviewFeedbackResult | { rawText: string; parseError: true },
+): InterviewFeedbackResult {
   if ('parseError' in value) {
     return {
       score: 0,
@@ -410,7 +475,9 @@ export function normalizeFeedbackResult(value: InterviewFeedbackResult | { rawTe
   }
 }
 
-export function normalizeSummaryResult(value: InterviewSummaryResult | { rawText: string; parseError: true }): InterviewSummaryResult {
+export function normalizeSummaryResult(
+  value: InterviewSummaryResult | { rawText: string; parseError: true },
+): InterviewSummaryResult {
   if ('parseError' in value) {
     return {
       totalScore: 0,
