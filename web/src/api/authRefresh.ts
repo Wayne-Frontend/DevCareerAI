@@ -1,6 +1,10 @@
 import axios from 'axios'
 import type { AuthSession } from '@/types/auth'
-import { getAuthToken, replaceStoredAuthSession, shouldRefreshAuthToken } from '@/utils/authSession'
+import {
+  applyRefreshedAuthSession,
+  getAuthToken,
+  shouldRefreshAuthToken,
+} from '@/utils/authSession'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
@@ -20,7 +24,7 @@ export function refreshAuthSession() {
     refreshPromise = axios
       .post<AuthSession>(`${API_BASE_URL}/auth/refresh`, undefined, { withCredentials: true })
       .then((response) => {
-        replaceStoredAuthSession(response.data)
+        applyRefreshedAuthSession(response.data)
         window.dispatchEvent(new CustomEvent('auth-session-refreshed', { detail: response.data }))
         return response.data
       })

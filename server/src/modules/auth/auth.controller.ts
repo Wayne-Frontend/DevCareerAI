@@ -22,6 +22,7 @@ import {
 } from './auth.service'
 import type { AuthUserResponse } from './auth.types'
 import { CurrentUser } from './current-user.decorator'
+import { ChangePasswordDto } from './dto/change-password.dto'
 import { LoginDto } from './dto/login.dto'
 import { RegisterDto } from './dto/register.dto'
 import { UpdateProfileDto } from './dto/update-profile.dto'
@@ -67,6 +68,19 @@ export class AuthController {
   @Get('me')
   me(@Req() request: Request & { user?: unknown }) {
     return request.user
+  }
+
+  // 与登录同档限流：防止用旧密码字段做暴力枚举。
+  @ApiBearerAuth()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Patch('password')
+  changePassword(
+    @CurrentUser() user: AuthUserResponse,
+    @Req() request: Request,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    const accessToken = extractBearerToken(request.headers.authorization)
+    return this.authService.changePassword(user.id, accessToken, dto)
   }
 
   @ApiBearerAuth()

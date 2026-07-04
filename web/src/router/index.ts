@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
 import { refreshAuthSession } from '@/api/authRefresh'
-import { getAuthToken, getStoredAuthSession } from '@/utils/authSession'
+import { getAuthToken, getMemoryAuthSession, getStoredAuthUser } from '@/utils/authSession'
 
 export const routes: RouteRecordRaw[] = [
   {
@@ -126,7 +126,11 @@ router.beforeEach(async (to) => {
   }
 
   // 角色受限路由：无权限则跳 404（仅体验层拦截，真正的安全边界由后端 RolesGuard 保证）。
-  if (to.meta.role && getStoredAuthSession()?.user.role !== to.meta.role) {
+  // 角色优先取内存会话（服务端最新），刷新页面瞬间退回本地缓存资料；真正的防线在后端 RolesGuard。
+  if (
+    to.meta.role &&
+    (getMemoryAuthSession()?.user ?? getStoredAuthUser())?.role !== to.meta.role
+  ) {
     return { name: 'not-found' }
   }
 

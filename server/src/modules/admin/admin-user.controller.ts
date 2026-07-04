@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common'
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator'
 import type { AuthUserResponse } from '../auth/auth.types'
@@ -34,6 +34,11 @@ export class AdminUserController {
     @Body() dto: UpdateUserRoleDto,
   ) {
     return this.adminUserService.updateRole(id, operator.id, dto.role)
+  }
+
+  @Post(':id/password-reset')
+  resetPassword(@Param('id') id: string, @CurrentUser() operator: AuthUserResponse) {
+    return this.adminUserService.resetPassword(id, operator.id)
   }
 
   @Patch(':id/status')

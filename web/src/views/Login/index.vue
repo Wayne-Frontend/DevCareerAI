@@ -106,6 +106,7 @@ async function submit() {
           email: form.email.trim(),
           password: form.password,
           profession: resolveProfession() || undefined,
+          remember: form.remember,
         })
       : await login({
           account: form.account.trim(),
@@ -113,7 +114,15 @@ async function submit() {
           remember: form.remember,
         })
 
-    authStore.setSession(session, isRegister.value ? true : form.remember)
+    authStore.setSession(session, form.remember)
+
+    // 管理员重置过密码的账号：强制先改密（后端同时拦截其他接口）。
+    if (session.user.mustChangePassword) {
+      notify('管理员已重置你的密码，请先设置新密码', 'warning')
+      await router.push('/profile')
+      return
+    }
+
     notify(isRegister.value ? '注册成功，已进入工作台' : '登录成功', 'success')
     await router.push(typeof route.query.redirect === 'string' ? route.query.redirect : '/')
   } finally {
@@ -286,10 +295,7 @@ function switchMode(nextMode: 'login' | 'register') {
             </span>
           </label>
 
-          <div
-            v-if="!isRegister"
-            class="flex items-center text-[14px] font-extrabold text-[#344054]"
-          >
+          <div class="flex items-center text-[14px] font-extrabold text-[#344054]">
             <label class="flex cursor-pointer items-center gap-3">
               <input v-model="form.remember" class="remember-checkbox" type="checkbox" />
               记住我

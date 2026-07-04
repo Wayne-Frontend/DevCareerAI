@@ -17,6 +17,7 @@ import type { AuthSession as AuthSessionContract } from '@devcareer/shared'
 import { detectImageMime, type ImageMimeType } from '../../common/utils/file-signature.util'
 import { PrismaService } from '../../prisma/prisma.service'
 import type { AuthUserResponse } from './auth.types'
+import { ChangePasswordDto } from './dto/change-password.dto'
 import { LoginDto } from './dto/login.dto'
 import { RegisterDto } from './dto/register.dto'
 import { UpdateProfileDto } from './dto/update-profile.dto'
@@ -88,7 +89,7 @@ export class AuthService {
         this.logger.log(`已将首个注册用户 ${user.username} 设为管理员`)
       }
 
-      return this.createAuthResponse(user, true)
+      return this.createAuthResponse(user, Boolean(dto.remember))
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('用户名或邮箱已被注册')
@@ -200,6 +201,42 @@ export class AuthService {
     return { success: true }
   }
 
+  /**
+   * 自助修改密码：验旧密码 → 更新哈希 → 吊销该用户除当前会话外的所有会话
+   * （改密的核心安全语义：让可能已窃取旧密码/会话的一方立即失效）。
+   */
+  async changePassword(userId: string, accessToken: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    if (!user || !(await verifyPassword(dto.oldPassword, user.passwordHash))) {
+      throw new UnauthorizedException('当前密码不正确')
+    }
+
+    if (dto.oldPassword === dto.newPassword) {
+      throw new BadRequestException('新密码不能与当前密码相同')
+    }
+
+    const passwordHash = await hashPassword(dto.newPassword)
+    const claims = this.verifyAccessToken(accessToken)
+    const now = new Date()
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash, mustChangePassword: false },
+      }),
+      this.prisma.authSession.updateMany({
+        where: {
+          userId,
+          revokedAt: null,
+          ...(claims ? { NOT: { id: claims.sid } } : {}),
+        },
+        data: { revokedAt: now },
+      }),
+    ])
+
+    return { success: true }
+  }
+
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     const email = normalizeAccount(dto.email)
     const duplicatedUser = await this.prisma.user.findFirst({
@@ -277,7 +314,15 @@ export class AuthService {
   toUserResponse(
     user: Pick<
       User,
-      'id' | 'username' | 'email' | 'profession' | 'avatarUrl' | 'role' | 'status' | 'createdAt'
+      | 'id'
+      | 'username'
+      | 'email'
+      | 'profession'
+      | 'avatarUrl'
+      | 'role'
+      | 'status'
+      | 'mustChangePassword'
+      | 'createdAt'
     >,
   ): AuthUserResponse {
     return {
@@ -288,6 +333,7 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       role: user.role,
       status: user.status,
+      mustChangePassword: user.mustChangePassword,
       createdAt: user.createdAt,
     }
   }

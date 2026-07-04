@@ -13,6 +13,7 @@ function makeSession(overrides: Partial<AuthSession> = {}): AuthSession {
       email: 'bob@example.com',
       role: 'user',
       status: 'active',
+      mustChangePassword: false,
       createdAt: new Date().toISOString(),
     },
     ...overrides,
@@ -55,6 +56,7 @@ describe('useAuthStore', () => {
       email: 'bob2@example.com',
       role: 'admin',
       status: 'active',
+      mustChangePassword: false,
       createdAt: new Date().toISOString(),
     })
     expect(store.token).toBe('access_abc')
@@ -70,6 +72,7 @@ describe('useAuthStore', () => {
       email: 'ghost@example.com',
       role: 'user',
       status: 'active',
+      mustChangePassword: false,
       createdAt: new Date().toISOString(),
     })
     expect(store.user).toBeNull()

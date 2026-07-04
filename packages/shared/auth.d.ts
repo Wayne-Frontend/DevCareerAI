@@ -7,6 +7,8 @@ export interface AuthUser {
   role: string
   // 'active' | 'disabled'，disabled 用户禁止登录
   status: string
+  // 管理员重置密码后为 true：必须先修改密码才能使用其他功能
+  mustChangePassword: boolean
   createdAt: string
 }
 
@@ -55,8 +57,19 @@ export interface RegisterPayload {
   email: string
   password: string
   profession?: string
+  remember?: boolean
 }
 
 export interface UpdateProfilePayload {
   email: string
+}
+
+export interface ChangePasswordPayload {
+  oldPassword: string
+  newPassword: string
+}
+
+// 管理员重置用户密码的结果：临时密码仅在响应中出现一次，不落库不写日志
+export interface AdminResetPasswordResult {
+  tempPassword: string
 }

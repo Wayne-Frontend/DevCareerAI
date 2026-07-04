@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Ban, CircleCheck, RefreshCw, Search, Users } from 'lucide-vue-next'
+import { Ban, CircleCheck, RefreshCw, Search, Users, KeyRound } from 'lucide-vue-next'
 import EmptyState from '@/components/EmptyState/index.vue'
 import LoadingButton from '@/components/LoadingButton/index.vue'
 import SkeletonCard from '@/components/SkeletonCard/index.vue'
-import { getAdminUsers, updateUserRole, updateUserStatus } from '@/api/admin'
+import { getAdminUsers, resetUserPassword, updateUserRole, updateUserStatus } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import type { AdminUserItem } from '@/types/auth'
 import { formatDateTime } from '@/utils/format'
@@ -82,6 +82,35 @@ async function onToggleRole(user: AdminUserItem) {
     notify('角色已更新', 'success')
   } catch {
     // 请求层已弹错（如“至少保留一名管理员”）。
+  } finally {
+    pendingId.value = ''
+  }
+}
+
+async function onResetPassword(user: AdminUserItem) {
+  const confirmed = await messageBox.confirm({
+    type: 'danger',
+    title: `重置 ${user.username} 的密码？`,
+    message:
+      '将生成一次性临时密码并强制该用户下线；临时密码只显示一次，用户下次登录后必须修改密码。',
+    confirmText: '重置密码',
+  })
+  if (!confirmed) return
+
+  pendingId.value = user.id
+  try {
+    const { tempPassword } = await resetUserPassword(user.id)
+    // 临时密码仅此一次机会展示，请管理员立即转交用户。
+    await messageBox.alert({
+      type: 'warning',
+      title: '临时密码（只显示这一次）',
+      message: `${user.username} 的临时密码：${tempPassword}\n请立即通过安全渠道转交用户；用户登录后需先修改密码。`,
+      confirmText: '我已记录',
+      closeOnOverlay: false,
+      closeOnEsc: false,
+    })
+  } catch {
+    // 请求层已弹错（如“不能重置其他管理员的密码”）。
   } finally {
     pendingId.value = ''
   }
@@ -216,6 +245,15 @@ onMounted(load)
                       @click="onToggleRole(user)"
                     >
                       {{ user.role === 'admin' ? '取消管理员' : '设为管理员' }}
+                    </button>
+                    <button
+                      v-if="user.role !== 'admin'"
+                      class="btn-mini"
+                      :disabled="pendingId === user.id"
+                      @click="onResetPassword(user)"
+                    >
+                      <KeyRound :size="15" />
+                      重置密码
                     </button>
                     <button
                       class="btn-mini"

@@ -1,9 +1,19 @@
 ﻿<script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { AtSign, CalendarDays, LogOut, Mail, Save, UploadCloud, UserRound } from 'lucide-vue-next'
+import {
+  AtSign,
+  CalendarDays,
+  KeyRound,
+  LogOut,
+  Mail,
+  Save,
+  ShieldAlert,
+  UploadCloud,
+  UserRound,
+} from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import LoadingButton from '@/components/LoadingButton/index.vue'
-import { logout as logoutRequest, updateProfile, uploadAvatar } from '@/api/auth'
+import { changePassword, logout as logoutRequest, updateProfile, uploadAvatar } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { resolveAssetUrl } from '@/utils/assetUrl'
 import { messageBox } from '@/utils/messageBox'
@@ -21,6 +31,51 @@ const logoutLoading = ref(false)
 const form = reactive({
   email: authStore.user?.email || '',
 })
+
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+})
+const passwordLoading = ref(false)
+const mustChangePassword = computed(() => Boolean(authStore.user?.mustChangePassword))
+
+async function savePassword() {
+  if (!passwordForm.oldPassword || !passwordForm.newPassword) {
+    notify('请填写当前密码和新密码', 'warning')
+    return
+  }
+  if (passwordForm.newPassword.length < 8) {
+    notify('新密码至少 8 位', 'warning')
+    return
+  }
+  if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(passwordForm.newPassword)) {
+    notify('新密码需同时包含字母和数字', 'warning')
+    return
+  }
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    notify('两次输入的新密码不一致', 'warning')
+    return
+  }
+
+  passwordLoading.value = true
+  try {
+    await changePassword({
+      oldPassword: passwordForm.oldPassword,
+      newPassword: passwordForm.newPassword,
+    })
+    // 改密成功后其他设备的会话已被吊销；当前会话保持有效，仅同步本地用户标记。
+    if (authStore.user) {
+      authStore.updateUser({ ...authStore.user, mustChangePassword: false })
+    }
+    passwordForm.oldPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+    notify('密码已修改，其他设备的登录状态已失效', 'success')
+  } finally {
+    passwordLoading.value = false
+  }
+}
 
 const avatarPreview = computed(() => resolveAssetUrl(authStore.user?.avatarUrl))
 const userInitial = computed(() =>
@@ -129,6 +184,16 @@ async function logout() {
         <p class="page-subtitle">管理当前账号的基础资料，头像仅支持上传图片文件。</p>
       </div>
     </header>
+
+    <div
+      v-if="mustChangePassword"
+      class="mb-4 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800"
+    >
+      <ShieldAlert :size="18" />
+      <span
+        >管理员已重置你的密码，请先在下方「修改密码」中设置新密码，之后才能继续使用其他功能。</span
+      >
+    </div>
 
     <div class="profile-grid">
       <section class="glass-card profile-summary">
@@ -239,6 +304,65 @@ async function logout() {
             >
               <template #icon><LogOut :size="18" /></template>
               {{ logoutLoading ? '退出中...' : '退出登录' }}
+            </LoadingButton>
+          </div>
+        </form>
+
+        <div class="my-6 border-t border-slate-200/70"></div>
+
+        <div class="mb-5 flex items-start gap-3">
+          <span class="icon-tile h-10 w-10 rounded-xl"><KeyRound :size="21" /></span>
+          <div>
+            <h2 class="m-0 text-xl font-black text-[#0f172a]">修改密码</h2>
+            <p class="mt-1 text-sm font-semibold text-[#64748b]">
+              新密码至少 8 位且包含字母和数字；修改成功后其他设备将被强制下线。
+            </p>
+          </div>
+        </div>
+
+        <form class="grid gap-4" @submit.prevent="savePassword">
+          <label>
+            <span class="field-label">当前密码</span>
+            <input
+              v-model="passwordForm.oldPassword"
+              class="input-base"
+              type="password"
+              autocomplete="current-password"
+              placeholder="输入当前使用的密码"
+            />
+          </label>
+
+          <label>
+            <span class="field-label">新密码</span>
+            <input
+              v-model="passwordForm.newPassword"
+              class="input-base"
+              type="password"
+              autocomplete="new-password"
+              placeholder="至少 8 位，包含字母和数字"
+            />
+          </label>
+
+          <label>
+            <span class="field-label">确认新密码</span>
+            <input
+              v-model="passwordForm.confirmPassword"
+              class="input-base"
+              type="password"
+              autocomplete="new-password"
+              placeholder="再输入一次新密码"
+            />
+          </label>
+
+          <div class="form-actions">
+            <LoadingButton
+              class="min-w-[132px]"
+              type="submit"
+              :loading="passwordLoading"
+              loading-text="修改中..."
+            >
+              <template #icon><KeyRound :size="18" /></template>
+              {{ passwordLoading ? '修改中...' : '修改密码' }}
             </LoadingButton>
           </div>
         </form>

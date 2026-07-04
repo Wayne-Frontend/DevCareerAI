@@ -12,6 +12,8 @@ export type {
   AdminUserListResult,
   UpdateUserRolePayload,
   UpdateUserStatusPayload,
+  ChangePasswordPayload,
+  AdminResetPasswordResult,
 } from './auth'
 export type {
   ResumePayload,

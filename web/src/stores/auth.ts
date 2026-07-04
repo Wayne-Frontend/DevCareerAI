@@ -1,66 +1,78 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getCurrentUser } from '@/api/auth'
+import { refreshAuthSession } from '@/api/authRefresh'
 import type { AuthSession, AuthUser } from '@/types/auth'
 import {
   clearStoredAuthSession,
-  getStoredAuthSession,
+  getStoredAuthUser,
   setStoredAuthSession,
   updateStoredAuthUser,
 } from '@/utils/authSession'
 
+// 防止 HMR 等场景重复注册全局监听（store setup 理论上只跑一次，这里做双保险）。
+let refreshListenerBound = false
+
 export const useAuthStore = defineStore('auth', () => {
-  const session = ref<AuthSession | null>(getStoredAuthSession())
+  // access token 只存内存（session ref）；storage 仅缓存用户资料，页面刷新后由 refresh cookie 恢复 token。
+  const session = ref<AuthSession | null>(null)
+  const user = ref<AuthUser | null>(getStoredAuthUser())
   const hydrated = ref(false)
 
-  const user = computed(() => session.value?.user || null)
   const token = computed(() => session.value?.accessToken || '')
-  const isAuthenticated = computed(() => Boolean(token.value))
+  const isAuthenticated = computed(() => Boolean(user.value))
   const isAdmin = computed(() => user.value?.role === 'admin')
 
   function setSession(nextSession: AuthSession, remember: boolean) {
     session.value = nextSession
+    user.value = nextSession.user
     setStoredAuthSession(nextSession, remember)
   }
 
   function clearSession() {
     session.value = null
+    user.value = null
     clearStoredAuthSession()
   }
 
   function updateUser(nextUser: AuthUser) {
-    const storedSession = getStoredAuthSession()
-    if (!session.value && !storedSession) return
+    // 未登录（无会话也无缓存资料）时不生效，避免登出后误写资料缓存。
+    if (!session.value && !user.value) return
 
-    session.value = {
-      ...(storedSession || session.value!),
-      user: nextUser,
+    user.value = nextUser
+    if (session.value) {
+      session.value = { ...session.value, user: nextUser }
     }
     updateStoredAuthUser(nextUser)
   }
 
-  // 应用启动时以服务端为准校验一次本地会话；若 access token 过期，request 拦截器会先尝试 refresh。
+  // 应用启动：本地有用户资料但内存无 token 时，先用 refresh cookie 静默恢复，
+  // 再以服务端为准同步一次用户资料；cookie 已失效则清理本地缓存，由路由守卫带去登录页。
   async function hydrate() {
-    if (hydrated.value || !session.value) {
-      hydrated.value = true
-      return
-    }
+    if (hydrated.value) return
 
     try {
-      const nextUser = await getCurrentUser()
-      updateUser(nextUser)
+      if (user.value && !session.value) {
+        await refreshAuthSession()
+      }
+      if (session.value) {
+        const nextUser = await getCurrentUser()
+        updateUser(nextUser)
+      }
     } catch {
-      // 401 已由响应拦截器处理；其余错误静默忽略，维持当前会话。
+      clearSession()
     } finally {
       hydrated.value = true
     }
   }
 
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && !refreshListenerBound) {
+    refreshListenerBound = true
     window.addEventListener('auth-session-refreshed', (event) => {
       const nextSession = (event as CustomEvent<AuthSession>).detail
       if (nextSession?.accessToken) {
         session.value = nextSession
+        user.value = nextSession.user
       }
     })
   }

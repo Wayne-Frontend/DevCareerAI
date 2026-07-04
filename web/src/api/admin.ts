@@ -1,5 +1,5 @@
 import { request } from './request'
-import type { AdminUserItem, AdminUserListResult } from '@/types/auth'
+import type { AdminResetPasswordResult, AdminUserItem, AdminUserListResult } from '@/types/auth'
 
 interface AdminUserQuery {
   page?: number
@@ -22,6 +22,14 @@ export function updateUserRole(id: string, role: 'user' | 'admin') {
     url: `/admin/users/${id}/role`,
     method: 'PATCH',
     data: { role },
+  })
+}
+
+// 重置密码：响应中的临时密码仅出现一次，展示后不再可查。
+export function resetUserPassword(id: string) {
+  return request<AdminResetPasswordResult>({
+    url: `/admin/users/${id}/password-reset`,
+    method: 'POST',
   })
 }
 

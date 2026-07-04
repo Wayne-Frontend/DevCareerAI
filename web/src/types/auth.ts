@@ -9,4 +9,6 @@ export type {
   AdminUserListResult,
   UpdateUserRolePayload,
   UpdateUserStatusPayload,
+  ChangePasswordPayload,
+  AdminResetPasswordResult,
 } from '@devcareer/shared'

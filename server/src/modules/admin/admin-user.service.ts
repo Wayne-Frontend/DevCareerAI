@@ -1,5 +1,11 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
-import type { AdminUserItem, AdminUserListResult } from '@devcareer/shared'
+import type {
+  AdminResetPasswordResult,
+  AdminUserItem,
+  AdminUserListResult,
+} from '@devcareer/shared'
+import { randomInt } from 'crypto'
+import { hashPassword } from '../auth/auth.service'
 import { PrismaService } from '../../prisma/prisma.service'
 
 const DEFAULT_PAGE_SIZE = 20
@@ -89,6 +95,36 @@ export class AdminUserService {
     })
 
     return this.toItem(updated)
+  }
+
+  /**
+   * 重置用户密码为一次性临时密码：仅在响应中返回一次，不落库不写日志。
+   * 同时吊销目标用户全部会话，并标记 mustChangePassword 强制其登录后先改密
+   * （临时密码为管理员可见，改密后管理员即不再掌握用户密码）。
+   * 管理员账号不允许被重置（防止横向接管），管理员自己请走自助改密。
+   */
+  async resetPassword(targetId: string, operatorId: string): Promise<AdminResetPasswordResult> {
+    const target = await this.requireUser(targetId)
+
+    if (target.id === operatorId) {
+      throw new ForbiddenException('请在个人资料页使用自助修改密码')
+    }
+    if (target.role === 'admin') {
+      throw new ForbiddenException('不能重置其他管理员的密码')
+    }
+
+    const tempPassword = generateTempPassword()
+    const passwordHash = await hashPassword(tempPassword)
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: targetId },
+        data: { passwordHash, mustChangePassword: true },
+      }),
+      this.prisma.authSession.deleteMany({ where: { userId: targetId } }),
+    ])
+
+    return { tempPassword }
   }
 
   async updateStatus(
@@ -193,4 +229,25 @@ const userItemSelect = {
 function clampPositive(value: number | undefined, fallback: number): number {
   if (!Number.isFinite(value) || (value as number) < 1) return fallback
   return Math.floor(value as number)
+}
+
+// 生成 12 位临时密码：去掉易混淆字符（0/O、1/l/I），并保证同时含字母和数字以满足密码策略。
+function generateTempPassword() {
+  const letters = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ'
+  const digits = '23456789'
+  const all = letters + digits
+
+  const chars = [
+    letters[randomInt(letters.length)],
+    digits[randomInt(digits.length)],
+    ...Array.from({ length: 10 }, () => all[randomInt(all.length)]),
+  ]
+
+  // Fisher-Yates 洗牌，避免首两位模式固定。
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = randomInt(i + 1)
+    ;[chars[i], chars[j]] = [chars[j], chars[i]]
+  }
+
+  return chars.join('')
 }

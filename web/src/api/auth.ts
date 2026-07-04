@@ -2,6 +2,7 @@
 import type {
   AuthSession,
   AuthUser,
+  ChangePasswordPayload,
   LoginPayload,
   RegisterPayload,
   UpdateProfilePayload,
@@ -33,6 +34,14 @@ export function getCurrentUser() {
 export function updateProfile(data: UpdateProfilePayload) {
   return request<AuthUser>({
     url: '/auth/me',
+    method: 'PATCH',
+    data,
+  })
+}
+
+export function changePassword(data: ChangePasswordPayload) {
+  return request<{ success: boolean }>({
+    url: '/auth/password',
     method: 'PATCH',
     data,
   })

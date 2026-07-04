@@ -1,4 +1,12 @@
-import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator'
+import {
+  IsBoolean,
+  IsEmail,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator'
 import type { RegisterPayload } from '@devcareer/shared'
 
 // implements 共享契约：契约改字段时此处编译期报错，防止前后端漂移。
@@ -24,4 +32,9 @@ export class RegisterDto implements RegisterPayload {
   @IsString()
   @MaxLength(40)
   profession?: string
+
+  // 与登录一致：决定 refresh cookie 是 30 天还是 1 天。
+  @IsOptional()
+  @IsBoolean()
+  remember?: boolean
 }
