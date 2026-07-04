@@ -10,6 +10,7 @@ export function validateEnv(config: Record<string, unknown>) {
   const port = readString(config.PORT)
   const jwtAccessSecret = readString(config.JWT_ACCESS_SECRET)
   const accessTokenTtlMinutes = readString(config.ACCESS_TOKEN_TTL_MINUTES)
+  const corsOrigin = readString(config.CORS_ORIGIN)
 
   if (!databaseUrl) {
     errors.push('DATABASE_URL is required')
@@ -46,6 +47,17 @@ export function validateEnv(config: Record<string, unknown>) {
     (!Number.isInteger(Number(accessTokenTtlMinutes)) || Number(accessTokenTtlMinutes) <= 0)
   ) {
     errors.push('ACCESS_TOKEN_TTL_MINUTES must be a positive integer when provided')
+  }
+
+  if (corsOrigin) {
+    const invalid = corsOrigin
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .filter((item) => !isHttpUrl(item))
+    if (invalid.length > 0) {
+      errors.push(`CORS_ORIGIN contains invalid origin(s): ${invalid.join(', ')}`)
+    }
   }
 
   if (errors.length > 0) {
