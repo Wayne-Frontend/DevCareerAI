@@ -1,5 +1,6 @@
-﻿import { getAuthToken } from '@/utils/authSession'
+import { getAuthToken } from '@/utils/authSession'
 import { redirectToLogin } from '@/utils/redirectToLogin'
+import { ensureFreshAccessToken } from './authRefresh'
 import { notifyApiError, resolveFetchErrorMessage } from './errors'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
@@ -21,16 +22,16 @@ export async function streamRequest<TDone>(
   let response: Response
 
   try {
-    const token = getAuthToken()
-    response = await fetch(`${API_BASE_URL}${url}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: data === undefined ? undefined : JSON.stringify(data),
-      signal: handlers.signal,
-    })
+    await ensureFreshAccessToken()
+  } catch {
+    const message = '登录状态已失效，请重新登录'
+    notifyApiError(message)
+    redirectToLogin()
+    throw new Error(message)
+  }
+
+  try {
+    response = await postStream(url, data, handlers.signal)
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
       throw error
@@ -39,6 +40,22 @@ export async function streamRequest<TDone>(
     const message = '网络连接失败，请确认后端服务是否正在运行'
     notifyApiError(message)
     throw new Error(message)
+  }
+
+  if (response.status === 401) {
+    try {
+      await ensureFreshAccessToken(true)
+      response = await postStream(url, data, handlers.signal)
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        throw error
+      }
+
+      const message = await resolveFetchErrorMessage(response)
+      notifyApiError(message)
+      redirectToLogin()
+      throw new Error(message)
+    }
   }
 
   if (!response.ok || !response.body) {
@@ -136,4 +153,19 @@ export function parseSseEvent<TDone>(
   } catch {
     return null
   }
+}
+
+function postStream(url: string, data: unknown, signal?: AbortSignal) {
+  const token = getAuthToken()
+
+  return fetch(`${API_BASE_URL}${url}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: data === undefined ? undefined : JSON.stringify(data),
+    credentials: 'include',
+    signal,
+  })
 }

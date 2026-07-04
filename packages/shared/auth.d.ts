@@ -2,6 +2,7 @@ export interface AuthUser {
   id: string
   username: string
   email: string
+  profession?: string | null
   avatarUrl?: string | null
   role: string
   // 'active' | 'disabled'，disabled 用户禁止登录
@@ -9,7 +10,7 @@ export interface AuthUser {
   createdAt: string
 }
 
-// ——— 管理端用户管理契约 ———
+// —— 管理端用户管理契约 ——
 
 export interface AdminUserItem {
   id: string
@@ -38,8 +39,8 @@ export interface UpdateUserStatusPayload {
 }
 
 export interface AuthSession {
-  token: string
-  expiresAt: string
+  accessToken: string
+  accessTokenExpiresAt: string
   user: AuthUser
 }
 
@@ -53,6 +54,7 @@ export interface RegisterPayload {
   username: string
   email: string
   password: string
+  profession?: string
 }
 
 export interface UpdateProfilePayload {

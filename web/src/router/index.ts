@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
+import { refreshAuthSession } from '@/api/authRefresh'
 import { getAuthToken, getStoredAuthSession } from '@/utils/authSession'
 
 export const routes: RouteRecordRaw[] = [
@@ -104,8 +105,17 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to) => {
-  const isAuthenticated = Boolean(getAuthToken())
+router.beforeEach(async (to) => {
+  let isAuthenticated = Boolean(getAuthToken())
+
+  if (!isAuthenticated && (to.name === 'login' || !to.meta.public)) {
+    try {
+      await refreshAuthSession()
+      isAuthenticated = true
+    } catch {
+      isAuthenticated = false
+    }
+  }
 
   if (!to.meta.public && !isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }

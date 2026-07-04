@@ -11,9 +11,10 @@ model User {
   id           String   @id @default(cuid())
   username     String   @unique
   email        String   @unique
+  profession   String?
   avatarUrl    String?
   passwordHash String
-  role         String   @default("user") // 'user' | 'admin'（SQLite 不支持原生 enum，用字符串 + 应用层约束）
+  role         String   @default("user") // 'user' | 'admin'，SQLite 不支持原生 enum，用字符串 + 应用层约束
   status       String   @default("active") // 'active' | 'disabled'，disabled 禁止登录并即时吊销会话
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -27,17 +28,20 @@ model User {
 }
 
 model AuthSession {
-  id         String   @id @default(cuid())
-  tokenHash  String   @unique
-  userId     String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  lastUsedAt DateTime @default(now())
+  id                  String    @id @default(cuid())
+  refreshTokenHash    String    @unique
+  refreshTokenVersion Int       @default(0)
+  userId              String
+  expiresAt           DateTime
+  revokedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  lastUsedAt          DateTime  @default(now())
 
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
+  @@index([revokedAt])
 }
 
 model Resume {
@@ -53,23 +57,23 @@ model Resume {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user            User? @relation(fields: [userId], references: [id], onDelete: Cascade)
-  analyses        ResumeAnalysis[]
-  jobMatches      JobMatchAnalysis[]
-  interviews      InterviewSession[]
-  chatSessions    ChatSession[]
+  user         User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyses     ResumeAnalysis[]
+  jobMatches   JobMatchAnalysis[]
+  interviews   InterviewSession[]
+  chatSessions ChatSession[]
 
   @@index([userId])
 }
 
 model ResumeAnalysis {
-  id        String   @id @default(cuid())
-  resumeId  String
-  score     Int
+  id         String   @id @default(cuid())
+  resumeId   String
+  score      Int
   resultJson Json
-  createdAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 
-  resume    Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
 
   @@index([resumeId])
 }
@@ -84,7 +88,7 @@ model ProjectOptimization {
   resultJson Json
   createdAt  DateTime @default(now())
 
-  user       User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -98,9 +102,9 @@ model JobDescription {
   source      String   @default("manual") // manual=用户保存，auto=匹配/面试临时创建
   createdAt   DateTime @default(now())
 
-  user        User? @relation(fields: [userId], references: [id], onDelete: Cascade)
-  matches     JobMatchAnalysis[]
-  interviews  InterviewSession[]
+  user         User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matches      JobMatchAnalysis[]
+  interviews   InterviewSession[]
   chatSessions ChatSession[]
 
   @@index([userId])
@@ -114,8 +118,8 @@ model JobMatchAnalysis {
   resultJson       Json
   createdAt        DateTime @default(now())
 
-  resume           Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-  jobDescription   JobDescription @relation(fields: [jobDescriptionId], references: [id], onDelete: Cascade)
+  resume         Resume         @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  jobDescription JobDescription @relation(fields: [jobDescriptionId], references: [id], onDelete: Cascade)
 
   @@index([resumeId])
   @@index([jobDescriptionId])
@@ -135,10 +139,10 @@ model InterviewSession {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  user             User? @relation(fields: [userId], references: [id], onDelete: Cascade)
-  resume           Resume? @relation(fields: [resumeId], references: [id], onDelete: SetNull)
-  jobDescription   JobDescription? @relation(fields: [jobDescriptionId], references: [id], onDelete: SetNull)
-  messages         InterviewMessage[]
+  user           User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume         Resume?            @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  jobDescription JobDescription?    @relation(fields: [jobDescriptionId], references: [id], onDelete: SetNull)
+  messages       InterviewMessage[]
 
   @@index([userId])
 }
@@ -151,7 +155,7 @@ model InterviewMessage {
   feedbackJson Json?
   createdAt    DateTime @default(now())
 
-  session      InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
 }
@@ -165,11 +169,11 @@ model ChatSession {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  user             User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
   // 删除简历/JD 不应连带删除聊天记录，故用 SetNull。
-  resume           Resume? @relation(fields: [resumeId], references: [id], onDelete: SetNull)
-  jobDescription   JobDescription? @relation(fields: [jobDescriptionId], references: [id], onDelete: SetNull)
-  messages         ChatMessage[]
+  resume         Resume?          @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  jobDescription JobDescription?  @relation(fields: [jobDescriptionId], references: [id], onDelete: SetNull)
+  messages       ChatMessage[]
 
   @@index([userId, updatedAt])
 }
@@ -181,7 +185,7 @@ model ChatMessage {
   content   String
   createdAt DateTime @default(now())
 
-  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
 }

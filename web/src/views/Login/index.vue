@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Eye, EyeOff, LockKeyhole, Mail, Sparkles, UserRound } from 'lucide-vue-next'
+import {
+  BriefcaseBusiness,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  Mail,
+  Sparkles,
+  UserRound,
+} from 'lucide-vue-next'
 import { login, register } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { notify } from '@/utils/notify'
@@ -12,6 +20,20 @@ const authStore = useAuthStore()
 const mode = ref<'login' | 'register'>('login')
 const loading = ref(false)
 const showPassword = ref(false)
+const PROFESSION_OTHER = '其他'
+const PROFESSION_OPTIONS = [
+  '前端开发工程师',
+  '后端开发工程师',
+  '全栈开发工程师',
+  '移动端开发工程师',
+  '测试开发工程师',
+  'DevOps / 运维开发工程师',
+  '数据开发工程师',
+  'AI / 算法工程师',
+  '产品经理',
+  '学生 / 应届生',
+  PROFESSION_OTHER,
+]
 
 const form = reactive({
   account: '',
@@ -19,6 +41,8 @@ const form = reactive({
   email: '',
   password: '',
   confirmPassword: '',
+  profession: '',
+  customProfession: '',
   remember: true,
 })
 
@@ -39,6 +63,13 @@ const passwordValid = computed(() =>
 const registerPasswordMatched = computed(
   () => !isRegister.value || form.password === form.confirmPassword,
 )
+const customProfessionVisible = computed(
+  () => isRegister.value && form.profession === PROFESSION_OTHER,
+)
+
+function resolveProfession() {
+  return (form.profession === PROFESSION_OTHER ? form.customProfession : form.profession).trim()
+}
 
 async function submit() {
   if (loading.value) return
@@ -74,6 +105,7 @@ async function submit() {
           username: form.username.trim(),
           email: form.email.trim(),
           password: form.password,
+          profession: resolveProfession() || undefined,
         })
       : await login({
           account: form.account.trim(),
@@ -94,6 +126,8 @@ function switchMode(nextMode: 'login' | 'register') {
   showPassword.value = false
   form.password = ''
   form.confirmPassword = ''
+  form.profession = ''
+  form.customProfession = ''
 }
 </script>
 
@@ -173,6 +207,32 @@ function switchMode(nextMode: 'login' | 'register') {
                 v-model="form.account"
                 autocomplete="username"
                 placeholder="请输入邮箱或用户名"
+              />
+            </div>
+          </label>
+
+          <label v-if="isRegister" class="auth-field">
+            <span>职业方向</span>
+            <div class="input-wrap">
+              <BriefcaseBusiness :size="21" />
+              <select v-model="form.profession" autocomplete="organization-title">
+                <option value="">暂不填写</option>
+                <option v-for="option in PROFESSION_OPTIONS" :key="option" :value="option">
+                  {{ option }}
+                </option>
+              </select>
+            </div>
+          </label>
+
+          <label v-if="customProfessionVisible" class="auth-field">
+            <span>自定义职业</span>
+            <div class="input-wrap">
+              <BriefcaseBusiness :size="21" />
+              <input
+                v-model="form.customProfession"
+                autocomplete="organization-title"
+                maxlength="40"
+                placeholder="例如：嵌入式开发工程师"
               />
             </div>
           </label>
@@ -602,7 +662,8 @@ function switchMode(nextMode: 'login' | 'register') {
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-.input-wrap input {
+.input-wrap input,
+.input-wrap select {
   min-width: 0;
   flex: 1;
   border: 0;
@@ -611,6 +672,11 @@ function switchMode(nextMode: 'login' | 'register') {
   color: #10204a;
   font-size: 14px;
   font-weight: 800;
+}
+
+.input-wrap select {
+  appearance: none;
+  cursor: pointer;
 }
 
 .input-wrap input::placeholder {

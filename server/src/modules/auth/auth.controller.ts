@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   Body,
   Controller,
@@ -6,14 +6,20 @@
   Patch,
   Post,
   Req,
+  Res,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 import { Throttle } from '@nestjs/throttler'
-import type { Request } from 'express'
-import { AuthService, extractBearerToken } from './auth.service'
+import type { CookieOptions, Request, Response } from 'express'
+import {
+  AuthService,
+  extractBearerToken,
+  extractCookieValue,
+  REFRESH_TOKEN_COOKIE,
+} from './auth.service'
 import type { AuthUserResponse } from './auth.types'
 import { CurrentUser } from './current-user.decorator'
 import { LoginDto } from './dto/login.dto'
@@ -32,15 +38,29 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto)
+  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
+    const result = await this.authService.register(dto)
+    setRefreshCookie(response, result.refreshToken, result.refreshExpiresAt)
+    return result.session
   }
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto)
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
+    const result = await this.authService.login(dto)
+    setRefreshCookie(response, result.refreshToken, result.refreshExpiresAt)
+    return result.session
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Post('refresh')
+  async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    const refreshToken = extractCookieValue(request.headers.cookie, REFRESH_TOKEN_COOKIE)
+    const result = await this.authService.refresh(refreshToken)
+    setRefreshCookie(response, result.refreshToken, result.refreshExpiresAt)
+    return result.session
   }
 
   @ApiBearerAuth()
@@ -73,9 +93,33 @@ export class AuthController {
     return this.authService.updateAvatar(user.id, file)
   }
 
-  @ApiBearerAuth()
+  @Public()
   @Post('logout')
-  logout(@Req() request: Request) {
-    return this.authService.logout(extractBearerToken(request.headers.authorization))
+  async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    const refreshToken = extractCookieValue(request.headers.cookie, REFRESH_TOKEN_COOKIE)
+    const accessToken = extractBearerToken(request.headers.authorization)
+    const result = await this.authService.logout(refreshToken, accessToken)
+    clearRefreshCookie(response)
+    return result
+  }
+}
+
+function setRefreshCookie(response: Response, token: string, expiresAt: Date) {
+  response.cookie(REFRESH_TOKEN_COOKIE, token, {
+    ...getRefreshCookieOptions(),
+    expires: expiresAt,
+  })
+}
+
+function clearRefreshCookie(response: Response) {
+  response.clearCookie(REFRESH_TOKEN_COOKIE, getRefreshCookieOptions())
+}
+
+function getRefreshCookieOptions(): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/api/auth',
   }
 }

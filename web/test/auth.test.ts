@@ -5,8 +5,8 @@ import { useAuthStore } from '../src/stores/auth'
 
 function makeSession(overrides: Partial<AuthSession> = {}): AuthSession {
   return {
-    token: 'tok_abc',
-    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    accessToken: 'access_abc',
+    accessTokenExpiresAt: new Date(Date.now() + 60_000).toISOString(),
     user: {
       id: 'u1',
       username: 'bob',
@@ -42,11 +42,11 @@ describe('useAuthStore', () => {
     const store = useAuthStore()
     store.setSession(makeSession(), true)
     expect(store.isAuthenticated).toBe(true)
-    expect(store.token).toBe('tok_abc')
+    expect(store.token).toBe('access_abc')
     expect(store.user?.email).toBe('bob@example.com')
   })
 
-  it('updateUser 只改用户、保留会话 token', () => {
+  it('updateUser 只改用户、保留 accessToken', () => {
     const store = useAuthStore()
     store.setSession(makeSession(), true)
     store.updateUser({
@@ -57,7 +57,7 @@ describe('useAuthStore', () => {
       status: 'active',
       createdAt: new Date().toISOString(),
     })
-    expect(store.token).toBe('tok_abc')
+    expect(store.token).toBe('access_abc')
     expect(store.user?.username).toBe('bob2')
     expect(store.user?.role).toBe('admin')
   })

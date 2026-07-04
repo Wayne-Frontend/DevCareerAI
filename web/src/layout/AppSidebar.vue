@@ -49,6 +49,11 @@ const mainMenuItems = computed(() =>
 
 const avatarLoadFailed = ref(false)
 const userName = computed(() => authStore.user?.username || authStore.user?.email || 'Dev 同学')
+const userSubtitle = computed(() => {
+  const profession = authStore.user?.profession?.trim()
+  if (profession) return profession
+  return authStore.user?.role === 'admin' ? '管理员' : '用户'
+})
 const avatarUrl = computed(() => resolveAssetUrl(authStore.user?.avatarUrl))
 
 watch(avatarUrl, () => {
@@ -95,7 +100,7 @@ watch(avatarUrl, () => {
       </span>
       <span class="user-copy">
         <strong>{{ userName }}</strong>
-        <small>高级软件工程师</small>
+        <small>{{ userSubtitle }}</small>
       </span>
       <ChevronRight :size="20" />
     </RouterLink>

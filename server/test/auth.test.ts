@@ -1,6 +1,11 @@
 import { equal, notEqual } from 'node:assert/strict'
 import { test } from 'node:test'
-import { extractBearerToken, hashPassword, verifyPassword } from '../src/modules/auth/auth.service'
+import {
+  extractBearerToken,
+  extractCookieValue,
+  hashPassword,
+  verifyPassword,
+} from '../src/modules/auth/auth.service'
 
 test('密码哈希可被正确校验', async () => {
   const hash = await hashPassword('secret123')
@@ -16,4 +21,16 @@ test('extractBearerToken 解析 Bearer 头', () => {
   equal(extractBearerToken('Bearer abc.def'), 'abc.def')
   equal(extractBearerToken('abc.def'), '')
   equal(extractBearerToken(undefined), '')
+})
+
+test('extractCookieValue 解析指定 Cookie', () => {
+  equal(
+    extractCookieValue(
+      'a=1; devcareer_refresh_token=session.secret; b=2',
+      'devcareer_refresh_token',
+    ),
+    'session.secret',
+  )
+  equal(extractCookieValue('a=1', 'devcareer_refresh_token'), '')
+  equal(extractCookieValue(undefined, 'devcareer_refresh_token'), '')
 })

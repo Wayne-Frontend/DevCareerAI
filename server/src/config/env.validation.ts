@@ -8,6 +8,8 @@ export function validateEnv(config: Record<string, unknown>) {
   const fastModel = readString(config.AI_MODEL_FAST)
   const qualityModel = readString(config.AI_MODEL_QUALITY)
   const port = readString(config.PORT)
+  const jwtAccessSecret = readString(config.JWT_ACCESS_SECRET)
+  const accessTokenTtlMinutes = readString(config.ACCESS_TOKEN_TTL_MINUTES)
 
   if (!databaseUrl) {
     errors.push('DATABASE_URL is required')
@@ -33,6 +35,17 @@ export function validateEnv(config: Record<string, unknown>) {
 
   if (port && (!Number.isInteger(Number(port)) || Number(port) <= 0 || Number(port) > 65535)) {
     errors.push('PORT must be an integer between 1 and 65535')
+  }
+
+  if (!jwtAccessSecret || jwtAccessSecret.length < 32) {
+    errors.push('JWT_ACCESS_SECRET is required and must be at least 32 characters')
+  }
+
+  if (
+    accessTokenTtlMinutes &&
+    (!Number.isInteger(Number(accessTokenTtlMinutes)) || Number(accessTokenTtlMinutes) <= 0)
+  ) {
+    errors.push('ACCESS_TOKEN_TTL_MINUTES must be a positive integer when provided')
   }
 
   if (errors.length > 0) {

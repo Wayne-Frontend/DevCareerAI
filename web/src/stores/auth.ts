@@ -14,7 +14,7 @@ export const useAuthStore = defineStore('auth', () => {
   const hydrated = ref(false)
 
   const user = computed(() => session.value?.user || null)
-  const token = computed(() => session.value?.token || '')
+  const token = computed(() => session.value?.accessToken || '')
   const isAuthenticated = computed(() => Boolean(token.value))
   const isAdmin = computed(() => user.value?.role === 'admin')
 
@@ -29,19 +29,17 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function updateUser(nextUser: AuthUser) {
-    if (!session.value) return
+    const storedSession = getStoredAuthSession()
+    if (!session.value && !storedSession) return
 
     session.value = {
-      ...session.value,
+      ...(storedSession || session.value!),
       user: nextUser,
     }
     updateStoredAuthUser(nextUser)
   }
 
-  // 应用启动时以服务端为准校验一次本地缓存的会话：
-  // - 有效 → 用最新 user 覆盖本地缓存（刷新头像/角色等）
-  // - 401（已失效/被吊销）→ 由 request 拦截器统一 clearSession 并跳登录
-  // - 其它错误（网络抖动/5xx）→ 保留乐观会话，不误踢用户
+  // 应用启动时以服务端为准校验一次本地会话；若 access token 过期，request 拦截器会先尝试 refresh。
   async function hydrate() {
     if (hydrated.value || !session.value) {
       hydrated.value = true
@@ -52,10 +50,19 @@ export const useAuthStore = defineStore('auth', () => {
       const nextUser = await getCurrentUser()
       updateUser(nextUser)
     } catch {
-      // 401 已由响应拦截器处理；其余错误静默忽略，维持当前会话
+      // 401 已由响应拦截器处理；其余错误静默忽略，维持当前会话。
     } finally {
       hydrated.value = true
     }
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('auth-session-refreshed', (event) => {
+      const nextSession = (event as CustomEvent<AuthSession>).detail
+      if (nextSession?.accessToken) {
+        session.value = nextSession
+      }
+    })
   }
 
   return {

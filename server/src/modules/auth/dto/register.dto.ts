@@ -1,4 +1,4 @@
-import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator'
+import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator'
 import type { RegisterPayload } from '@devcareer/shared'
 
 // implements 共享契约：契约改字段时此处编译期报错，防止前后端漂移。
@@ -19,4 +19,9 @@ export class RegisterDto implements RegisterPayload {
   @MaxLength(72)
   @Matches(/^(?=.*[a-zA-Z])(?=.*\d)/, { message: '密码需同时包含字母和数字' })
   password: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  profession?: string
 }

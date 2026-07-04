@@ -24,20 +24,20 @@ export class AuthGuard implements CanActivate {
     const request = context
       .switchToHttp()
       .getRequest<Request & { user?: unknown; authToken?: string }>()
-    const token = extractBearerToken(request.headers.authorization)
+    const accessToken = extractBearerToken(request.headers.authorization)
 
-    if (!token) {
+    if (!accessToken) {
       throw new UnauthorizedException('请先登录')
     }
 
-    const session = await this.authService.findSession(token)
+    const session = await this.authService.findSession(accessToken)
 
     if (!session) {
       throw new UnauthorizedException('登录状态已失效，请重新登录')
     }
 
     request.user = this.authService.toUserResponse(session.user)
-    request.authToken = token
+    request.authToken = accessToken
 
     return true
   }

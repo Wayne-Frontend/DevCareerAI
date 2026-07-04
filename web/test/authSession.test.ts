@@ -4,14 +4,16 @@ import {
   clearStoredAuthSession,
   getAuthToken,
   getStoredAuthSession,
+  replaceStoredAuthSession,
   setStoredAuthSession,
+  shouldRefreshAuthToken,
   updateStoredAuthUser,
 } from '../src/utils/authSession'
 
 function makeSession(overrides: Partial<AuthSession> = {}): AuthSession {
   return {
-    token: 'tok_123',
-    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    accessToken: 'access_123',
+    accessTokenExpiresAt: new Date(Date.now() + 60_000).toISOString(),
     user: {
       id: 'u1',
       username: 'alice',
@@ -37,31 +39,51 @@ afterEach(() => {
 describe('setStoredAuthSession / getStoredAuthSession', () => {
   it('remember=true 存 localStorage', () => {
     setStoredAuthSession(makeSession(), true)
-    expect(getStoredAuthSession()?.token).toBe('tok_123')
+    expect(getStoredAuthSession()?.accessToken).toBe('access_123')
     expect(localStorage.getItem('devcareer-auth-session')).toBeTruthy()
     expect(sessionStorage.getItem('devcareer-auth-session')).toBeNull()
   })
 
   it('remember=false 存 sessionStorage', () => {
     setStoredAuthSession(makeSession(), false)
-    expect(getStoredAuthSession()?.token).toBe('tok_123')
+    expect(getStoredAuthSession()?.accessToken).toBe('access_123')
     expect(sessionStorage.getItem('devcareer-auth-session')).toBeTruthy()
     expect(localStorage.getItem('devcareer-auth-session')).toBeNull()
   })
 
   it('切换存储位置时清掉另一处，避免残留', () => {
     setStoredAuthSession(makeSession(), true)
-    setStoredAuthSession(makeSession({ token: 'tok_new' }), false)
+    setStoredAuthSession(makeSession({ accessToken: 'access_new' }), false)
     expect(localStorage.getItem('devcareer-auth-session')).toBeNull()
-    expect(getAuthToken()).toBe('tok_new')
+    expect(getAuthToken()).toBe('access_new')
+  })
+
+  it('replaceStoredAuthSession 保持原存储位置', () => {
+    setStoredAuthSession(makeSession(), true)
+    replaceStoredAuthSession(makeSession({ accessToken: 'access_refreshed' }))
+    expect(localStorage.getItem('devcareer-auth-session')).toContain('access_refreshed')
+    expect(sessionStorage.getItem('devcareer-auth-session')).toBeNull()
   })
 })
 
 describe('过期与容错', () => {
-  it('过期会话读取时返回 null 并清除', () => {
+  it('access token 临近过期时应触发刷新判断', () => {
     setStoredAuthSession(
-      makeSession({ expiresAt: new Date(Date.now() - 1000).toISOString() }),
+      makeSession({ accessTokenExpiresAt: new Date(Date.now() + 1000).toISOString() }),
       true,
+    )
+    expect(shouldRefreshAuthToken()).toBe(true)
+    expect(getAuthToken()).toBe('access_123')
+  })
+
+  it('旧结构会返回 null 并清除', () => {
+    localStorage.setItem(
+      'devcareer-auth-session',
+      JSON.stringify({
+        token: 'old_token',
+        expiresAt: new Date().toISOString(),
+        user: { id: 'u1' },
+      }),
     )
     expect(getStoredAuthSession()).toBeNull()
     expect(localStorage.getItem('devcareer-auth-session')).toBeNull()
@@ -79,7 +101,7 @@ describe('过期与容错', () => {
 })
 
 describe('updateStoredAuthUser', () => {
-  it('更新用户信息但保留 token（localStorage）', () => {
+  it('更新用户信息但保留 accessToken（localStorage）', () => {
     setStoredAuthSession(makeSession(), true)
     updateStoredAuthUser({
       id: 'u1',
@@ -90,7 +112,7 @@ describe('updateStoredAuthUser', () => {
       createdAt: new Date().toISOString(),
     })
     const stored = getStoredAuthSession()
-    expect(stored?.token).toBe('tok_123')
+    expect(stored?.accessToken).toBe('access_123')
     expect(stored?.user.username).toBe('alice2')
     expect(stored?.user.role).toBe('admin')
   })
