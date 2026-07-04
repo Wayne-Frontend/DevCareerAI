@@ -1,0 +1,51 @@
+# 生产部署编排：web(nginx) 对外提供 80 端口并反代 /api 与 /uploads 到 server。
+# 使用前先复制 server/.env.example 为 .env 并填好必填项（见 docs/deployment.md）。
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # SQLite 文件放在 volume 中持久化
+      DATABASE_URL: file:/data/devcareer.db
+      PORT: '3000'
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?请在 .env 中配置至少 32 位的随机密钥}
+      ACCESS_TOKEN_TTL_MINUTES: ${ACCESS_TOKEN_TTL_MINUTES:-15}
+      AI_API_KEY: ${AI_API_KEY:?请在 .env 中配置 AI 服务的 API Key}
+      AI_BASE_URL: ${AI_BASE_URL:?请在 .env 中配置 AI 服务地址}
+      AI_MODEL_FAST: ${AI_MODEL_FAST:?请在 .env 中配置 fast 模型}
+      AI_MODEL_QUALITY: ${AI_MODEL_QUALITY:?请在 .env 中配置 quality 模型}
+      AI_SEND_THINKING: ${AI_SEND_THINKING:-false}
+      # 同源部署（nginx 反代）无需配置 CORS_ORIGIN；跨域部署时在 .env 中设置
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+    volumes:
+      - server-data:/data
+      - server-uploads:/app/server/uploads
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/api/auth/me').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-8080}:80'
+    depends_on:
+      - server
+
+volumes:
+  server-data:
+  server-uploads:

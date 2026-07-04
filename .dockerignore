@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.github
+.husky
+.vscode
+.claude
+.agents
+docs
+server/prisma/dev.db*
+server/uploads
+*.md
+!packages/**/*.md
