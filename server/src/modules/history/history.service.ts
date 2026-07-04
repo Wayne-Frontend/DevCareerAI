@@ -53,20 +53,24 @@ export class HistoryService {
     return record
   }
 
+  // id 在四类记录中唯一（均为 cuid）：事务内逐类尝试、命中即止，保证原子性且平均只查一半的表。
+  // 归属校验统一走 resume/userId 单侧：即使出现 JD 归属异常的脏数据，简历所有者也应能删除自己的分析记录。
   async remove(id: string, userId: string) {
-    const [resume, project, job, interview] = await Promise.all([
-      this.prisma.resumeAnalysis.deleteMany({ where: { id, resume: { userId } } }),
-      this.prisma.projectOptimization.deleteMany({ where: { id, userId } }),
-      this.prisma.jobMatchAnalysis.deleteMany({
-        where: { id, resume: { userId }, jobDescription: { userId } },
-      }),
-      this.prisma.interviewSession.deleteMany({ where: { id, userId } }),
-    ])
+    const success = await this.prisma.$transaction(async (tx) => {
+      const resume = await tx.resumeAnalysis.deleteMany({ where: { id, resume: { userId } } })
+      if (resume.count > 0) return true
 
-    return {
-      id,
-      success: resume.count + project.count + job.count + interview.count > 0,
-    }
+      const project = await tx.projectOptimization.deleteMany({ where: { id, userId } })
+      if (project.count > 0) return true
+
+      const job = await tx.jobMatchAnalysis.deleteMany({ where: { id, resume: { userId } } })
+      if (job.count > 0) return true
+
+      const interview = await tx.interviewSession.deleteMany({ where: { id, userId } })
+      return interview.count > 0
+    })
+
+    return { id, success }
   }
 
   private async findByType(type: HistoryType, userId: string): Promise<HistoryRecordSummary[]> {
