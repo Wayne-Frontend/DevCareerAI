@@ -3,6 +3,7 @@ import { Prisma, Resume } from '@prisma/client'
 import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
 import { clampScore, toStringList } from '../../common/utils/normalize.util'
+import { applyStrictJsonRetry } from '../../common/utils/ai-retry.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
 import { stableStringify } from '../../common/utils/stable-json.util'
 import { AiCacheService, type AiGeneration } from '../ai/ai-cache.service'
@@ -113,9 +114,9 @@ export class JobService {
       maxTokens: 2400,
     }
 
-    const { result, cached, status } = await this.aiCacheService.resolve<JobMatchResult>(
-      { feature: MATCH_FEATURE, model, version: MATCH_VERSION, payload },
-      () => generate(payload),
+    const { result, cached, status, retried } = await this.aiCacheService.resolve<JobMatchResult>(
+      { feature: MATCH_FEATURE, model, version: MATCH_VERSION, userId, payload },
+      (attempt) => generate(applyStrictJsonRetry(payload, attempt)),
     )
 
     // 缓存命中说明输入未变、结果与此前完全一致：复用同一简历+JD 下的已有记录，避免重复历史。
@@ -130,7 +131,7 @@ export class JobService {
       matchScore: result.matchScore,
       result,
       cached,
-      meta: { cached, status },
+      meta: { cached, status, retried },
     }
   }
 

@@ -58,6 +58,7 @@ export type AiResultStatus = 'success' | 'parse_error'
 export interface AiResponseMeta {
   cached?: boolean
   status: AiResultStatus
+  retried?: boolean
 }
 
 export interface ResumeAnalysisResult {

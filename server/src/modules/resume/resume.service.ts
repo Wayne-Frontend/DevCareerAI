@@ -3,6 +3,7 @@ import { Prisma, Resume } from '@prisma/client'
 import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
 import { clampScore, toStringList } from '../../common/utils/normalize.util'
+import { applyStrictJsonRetry } from '../../common/utils/ai-retry.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
 import { stableStringify } from '../../common/utils/stable-json.util'
 import { AiCacheService, type AiGeneration } from '../ai/ai-cache.service'
@@ -86,19 +87,20 @@ export class ResumeService {
   async analyze(id: string, userId: string) {
     const resume = await this.findResume(id, userId)
 
-    return this.produceAnalysis(resume, (payload) => this.generateWithChat(payload, userId))
+    return this.produceAnalysis(resume, userId, (payload) => this.generateWithChat(payload, userId))
   }
 
   async analyzeStream(id: string, userId: string, callbacks: AiStreamCallbacks = {}) {
     const resume = await this.findResume(id, userId)
 
-    return this.produceAnalysis(resume, (payload) =>
+    return this.produceAnalysis(resume, userId, (payload) =>
       this.generateWithStream(payload, callbacks, userId),
     )
   }
 
   private async produceAnalysis(
     resume: Resume,
+    userId: string,
     generate: (payload: AnalysisPayload) => Promise<AiGeneration<ResumeAnalysisResult>>,
   ) {
     const model = this.aiService.getModel('quality')
@@ -109,10 +111,11 @@ export class ResumeService {
       maxTokens: 2600,
     }
 
-    const { result, cached, status } = await this.aiCacheService.resolve<ResumeAnalysisResult>(
-      { feature: ANALYSIS_FEATURE, model, version: ANALYSIS_VERSION, payload },
-      () => generate(payload),
-    )
+    const { result, cached, status, retried } =
+      await this.aiCacheService.resolve<ResumeAnalysisResult>(
+        { feature: ANALYSIS_FEATURE, model, version: ANALYSIS_VERSION, userId, payload },
+        (attempt) => generate(applyStrictJsonRetry(payload, attempt)),
+      )
     // 缓存命中说明输入未变、结果与此前完全一致：复用已有记录，避免重复点击刷出成堆相同历史。
     const reusableId = cached ? await this.findReusableAnalysisId(resume.id, result) : null
     const analysis = reusableId ? { id: reusableId } : await this.createAnalysis(resume.id, result)
@@ -122,7 +125,7 @@ export class ResumeService {
       score: result.score,
       result,
       cached,
-      meta: { cached, status },
+      meta: { cached, status, retried },
     }
   }
 

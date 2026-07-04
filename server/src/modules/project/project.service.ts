@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { getAiResultStatus } from '../../common/utils/ai-result-status.util'
 import { safeParseJson } from '../../common/utils/json-response.util'
 import { toStringList } from '../../common/utils/normalize.util'
+import { applyStrictJsonRetry } from '../../common/utils/ai-retry.util'
 import { AI_TEXT_LIMITS, limitTextForAi } from '../../common/utils/text-limit.util'
 import { stableStringify } from '../../common/utils/stable-json.util'
 import { AiCacheService, type AiGeneration } from '../ai/ai-cache.service'
@@ -91,10 +92,11 @@ export class ProjectService {
       maxTokens: 2400,
     }
 
-    const { result, cached, status } = await this.aiCacheService.resolve<ProjectOptimizationResult>(
-      { feature: OPTIMIZE_FEATURE, model, version: OPTIMIZE_VERSION, payload },
-      () => generate(payload),
-    )
+    const { result, cached, status, retried } =
+      await this.aiCacheService.resolve<ProjectOptimizationResult>(
+        { feature: OPTIMIZE_FEATURE, model, version: OPTIMIZE_VERSION, userId, payload },
+        (attempt) => generate(applyStrictJsonRetry(payload, attempt)),
+      )
 
     // 缓存命中说明输入未变、结果与此前完全一致：复用该用户已有记录，避免重复历史。
     if (!cached || !(await this.hasReusableOptimization(userId, result))) {
@@ -104,7 +106,7 @@ export class ProjectService {
     return {
       result,
       cached,
-      meta: { cached, status },
+      meta: { cached, status, retried },
     }
   }
 
