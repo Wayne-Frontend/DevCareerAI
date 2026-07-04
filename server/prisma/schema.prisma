@@ -16,6 +16,8 @@ model User {
   passwordHash String
   role         String   @default("user") // 'user' | 'admin'，SQLite 不支持原生 enum，用字符串 + 应用层约束
   status       String   @default("active") // 'active' | 'disabled'，disabled 禁止登录并即时吊销会话
+  // 管理员重置密码后置为 true：临时密码为管理员可见，强制用户改密后才能使用其他功能
+  mustChangePassword Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -134,7 +136,7 @@ model InterviewSession {
   targetRole       String?
   interviewType    String
   difficulty       String
-  status           String   @default("ongoing")
+  status           String   @default("ongoing") // 'ongoing' | 'summarizing' | 'finished'，summarizing 为总结生成中的过渡态
   summaryJson      Json?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -153,11 +155,14 @@ model InterviewMessage {
   role         String
   content      String
   feedbackJson Json?
+  // 会话内单调递增的消息序号，保证排序稳定；历史数据为 0，靠 createdAt 兜底。
+  seq          Int      @default(0)
   createdAt    DateTime @default(now())
 
   session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
+  @@index([sessionId, seq])
 }
 
 model ChatSession {
@@ -215,6 +220,8 @@ model AiUsageLog {
   promptTokens     Int      @default(0)
   completionTokens Int      @default(0)
   totalTokens      Int      @default(0)
+  // 'reported' = AI 服务上报的精确值；'estimated' = usage 丢失（如流式断连）时按文本长度估算的兜底值。
+  usageSource      String   @default("reported")
   createdAt        DateTime @default(now())
 
   @@index([userId])
