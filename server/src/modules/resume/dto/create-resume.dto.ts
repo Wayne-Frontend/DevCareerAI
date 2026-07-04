@@ -15,6 +15,16 @@ export class CreateResumeDto implements ResumePayload {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
+  fileName?: string
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['pdf', 'docx', 'txt', 'md'])
+  fileType?: string
+
+  @IsOptional()
+  @IsString()
   @MaxLength(80)
   targetRole?: string
 

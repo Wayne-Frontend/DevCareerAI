@@ -3,6 +3,8 @@ import type { AiResponseMeta } from './common'
 export interface ResumePayload {
   title: string
   content: string
+  fileName?: string
+  fileType?: string
   targetRole?: string
   experienceLevel?: string
 }
@@ -11,8 +13,6 @@ export type UpdateResumePayload = Partial<ResumePayload>
 
 export interface ResumeRecord extends ResumePayload {
   id: string
-  fileName?: string
-  fileType?: string
   createdAt?: string
   updatedAt?: string
 }

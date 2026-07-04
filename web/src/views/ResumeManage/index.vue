@@ -43,6 +43,8 @@ const resumes = ref<ResumeRecord[]>([])
 const form = reactive<ResumePayload>({
   title: '',
   content: '',
+  fileName: '',
+  fileType: '',
   targetRole: '',
   experienceLevel: '',
 })
@@ -86,6 +88,8 @@ async function loadResumes(preferredId = selectedId.value) {
 function fillForm(resume: ResumeRecord | null) {
   form.title = resume?.title || ''
   form.content = resume?.content || ''
+  form.fileName = resume?.fileName || ''
+  form.fileType = resume?.fileType || ''
   form.targetRole = resume?.targetRole || ''
   form.experienceLevel = resume?.experienceLevel || ''
 }
@@ -142,6 +146,8 @@ async function onFileChange(event: Event) {
     const parsed = await uploadResume(file)
     form.title ||= parsed.fileName.replace(/\.[^.]+$/, '')
     form.content = parsed.content
+    form.fileName = parsed.fileName
+    form.fileType = parsed.fileType
     notify(parsed.truncated ? '文件已解析，内容较长，已自动截断' : '文件已解析', 'success')
   } catch {
     uploadError.value = '文件解析失败，请确认格式为 PDF、DOCX、TXT 或 MD 后重试。'
@@ -164,6 +170,8 @@ async function saveResume() {
     const payload = {
       title: form.title.trim(),
       content: form.content.trim(),
+      fileName: form.fileName?.trim() || undefined,
+      fileType: form.fileType?.trim() || undefined,
       targetRole: form.targetRole?.trim() || '',
       experienceLevel: form.experienceLevel || '',
     }

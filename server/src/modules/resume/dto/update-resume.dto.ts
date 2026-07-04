@@ -17,6 +17,16 @@ export class UpdateResumeDto implements UpdateResumePayload {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
+  fileName?: string
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['pdf', 'docx', 'txt', 'md'])
+  fileType?: string
+
+  @IsOptional()
+  @IsString()
   @MaxLength(80)
   targetRole?: string
 

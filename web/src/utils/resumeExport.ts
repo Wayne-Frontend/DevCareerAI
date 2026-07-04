@@ -1,4 +1,5 @@
 import type { ResumeRecord } from '@/types/resume'
+import MarkdownIt from 'markdown-it'
 import { notify } from './notify'
 
 const EXPERIENCE_LABELS: Record<string, string> = {
@@ -7,6 +8,8 @@ const EXPERIENCE_LABELS: Record<string, string> = {
   '3-5': '3-5 年',
   '5+': '5 年以上',
 }
+
+const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
 
 function experienceLabel(value?: string) {
   if (!value) return ''
@@ -64,10 +67,14 @@ function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+function renderResumeMarkdown(content: string): string {
+  return md.render(content || '')
+}
+
 /**
  * 打开一个自包含的打印窗口并触发浏览器打印。用户在打印对话框里选“另存为 PDF”即可得到
  * 文字可选、中文原生的 PDF——零依赖，避免 jsPDF 截图式的字体与分页坑。
- * 正文经过 HTML 转义后以 pre-wrap 原样呈现，保真换行与空格。
+ * 正文按 Markdown 渲染；markdown-it 禁用 html，可避免用户简历里的 HTML 被直接执行。
  */
 export function printResume(resume: ResumeRecord): void {
   const printWindow = window.open('', '_blank')
@@ -98,7 +105,95 @@ export function printResume(resume: ResumeRecord): void {
   .resume-title { margin: 0 0 6px; font-size: 24px; font-weight: 800; color: #0f172a; }
   .resume-meta { margin: 0 0 14px; font-size: 13px; color: #64748b; }
   .resume-divider { border: none; border-top: 1px solid #e2e8f0; margin: 0 0 18px; }
-  .resume-body { white-space: pre-wrap; word-break: break-word; font-size: 14px; }
+  .resume-body { word-break: break-word; font-size: 14px; }
+  .resume-body > :first-child { margin-top: 0; }
+  .resume-body > :last-child { margin-bottom: 0; }
+  .resume-body p { margin: 6px 0; }
+  .resume-body h1,
+  .resume-body h2,
+  .resume-body h3,
+  .resume-body h4 {
+    break-after: avoid;
+    margin: 18px 0 8px;
+    color: #0f172a;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+  .resume-body h1 { font-size: 21px; }
+  .resume-body h2 {
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
+    font-size: 17px;
+  }
+  .resume-body h3 { font-size: 15px; }
+  .resume-body h4 { font-size: 14px; }
+  .resume-body ul,
+  .resume-body ol {
+    margin: 7px 0;
+    padding-left: 22px;
+  }
+  .resume-body li {
+    margin: 3px 0;
+    break-inside: avoid;
+  }
+  .resume-body li > p { margin: 0; }
+  .resume-body strong {
+    color: #111827;
+    font-weight: 800;
+  }
+  .resume-body a {
+    color: #2563eb;
+    text-decoration: none;
+  }
+  .resume-body blockquote {
+    margin: 10px 0;
+    border-left: 3px solid #cbd5e1;
+    padding-left: 12px;
+    color: #475569;
+  }
+  .resume-body code {
+    border-radius: 4px;
+    background: #f1f5f9;
+    padding: 1px 5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: #334155;
+  }
+  .resume-body pre {
+    margin: 10px 0;
+    overflow-x: auto;
+    border-radius: 8px;
+    background: #0f172a;
+    padding: 12px;
+  }
+  .resume-body pre code {
+    background: transparent;
+    padding: 0;
+    color: #e2e8f0;
+  }
+  .resume-body table {
+    width: 100%;
+    margin: 10px 0;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .resume-body th,
+  .resume-body td {
+    border: 1px solid #cbd5e1;
+    padding: 6px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .resume-body th {
+    background: #f8fafc;
+    color: #0f172a;
+    font-weight: 800;
+  }
+  .resume-body hr {
+    margin: 14px 0;
+    border: 0;
+    border-top: 1px solid #e2e8f0;
+  }
   @media print { body { padding: 0; } }
 </style>
 </head>
@@ -106,7 +201,7 @@ export function printResume(resume: ResumeRecord): void {
   <h1 class="resume-title">${escapeHtml(resume.title || '未命名简历')}</h1>
   ${meta.length ? `<p class="resume-meta">${escapeHtml(meta.join(' ｜ '))}</p>` : ''}
   <hr class="resume-divider" />
-  <div class="resume-body">${escapeHtml(resume.content ?? '')}</div>
+  <div class="resume-body">${renderResumeMarkdown(resume.content ?? '')}</div>
   <script>
     window.onload = function () {
       window.focus()
