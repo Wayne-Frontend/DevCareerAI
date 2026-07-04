@@ -50,8 +50,8 @@ cp server/.env.example server/.env
 # 并填入你的 AI_API_KEY 等配置。连接串格式：
 #   postgresql://用户:密码@localhost:5432/devcareer
 
-# 3. 初始化数据库：按顺序执行所有迁移脚本，在库里建出全部表
-npm run prisma:migrate
+# 3. 初始化数据库：按已有迁移顺序建出全部表（纯建库用 deploy，无需 shadow database）
+npm --prefix server run prisma:deploy
 
 # 4. 启动
 npm run dev
@@ -150,11 +150,11 @@ npm run prisma:generate
 
 ## 五、速查表
 
-| 场景                  | 命令（项目根目录）                                                                   |
-| --------------------- | ------------------------------------------------------------------------------------ |
-| 新设备首次搭建        | 装 PostgreSQL 并建库 → `npm install` → 建 `server/.env` → `npm run prisma:migrate`   |
-| pull 到别人的结构改动 | `npm run prisma:migrate`                                                             |
-| 自己要改表结构        | 改 `schema.prisma` → `cd server && npx prisma migrate dev --name xxx` → 提交迁移文件 |
-| 本机库坏了/对不上     | `cd server && npx prisma migrate reset`（清空本机数据）                              |
-| 类型/字段提示不对     | `npm run prisma:generate`                                                            |
-| 数据库连不上          | 确认本机 PostgreSQL 服务在运行（见症状 E）                                           |
+| 场景                  | 命令（项目根目录）                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------- |
+| 新设备首次搭建        | 装 PostgreSQL 并建库 → `npm install` → 建 `server/.env` → `npm --prefix server run prisma:deploy` |
+| pull 到别人的结构改动 | `npm run prisma:migrate`                                                                          |
+| 自己要改表结构        | 改 `schema.prisma` → `cd server && npx prisma migrate dev --name xxx` → 提交迁移文件              |
+| 本机库坏了/对不上     | `cd server && npx prisma migrate reset`（清空本机数据）                                           |
+| 类型/字段提示不对     | `npm run prisma:generate`                                                                         |
+| 数据库连不上          | 确认本机 PostgreSQL 服务在运行（见症状 E）                                                        |

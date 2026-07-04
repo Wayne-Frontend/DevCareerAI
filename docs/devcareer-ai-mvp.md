@@ -140,4 +140,4 @@ DevCareer AI 是一个面向程序员的 PC 端 Web 应用，定位为 AI 简历
 
 ---
 
-技术栈、目录结构、接口、数据模型、环境变量与运行方式见 [README.md](./README.md)。
+技术栈、目录结构、数据模型、环境变量与运行方式见 [根目录 README.md](../README.md)；接口列表与在线调试见 Swagger UI（本地 `http://localhost:3000/api/docs`）。

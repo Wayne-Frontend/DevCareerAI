@@ -6,7 +6,7 @@
 
 - 前端：Vue 3、Vite、TypeScript、Vue Router、Pinia、Axios、ECharts、markdown-it、lucide-vue-next、Tailwind CSS v4
 - 后端：NestJS 10、TypeScript、Prisma 6、PostgreSQL、class-validator / class-transformer、multer、pdf-parse、mammoth、axios
-- AI：后端 `AiService` 封装 DeepSeek Chat Completions API
+- AI：后端 `AiService` 封装 OpenAI 兼容的 Chat Completions API（可对接 DeepSeek、OpenAI、Moonshot、本地 vLLM 等）
 
 ## 目录结构
 
@@ -77,6 +77,11 @@ VITE_API_BASE_URL=/api
 DATABASE_URL="postgresql://postgres:your_password@localhost:5432/devcareer"
 PORT=3000
 
+# access token 签名密钥，至少 32 位随机字符；refresh token 仅通过 HttpOnly Cookie 下发
+JWT_ACCESS_SECRET="replace_with_at_least_32_random_chars"
+# access token 有效期（分钟），可选，默认 15
+ACCESS_TOKEN_TTL_MINUTES=15
+
 AI_API_KEY="your_api_key_here"
 AI_BASE_URL="https://api.openai.com/v1"
 AI_MODEL_FAST="gpt-4o-mini"
@@ -86,7 +91,7 @@ AI_SEND_THINKING="false"
 
 换成 DeepSeek 时把 `AI_BASE_URL` 设为 `https://api.deepseek.com`、模型改成对应名称，并把 `AI_SEND_THINKING` 设为 `true`（发送 DeepSeek 的 `thinking` 参数；纯 OpenAI 端点不识别该字段，保持 `false`）。
 
-真实 API Key 只放在 `server/.env`，不要写入前端或提交到 Git。启动时会校验：`DATABASE_URL` 必填；`AI_API_KEY` 必填且不能是占位值；`AI_BASE_URL` 必填且为合法 http(s) 地址；快、慢模型分别由 `AI_MODEL_FAST` / `AI_MODEL_QUALITY` 提供；`PORT` 若填写需为 1–65535。不内置任何厂商的默认地址或模型，地址与模型必须显式配置。
+真实 API Key 只放在 `server/.env`，不要写入前端或提交到 Git。启动时会校验：`DATABASE_URL` 必填；`AI_API_KEY` 必填且不能是占位值；`AI_BASE_URL` 必填且为合法 http(s) 地址；快、慢模型分别由 `AI_MODEL_FAST` / `AI_MODEL_QUALITY` 提供；`JWT_ACCESS_SECRET` 必填且至少 32 位；`PORT`、`ACCESS_TOKEN_TTL_MINUTES` 若填写需为合法正整数（`PORT` 限 1–65535）；`CORS_ORIGIN` 若填写需为合法 origin（跨域部署用，见 `docs/deployment.md`）。不内置任何厂商的默认地址或模型，地址与模型必须显式配置。
 
 ## 安装与运行
 
@@ -139,27 +144,28 @@ npm run check       # 依次执行 typecheck、lint、test、build
 
 ## 鉴权
 
-除注册、登录外，所有接口都需要请求头 `Authorization: Bearer <token>`。
+除注册、登录、刷新、登出外，所有接口都需要请求头 `Authorization: Bearer <accessToken>`。采用 access token + refresh token 双令牌：
 
-- 注册 / 登录成功返回 `{ token, expiresAt, user }`。
-- token 为随机 32 字节字符串，数据库只存其 SHA-256 哈希。
-- 会话默认 1 天，登录时 `remember=true` 为 30 天。
-- 密码用 scrypt 加盐哈希存储。
-- `AuthGuard` 为全局守卫，`@Public()` 放行注册、登录。token 无效或过期返回 401，前端会清除本地会话并跳转登录页。
-- 用户有 `role` 字段（`user` / `admin`）。空系统里第一个注册的用户自动成为管理员，此后注册均为普通用户。`@Roles('admin')` 用于限制管理员接口（如 AI 用量统计、用户管理）。
-- 用户有 `status` 字段（`active` / `disabled`）。被封禁（`disabled`）的用户：登录时验密通过也会被拒（返回 403），且已存在的会话在下一次鉴权时即失效（`findSession` 直接判空）。封禁操作同时会删除该用户所有会话，做到即时踢下线。
+- **access token**：短期 JWT（默认 15 分钟，`ACCESS_TOKEN_TTL_MINUTES` 可调），用 `JWT_ACCESS_SECRET` 签名，**只保存在前端内存**中，不写入 localStorage / sessionStorage，避免 XSS 直接读取。
+- **refresh token**：随机串，仅通过 `path=/api/auth` 的 HttpOnly Cookie 下发；数据库只存其 SHA-256 哈希。刷新时轮换（旧 token 失效），若检测到已轮换的 refresh token 被再次使用，会吊销整个会话。
+- 注册 / 登录 / 刷新成功返回 `{ accessToken, accessTokenExpiresAt, user }`，refresh token 通过 `Set-Cookie` 下发。
+- access token 过期时，前端凭 refresh cookie 静默换取新 token（`POST /api/auth/refresh`），失败才清本地会话并跳转登录页。
+- 密码用 scrypt 加盐哈希存储，校验用 `timingSafeEqual` 防时序攻击。
+- refresh 会话默认 1 天，登录勾选 `remember=true` 为 30 天；会话校验按 10 分钟节流更新 `lastUsedAt`。过期时间在创建会话时确定，当前不做滑动续期。
+- `AuthGuard` 为全局守卫，`@Public()` 放行注册、登录、刷新、登出；token 无效或过期返回 401。
+- 用户有 `role`（`user` / `admin`）。空系统里第一个注册的用户自动成为管理员，此后注册均为普通用户。`@Roles('admin')` 用于限制管理员接口（如 AI 用量统计、用户管理）。
+- 用户有 `status`（`active` / `disabled`）。被封禁（`disabled`）的用户：登录时验密通过也会被拒（返回 403），已存在的会话在下一次鉴权时即失效（`findSession` 直接判空）；封禁操作同时删除该用户所有会话，做到即时踢下线。
+- 管理员重置某用户密码后，该用户 `mustChangePassword` 置为 `true`：登录后必须先改密（`PATCH /api/auth/password`），改密前除「改密 / 查询自身 / 登出」外的接口返回 403。
 
-用户对象字段：`id`、`username`、`email`、`avatarUrl`、`role`、`status`、`createdAt`。
-
-会话校验时按 10 分钟节流更新 `lastUsedAt`，避免每个请求都写库。过期时间在创建会话时确定，当前不做滑动续期。
+用户对象字段：`id`、`username`、`email`、`profession`、`avatarUrl`、`role`、`status`、`mustChangePassword`、`createdAt`。
 
 ## 限流
 
-全局接入 `@nestjs/throttler`，基础限制每分钟 60 次，AI 生成类接口（简历诊断、项目优化、岗位匹配、模拟面试）每分钟 10 次。`UserThrottlerGuard` 按登录用户 id 计数，未登录接口退回按 IP；该守卫排在 `AuthGuard` 之后。计数为内存存储，重启清零、多实例不共享。
+全局接入 `@nestjs/throttler`，基础限制每分钟 60 次，AI 生成类接口（简历诊断、项目优化、岗位匹配、模拟面试）每分钟 10 次，登录 / 注册 / 改密等敏感接口按更严格的每分钟 5 次限流。`UserThrottlerGuard` 按登录用户 id 计数，未登录接口退回按 IP；该守卫排在 `AuthGuard` 之后。计数为内存存储，重启清零、多实例不共享。
 
 ## 定时清理
 
-`MaintenanceService` 通过 `@nestjs/schedule` 在启动时及每天凌晨 3 点执行清理：删除 `AiCache`、`AuthSession` 中已过期的行，以及无引用的 `auto` 简历 / JD（创建超过 24 小时且没有任何匹配、面试、对话关联）。启动时的清理失败只记日志、不阻断服务启动。
+`MaintenanceService` 通过 `@nestjs/schedule` 在启动时及每天凌晨 3 点执行清理：删除 `AiCache`、`AuthSession` 中已过期的行，以及无引用的 `auto` 简历 / JD（创建超过 24 小时且没有任何匹配、面试、对话关联），并把卡在 `summarizing` 过渡态超时的面试会话回滚为 `ongoing`。启动时的清理失败只记日志、不阻断服务启动。
 
 ## AI 服务
 
@@ -180,7 +186,7 @@ npm run check       # 依次执行 typecheck、lint、test、build
 
 ### 结果缓存
 
-`AiCacheService` 缓存 AI 结果，缓存键为 `feature:model:version:promptHash`，`promptHash` 是对调用参数稳定序列化后的 SHA-256，TTL 默认 7 天。每个功能带独立版本号（如 `resume-analysis-v2`），Prompt 升级改版本号即可整体失效。流式与非流式接口通过 `AiCacheService.resolve()` 共用同一份缓存：命中直接返回，未命中才调用模型并写入；只有解析成功（合法 JSON）的结果才会写缓存。
+`AiCacheService` 缓存 AI 结果，缓存键为 `feature:model:version:userId:promptHash`——**按用户隔离**（AI 结果是个性化内容，即使参数相同也不跨用户共享），`promptHash` 是对调用参数稳定序列化后的 SHA-256，TTL 默认 7 天（对话点评类结果用更短的 TTL）。每个功能带独立版本号（如 `resume-analysis-v3`），Prompt 或输出结构升级时改版本号即可整体失效旧缓存。流式与非流式接口通过 `AiCacheService.resolve()` 共用同一份缓存：命中直接返回，未命中才调用模型并写入；只有解析成功（合法 JSON）的结果才会写缓存。
 
 ### 流式输出（SSE）
 
@@ -190,14 +196,14 @@ npm run check       # 依次执行 typecheck、lint、test、build
 
 Prisma + PostgreSQL，主要表：
 
-- `User`：账号，`role` 为 `user` / `admin`，`status` 为 `active` / `disabled`（封禁后禁止登录）
-- `AuthSession`：登录会话，存 token 哈希与过期时间
+- `User`：账号，`role` 为 `user` / `admin`，`status` 为 `active` / `disabled`（封禁后禁止登录），`mustChangePassword` 标记管理员重置密码后需强制改密
+- `AuthSession`：登录会话，存 refresh token 哈希、版本号与过期时间
 - `Resume`：简历，归属 `userId`；`source` 为 `manual`（用户保存）或 `auto`（匹配/面试按文本临时创建），列表只展示 `manual`
 - `ResumeAnalysis`：简历诊断记录
 - `ProjectOptimization`：项目优化记录
 - `JobDescription`：岗位 JD，同样有 `manual` / `auto` 的 `source`，列表只展示 `manual`
 - `JobMatchAnalysis`：岗位匹配记录
-- `InterviewSession`：面试会话，状态 `ongoing` / `finished`
+- `InterviewSession`：面试会话，状态 `ongoing` / `summarizing` / `finished`（`summarizing` 为生成总结中的过渡态）
 - `InterviewMessage`：面试消息，`role` 为 `ai` / `user`
 - `ChatSession`：职业顾问对话会话，可关联一份简历和一份 JD 作为上下文
 - `ChatMessage`：对话消息，`role` 为 `ai` / `user`
@@ -206,129 +212,14 @@ Prisma + PostgreSQL，主要表：
 
 无引用的 `auto` 简历 / JD（创建超过 24 小时且没有任何匹配、面试、对话记录关联）由 `MaintenanceService` 定时清理。完整字段见 `server/prisma/schema.prisma`。
 
-## 接口
+## 接口文档
 
-前缀均为 `/api`，除注册、登录外都需登录。AI 类接口结果外层带 `meta`：`status` 为 `success` 或 `parse_error`，`cached` 表示是否命中缓存（流式与非流式都会返回）。AI 输出解析失败时后端把原文放入降级字段返回，前端仍可正常渲染。
+所有接口前缀均为 `/api`，除注册、登录、刷新、登出外都需登录。完整的接口列表、请求 / 响应结构，以及在线「Try it out」调试，见 Swagger UI：
 
-### 账号
+- 本地启动后端后访问 `http://localhost:3000/api/docs`（仅非生产环境开放，生产环境关闭以免暴露 API 结构）。
+- 请求 / 响应的 TypeScript 类型定义见 `packages/shared`（前后端共享同一份契约）。
 
-```
-POST   /api/auth/register     注册（公开）
-POST   /api/auth/login        登录（公开）
-GET    /api/auth/me           当前用户
-PATCH  /api/auth/me           修改邮箱
-POST   /api/auth/me/avatar    上传头像（multipart，字段 avatar，≤5MB，jpg/png/webp/gif）
-POST   /api/auth/logout       退出登录
-```
-
-注册请求体：`username`（2–32）、`email`、`password`（6–72）。
-登录请求体：`account`（用户名或邮箱）、`password`、`remember?`。
-
-### 简历
-
-```
-POST   /api/resumes                    保存简历
-GET    /api/resumes                    简历列表
-GET    /api/resumes/:id                简历详情
-PATCH  /api/resumes/:id                更新简历
-DELETE /api/resumes/:id                删除简历
-POST   /api/resumes/upload             上传解析文件（multipart，字段 file，pdf/docx/txt/md，≤5MB）
-POST   /api/resumes/:id/analyze        诊断
-POST   /api/resumes/:id/analyze/stream 诊断（SSE）
-```
-
-保存简历请求体：`title`（1–120）、`content`（1–30000）、`targetRole?`（≤80）、`experienceLevel?`（`'' | junior | 1-3 | 3-5 | 5+`）。
-上传解析返回：`{ fileName, fileType, content, truncated }`。
-诊断返回：`{ analysisId, score, result, meta }`。
-
-### 项目优化
-
-```
-POST   /api/projects/optimize              优化
-POST   /api/projects/optimize/stream       优化（SSE）
-GET    /api/projects/optimizations         记录列表
-GET    /api/projects/optimizations/:id     记录详情
-DELETE /api/projects/optimizations/:id     删除记录
-```
-
-请求体：`rawContent`（1–8000）、`targetRole?`（≤80）、`techStack?`（≤20 项，每项 ≤40）、`style?`（`'' | 简洁专业 | 技术细节 | 社招强化 | 应届友好`）。
-
-### 岗位匹配
-
-```
-POST   /api/jobs/match                 匹配分析
-POST   /api/jobs/match/stream          匹配分析（SSE）
-GET    /api/jobs/descriptions          JD 列表
-GET    /api/jobs/descriptions/:id      JD 详情
-DELETE /api/jobs/descriptions/:id      删除 JD
-```
-
-请求体：`resumeContent`（1–20000）、`resumeId?`、`jobTitle`（1–120）、`jobDescription`（1–10000）、`companyName?`（≤120）、`jobDescriptionId?`。未传 `resumeId` / `jobDescriptionId` 时，后端用传入文本即时落库再生成匹配记录。返回 `{ matchScore, result, meta }`。
-
-### 模拟面试
-
-```
-POST   /api/interviews                              创建会话 + 首题
-POST   /api/interviews/stream                       创建会话（SSE）
-POST   /api/interviews/:sessionId/messages          提交回答
-POST   /api/interviews/:sessionId/messages/stream   提交回答（SSE）
-POST   /api/interviews/:sessionId/finish            结束并生成总结
-POST   /api/interviews/:sessionId/finish/stream     结束（SSE）
-```
-
-创建请求体：`resumeContent`（1–20000）、`resumeId?`、`jobDescription?`（≤10000）、`jobDescriptionId?`、`targetRole`（1–80）、`interviewType`（`项目面试 | 技术面 | 综合面`）、`difficulty`（`简单 | 中等 | 困难`）。返回 `{ sessionId, firstQuestion, expectedPoints, meta }`。
-提交回答请求体：`answer`（1–4000）。返回 `{ sessionId, feedback, nextQuestion, meta }`。会话结束后再次操作返回 409。
-结束返回：`{ sessionId, totalScore, summary, strengths, weaknesses, studyPlan, meta }`。
-
-### 历史记录
-
-```
-GET    /api/history?type=...   按类型查询，省略 type 返回全部按时间倒序
-DELETE /api/history/:id        删除一条
-```
-
-`type` 取值：`resume-analysis`、`project-optimization`、`job-match`、`interview`。
-
-### 职业顾问对话
-
-```
-POST   /api/chat/sessions                            新建会话
-GET    /api/chat/sessions                            会话列表
-GET    /api/chat/sessions/:sessionId                 会话详情（含消息）
-PATCH  /api/chat/sessions/:sessionId                 改标题或绑定的简历 / JD 上下文
-DELETE /api/chat/sessions/:sessionId                 删除会话
-POST   /api/chat/sessions/:sessionId/messages        发送消息
-POST   /api/chat/sessions/:sessionId/messages/stream 发送消息（SSE）
-```
-
-新建请求体：`resumeId?`、`jobDescriptionId?`（可选，作为对话上下文）。发送消息请求体：`content`（1–4000）。会话可关联一份简历和一份 JD，AI 回复时带上这些上下文。
-
-### 首页概览
-
-```
-GET    /api/dashboard/overview        汇总简历诊断、岗位匹配、面试的最新分数与环比
-GET    /api/dashboard/resume-trend     简历诊断得分趋势（最近 N 次，用于首页折线）
-```
-
-得分趋势按当前用户跨简历取最近若干次诊断、按时间正序返回 `{ points: [{ date, score }] }`。之所以不按单份简历分组：简历诊断页在内容变化时会新建一份简历，按 `resumeId` 分组会让每条曲线只剩一个点，故与历史记录口径一致，跨简历取最近记录。
-
-### AI 用量（仅管理员）
-
-```
-GET    /api/ai-usage/summary?days=...   AI token 用量汇总（总计 / 按功能 / 按模型 / 按天 / 按用户）
-```
-
-`days` 省略时用默认统计窗口。汇总含 `byUser`（消耗最高的若干用户，附用户名；未登录调用归入「匿名」，已注销用户回退为短 id）。该接口带 `@Roles('admin')`，非管理员访问返回 403。
-
-### 用户管理（仅管理员）
-
-```
-GET    /api/admin/users?page=&pageSize=&keyword=   用户列表（分页 + 用户名/邮箱搜索 + 每人累计 token）
-PATCH  /api/admin/users/:id/role                    改角色（body: { role: 'user' | 'admin' }）
-PATCH  /api/admin/users/:id/status                  封禁 / 启用（body: { status: 'active' | 'disabled' }）
-```
-
-均带 `@Roles('admin')`。封禁（`status=disabled`）时在同一事务里删除该用户全部会话，实现即时踢下线。为防管理员误操作自锁，后端拒绝：修改自己的角色、封禁自己、以及把「最后一名启用状态的管理员」降级或封禁。「首个注册用户自动成为管理员」的引导逻辑不受影响，本模块只负责此后的角色调整与封禁。
+AI 类接口结果外层带 `meta`：`status` 为 `success` 或 `parse_error`，`cached` 表示是否命中缓存（流式与非流式都会返回）。AI 输出解析失败时后端把原文放入降级字段返回，前端仍可正常渲染。
 
 ## 文件解析与文本限制
 

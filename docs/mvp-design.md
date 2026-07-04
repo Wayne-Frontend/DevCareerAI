@@ -14,7 +14,7 @@ This document mirrors the current MVP implementation and engineering baseline.
 
 ## Implemented Features
 
-- Login and registration with local token persistence, protected frontend routes, and backend auth guard.
+- Login and registration with an in-memory access token plus HttpOnly refresh-cookie rotation, protected frontend routes, and backend auth guard.
 - Resume analysis with score, dimension scores, strengths, weaknesses, suggestions, and optimized examples.
 - Project experience optimization with structured project copy and interview follow-up questions.
 - Job description matching with match score, keywords, risks, resume suggestions, and interview preparation.
@@ -43,10 +43,11 @@ This document mirrors the current MVP implementation and engineering baseline.
 - DTOs enforce length limits, option ranges, and basic id shapes at the API boundary.
 - PostgreSQL handles concurrent writes natively (the earlier SQLite WAL/busy-timeout tuning is no longer needed).
 - Server build disables TypeScript incremental output to avoid stale `tsbuildinfo` files after Nest clears `dist`.
+- CORS is locked to an allow-list in production via `CORS_ORIGIN`; same-origin reverse-proxy deployments need no CORS.
 
 ## Deferred
 
 - Runtime schema validation for AI JSON responses.
 - History list pagination (currently returns all records for a type, newest first).
 - Sliding session expiry (expiry is fixed at session creation).
-- Production hardening before launch: CORS allow-list, request-id tracing / structured logs.
+- Production hardening before launch: request-id tracing / structured logs.
