@@ -53,7 +53,7 @@ export interface InterviewFinishResponse {
   meta?: AiResponseMeta
 }
 
-export type InterviewSessionStatus = 'ongoing' | 'finished'
+export type InterviewSessionStatus = 'ongoing' | 'summarizing' | 'finished'
 
 export interface InterviewSessionSummary {
   id: string

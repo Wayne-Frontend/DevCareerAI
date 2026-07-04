@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
+import { SUMMARIZING_STALE_MS } from '../interview/interview.service'
 import { PrismaService } from '../../prisma/prisma.service'
 
 // auto 简历/JD 创建后至少保留这么久才允许清理，避免误删"刚创建、关联记录还没写入"的进行中请求。
@@ -32,7 +33,8 @@ export class MaintenanceService implements OnModuleInit {
   async cleanupExpired() {
     const now = new Date()
     const autoCreatedBefore = new Date(now.getTime() - AUTO_ENTITY_MIN_AGE_MS)
-    const [cache, sessions, autoResumes, autoJobs] = await Promise.all([
+    const summarizingBefore = new Date(now.getTime() - SUMMARIZING_STALE_MS)
+    const [cache, sessions, autoResumes, autoJobs, staleSummarizing] = await Promise.all([
       this.prisma.aiCache.deleteMany({ where: { expiresAt: { lt: now } } }),
       this.prisma.authSession.deleteMany({ where: { expiresAt: { lt: now } } }),
       // auto 简历/JD 由匹配/面试流程临时创建。被历史引用的仍是历史数据的载体
@@ -57,12 +59,18 @@ export class MaintenanceService implements OnModuleInit {
           chatSessions: { none: {} },
         },
       }),
+      // finish 过程中进程崩溃会把会话残留在 summarizing 过渡态，超时回滚为 ongoing 允许用户重试。
+      this.prisma.interviewSession.updateMany({
+        where: { status: 'summarizing', updatedAt: { lt: summarizingBefore } },
+        data: { status: 'ongoing' },
+      }),
     ])
 
-    const total = cache.count + sessions.count + autoResumes.count + autoJobs.count
+    const total =
+      cache.count + sessions.count + autoResumes.count + autoJobs.count + staleSummarizing.count
     if (total > 0) {
       this.logger.log(
-        `已清理过期数据：AiCache ${cache.count} 行，AuthSession ${sessions.count} 行，孤儿 auto 简历 ${autoResumes.count} 行，孤儿 auto JD ${autoJobs.count} 行`,
+        `已清理过期数据：AiCache ${cache.count} 行，AuthSession ${sessions.count} 行，孤儿 auto 简历 ${autoResumes.count} 行，孤儿 auto JD ${autoJobs.count} 行，回滚超时 summarizing 会话 ${staleSummarizing.count} 个`,
       )
     }
   }
