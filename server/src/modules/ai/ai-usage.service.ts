@@ -13,6 +13,8 @@ interface RecordInput {
   userId?: string | null
   model: string
   usage?: AiUsage
+  // 'reported' = AI 服务上报的精确值；'estimated' = usage 丢失时按文本长度估算的兜底值。
+  usageSource?: 'reported' | 'estimated'
 }
 
 const DEFAULT_SUMMARY_DAYS = 30
@@ -31,11 +33,11 @@ export class AiUsageService {
    * 仅在缓存未命中、实际发生调用时被触发，因此命中缓存的请求自然不计入 token。
    */
   async record(input: RecordInput): Promise<void> {
-    try {
-      const prompt = toInt(input.usage?.prompt_tokens)
-      const completion = toInt(input.usage?.completion_tokens)
-      const total = toInt(input.usage?.total_tokens) || prompt + completion
+    const prompt = toInt(input.usage?.prompt_tokens)
+    const completion = toInt(input.usage?.completion_tokens)
+    const total = toInt(input.usage?.total_tokens) || prompt + completion
 
+    try {
       await this.prisma.aiUsageLog.create({
         data: {
           feature: input.feature ?? 'unknown',
@@ -44,11 +46,13 @@ export class AiUsageService {
           promptTokens: prompt,
           completionTokens: completion,
           totalTokens: total,
+          usageSource: input.usageSource ?? 'reported',
         },
       })
     } catch (error) {
-      this.logger.warn(
-        `记录 AI 用量失败：${error instanceof Error ? error.message : String(error)}`,
+      // 埋点失败不阻断主流程，但用 error 级别带上上下文，便于日志告警发现成本统计缺口。
+      this.logger.error(
+        `记录 AI 用量失败（feature=${input.feature ?? 'unknown'}, model=${input.model}, tokens=${total}, source=${input.usageSource ?? 'reported'}）：${error instanceof Error ? error.message : String(error)}`,
       )
     }
   }

@@ -2,6 +2,8 @@ import { Injectable, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import axios, { AxiosError } from 'axios'
 import type { Readable } from 'stream'
+import { StringDecoder } from 'string_decoder'
+import { AiStreamInterruptedError } from '../ai-errors'
 import { isConfiguredApiKey, resolveAiConfig, type ResolvedAiConfig } from '../ai-config'
 import type {
   AiUsage,
@@ -95,8 +97,20 @@ export class OpenAiCompatibleProvider implements AiProvider {
         model,
       }
     } catch (error) {
+      // 流读取中断（断连/abort）时已产生的部分内容照常计费，抛出携带部分结果的错误供上层估算用量。
+      if (error instanceof StreamReadError) {
+        throw new AiStreamInterruptedError(
+          model,
+          error.partialText,
+          error.usage,
+          options.signal?.aborted
+            ? 'AI request was cancelled'
+            : `AI service unavailable: ${readAxiosErrorMessage(error.cause)}`,
+        )
+      }
+
       if (options.signal?.aborted) {
-        throw new ServiceUnavailableException('AI request was cancelled')
+        throw new AiStreamInterruptedError(model, '', undefined, 'AI request was cancelled')
       }
 
       throw new ServiceUnavailableException(
@@ -144,7 +158,8 @@ export class OpenAiCompatibleProvider implements AiProvider {
   }
 }
 
-function readChatStream(
+// 导出以便单测直接用内存流覆盖 SSE 分片解析、usage 提取与中断路径。
+export function readChatStream(
   stream: Readable,
   options: ChatStreamOptions,
 ): Promise<Omit<ChatStreamResult, 'model'>> {
@@ -152,9 +167,12 @@ function readChatStream(
     let buffer = ''
     let text = ''
     let usage: AiUsage | undefined
+    // TCP 分片可能切在 UTF-8 多字节字符（如中文 3 字节）中间，直接 toString 会在两端产出 U+FFFD 乱码
+    // 并进入流式预览与落库结果。StringDecoder 会暂存不完整的尾部字节，跨 chunk 拼出完整字符。
+    const decoder = new StringDecoder('utf8')
 
     stream.on('data', (chunk: Buffer) => {
-      buffer += chunk.toString('utf8')
+      buffer += decoder.write(chunk)
       const lines = buffer.split(/\r?\n/)
       buffer = lines.pop() || ''
 
@@ -185,8 +203,20 @@ function readChatStream(
     })
 
     stream.on('end', () => resolve({ text, usage }))
-    stream.on('error', reject)
+    // 读取中途出错（含 abort 触发的 stream destroy）：携带已收到的部分内容拒绝，供上层记录已产生的消耗。
+    stream.on('error', (cause) => reject(new StreamReadError(text, usage, cause)))
   })
+}
+
+// provider 内部错误：流式读取中断时暂存部分结果，由 chatStream 的 catch 转换为 AiStreamInterruptedError。
+export class StreamReadError extends Error {
+  constructor(
+    readonly partialText: string,
+    readonly usage: AiUsage | undefined,
+    readonly cause: unknown,
+  ) {
+    super('AI stream read interrupted')
+  }
 }
 
 function readAxiosErrorMessage(error: unknown) {
