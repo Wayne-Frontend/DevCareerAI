@@ -153,9 +153,8 @@ export class AiUsageService {
   }
 
   /**
-   * 日粒度序列。Prisma groupBy 不支持按日期截断，而 SQLite 的日期存储格式随版本有别
-   * （文本 / epoch），直接写 strftime 原生 SQL 不稳。这里取回区间内的行，在 JS 里按 UTC
-   * 日期分桶，与底层存储格式解耦。
+   * 日粒度序列。Prisma groupBy 不支持按日期截断；这里取回区间内的行，在 JS 里按 UTC
+   * 日期分桶，与具体数据库的日期函数解耦。
    */
   private async getDailySeries(since: Date): Promise<AiUsageDailyItem[]> {
     const rows = await this.prisma.aiUsageLog.findMany({

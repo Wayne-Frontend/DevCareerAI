@@ -66,7 +66,7 @@ export class AuthService {
     const username = dto.username.trim()
     const profession = dto.profession?.trim() || null
 
-    // scrypt 成本较高，放在事务外计算，避免占用 SQLite 写事务窗口。
+    // scrypt 成本较高，放在事务外计算，避免拉长数据库事务。
     const passwordHash = await hashPassword(dto.password)
 
     try {

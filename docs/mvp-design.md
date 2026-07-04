@@ -6,10 +6,10 @@ This document mirrors the current MVP implementation and engineering baseline.
 
 - Monorepo with `web`, `server`, and a `packages/shared` type-only package.
 - Vue 3 + Vite + TypeScript client with routed feature pages.
-- NestJS modular API with Prisma + SQLite persistence.
+- NestJS modular API with Prisma + PostgreSQL persistence.
 - AI calls are isolated behind `AiService` and an OpenAI-compatible provider; feature modules only call the service abstraction.
 - SSE streaming is available for resume analysis, project optimization, job matching, interview, and career-chat flows.
-- AI result cache is persisted in SQLite with feature/model/prompt hash keys; per-call token usage is logged to `AiUsageLog`.
+- AI result cache is persisted in the database with feature/model/prompt hash keys; per-call token usage is logged to `AiUsageLog`.
 - File parsing supports PDF, DOCX, TXT, and MD uploads with a 5 MB upload limit.
 
 ## Implemented Features
@@ -41,7 +41,7 @@ This document mirrors the current MVP implementation and engineering baseline.
 - Request/response types live in `packages/shared`; backend DTOs `implements` the shared request types so contract drift surfaces as a type error on both sides.
 - Server startup validates critical environment variables in `server/src/config/env.validation.ts`.
 - DTOs enforce length limits, option ranges, and basic id shapes at the API boundary.
-- SQLite runs in WAL mode with a busy timeout to ease concurrent writes during long AI requests.
+- PostgreSQL handles concurrent writes natively (the earlier SQLite WAL/busy-timeout tuning is no longer needed).
 - Server build disables TypeScript incremental output to avoid stale `tsbuildinfo` files after Nest clears `dist`.
 
 ## Deferred
@@ -49,4 +49,4 @@ This document mirrors the current MVP implementation and engineering baseline.
 - Runtime schema validation for AI JSON responses.
 - History list pagination (currently returns all records for a type, newest first).
 - Sliding session expiry (expiry is fixed at session creation).
-- Production hardening before launch: CORS allow-list, request-id tracing / structured logs, and a migration path off SQLite as data grows.
+- Production hardening before launch: CORS allow-list, request-id tracing / structured logs.

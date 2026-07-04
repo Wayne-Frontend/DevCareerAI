@@ -5,7 +5,7 @@
 ## 技术栈
 
 - 前端：Vue 3、Vite、TypeScript、Vue Router、Pinia、Axios、ECharts、markdown-it、lucide-vue-next、Tailwind CSS v4
-- 后端：NestJS 10、TypeScript、Prisma 6、SQLite、class-validator / class-transformer、multer、pdf-parse、mammoth、axios
+- 后端：NestJS 10、TypeScript、Prisma 6、PostgreSQL、class-validator / class-transformer、multer、pdf-parse、mammoth、axios
 - AI：后端 `AiService` 封装 DeepSeek Chat Completions API
 
 ## 目录结构
@@ -74,7 +74,7 @@ VITE_API_BASE_URL=/api
 后端复制 `server/.env.example` 为 `server/.env`。AI 服务用通用的 `AI_*` 变量，指向任意 OpenAI 兼容端点：
 
 ```env
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://postgres:your_password@localhost:5432/devcareer"
 PORT=3000
 
 AI_API_KEY="your_api_key_here"
@@ -96,7 +96,7 @@ AI_SEND_THINKING="false"
 npm install
 ```
 
-初始化数据库（SQLite 文件创建在 `server/prisma/dev.db`）。首次拉取代码或换机器时，用 `prisma:deploy` 按已有迁移建表；只有在修改了 `schema.prisma` 需要生成新迁移时才用 `prisma:migrate`：
+初始化数据库（需先在本机准备好 PostgreSQL 并建库，见 `docs/database-setup.md`）。首次拉取代码或换机器时，用 `prisma:deploy` 按已有迁移建表；只有在修改了 `schema.prisma` 需要生成新迁移时才用 `prisma:migrate`：
 
 ```bash
 npm --prefix server run prisma:deploy
@@ -188,7 +188,7 @@ npm run check       # 依次执行 typecheck、lint、test、build
 
 ## 数据模型
 
-Prisma + SQLite，主要表：
+Prisma + PostgreSQL，主要表：
 
 - `User`：账号，`role` 为 `user` / `admin`，`status` 为 `active` / `disabled`（封禁后禁止登录）
 - `AuthSession`：登录会话，存 token 哈希与过期时间

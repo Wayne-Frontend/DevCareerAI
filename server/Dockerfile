@@ -36,5 +36,5 @@ COPY --from=builder /app/server/package.json ./server/package.json
 WORKDIR /app/server
 EXPOSE 3000
 
-# 启动前先应用未执行的 migration（幂等），SQLite 文件路径由 DATABASE_URL 指定（建议挂到 volume，如 file:/data/devcareer.db）
+# 启动前先应用未执行的 migration（幂等），DATABASE_URL 需指向可用的 PostgreSQL（compose 中由 db 服务提供）
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

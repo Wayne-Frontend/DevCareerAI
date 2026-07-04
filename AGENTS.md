@@ -5,7 +5,7 @@
 本仓库是 DevCareer AI 的前后端 monorepo，面向开发者的 AI 简历、项目优化、岗位匹配、模拟面试与历史复盘场景。
 
 - `web`: Vue 3 + Vite + TypeScript 客户端。
-- `server`: NestJS + Prisma + SQLite API 服务。
+- `server`: NestJS + Prisma + PostgreSQL API 服务。
 - `packages/shared`: 前后端共享的接口类型（纯类型声明，无运行时代码）。
 - `docs`: 产品、设计和实现说明。
 
@@ -34,7 +34,7 @@
 
 后端当前使用：
 
-- NestJS、TypeScript、Prisma、SQLite。
+- NestJS、TypeScript、Prisma、PostgreSQL。
 - 全局 API 前缀为 `/api`。
 - 全局鉴权守卫为 `AuthGuard`，公开接口通过 `@Public()` 放行；管理员接口用 `@Roles('admin')` 限制（如 AI 用量统计、用户管理）。
 - 用户有 `status` 字段（`active` / `disabled`）；`AuthService.login` 与 `findSession` 会拒绝被封禁用户，封禁操作同时删除其会话做到即时踢下线。

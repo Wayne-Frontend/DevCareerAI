@@ -26,7 +26,7 @@ export class AdminUserService {
     const pageSize = Math.min(MAX_PAGE_SIZE, clampPositive(params.pageSize, DEFAULT_PAGE_SIZE))
     const keyword = params.keyword?.trim()
 
-    // SQLite 的 contains 默认区分大小写，账号均以小写存储，这里把关键词转小写再匹配。
+    // contains 默认区分大小写（PostgreSQL 同理），账号均以小写存储，这里把关键词转小写再匹配。
     const where = keyword
       ? {
           OR: [

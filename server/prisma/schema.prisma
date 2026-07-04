@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -14,7 +14,7 @@ model User {
   profession   String?
   avatarUrl    String?
   passwordHash String
-  role         String   @default("user") // 'user' | 'admin'，SQLite 不支持原生 enum，用字符串 + 应用层约束
+  role         String   @default("user") // 'user' | 'admin'，沿用字符串 + 应用层约束（迁自 SQLite 时代，如需可升级为原生 enum）
   status       String   @default("active") // 'active' | 'disabled'，disabled 禁止登录并即时吊销会话
   // 管理员重置密码后置为 true：临时密码为管理员可见，强制用户改密后才能使用其他功能
   mustChangePassword Boolean @default(false)
