@@ -17,7 +17,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "npm --prefix server run test",
+    "test": "npm --prefix server run test && npm --prefix web run test",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build",
     "build": "npm --prefix web run build && npm --prefix server run build",
     "prisma:migrate": "npm --prefix server run prisma:migrate",
