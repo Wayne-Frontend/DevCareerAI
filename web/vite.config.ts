@@ -26,6 +26,10 @@ export default defineConfig({
     },
   },
   build: {
+    // echarts 已按需引入（utils/echarts.ts）+ 独立拆包 + 路由懒加载，507KB 是
+    // echarts core + zrender 的固有体积，无进一步压缩空间；上调阈值是承认现状，
+    // 其余 chunk 若超过 600KB 仍应报警并处理。
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         // echarts 体积大且仅少数页面使用，markdown-it 仅聊天场景使用，单独拆包减小首屏。
