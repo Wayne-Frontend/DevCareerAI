@@ -37,6 +37,42 @@ jobs:
       - name: Build
         run: npm run build
 
+  # 接口层 e2e：真实 PostgreSQL + supertest，验证鉴权/限流/校验/跨用户边界等请求管道行为
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: devcareer_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      E2E_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/devcareer_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      # prepare-db.mjs 内部先对测试库执行 prisma migrate deploy
+      - name: Run e2e tests
+        run: npm run test:e2e
+
   # 仅构建镜像不启动，用于抓 Dockerfile / compose 与代码的漂移（如依赖被 prune 后运行期命令失效）
   docker-build:
     runs-on: ubuntu-latest
