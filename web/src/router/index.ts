@@ -137,4 +137,10 @@ router.beforeEach(async (to) => {
   return true
 })
 
+// 消费路由 meta.title，保持浏览器标签页/历史记录标题与当前页面一致
+router.afterEach((to) => {
+  const title = to.meta.title as string | undefined
+  document.title = title ? `${title} · DevCareer AI` : 'DevCareer AI'
+})
+
 export default router
