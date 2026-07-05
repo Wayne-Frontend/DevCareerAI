@@ -9,6 +9,8 @@ function text(value: unknown) {
 }
 
 function numberText(value: unknown) {
+  // Number(null)/Number('') 都是 0，缺失的分数不能被复制成「0 分」（AI 结果不编造）。
+  if (value === null || value === undefined || value === '') return ''
   const number = Number(value)
   return Number.isFinite(number) ? `${Math.round(number)} 分` : ''
 }

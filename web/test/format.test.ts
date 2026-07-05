@@ -16,6 +16,14 @@ describe('formatDateTime', () => {
     expect(output).toContain('2026')
     expect(output).toContain('01')
   })
+
+  it('空字符串降级为占位符而非抛错', () => {
+    expect(formatDateTime('')).toBe('-')
+  })
+
+  it('非法日期字符串降级为占位符而非抛错', () => {
+    expect(formatDateTime('not-a-date')).toBe('-')
+  })
 })
 
 describe('toTagList', () => {
