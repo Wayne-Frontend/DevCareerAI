@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   BriefcaseBusiness,
   ClipboardList,
@@ -11,7 +11,6 @@ import {
   Square,
   Target,
   Trash2,
-  UploadCloud,
   WandSparkles,
 } from 'lucide-vue-next'
 import EmptyState from '@/components/EmptyState/index.vue'
@@ -19,42 +18,35 @@ import GlassCard from '@/components/GlassCard/index.vue'
 import InlineStatus from '@/components/InlineStatus/index.vue'
 import KeywordTags from '@/components/KeywordTags/index.vue'
 import LoadingButton from '@/components/LoadingButton/index.vue'
+import ResumeUploadDropzone from '@/components/ResumeUploadDropzone/index.vue'
 import SuggestionList from '@/components/SuggestionList/index.vue'
 import ScoreCard from '@/components/ScoreCard/index.vue'
 import StreamPreview from '@/components/StreamPreview/index.vue'
 import { deleteHistoryRecord, getHistory, getHistoryRecord } from '@/api/history'
-import { getJobDescriptions, matchJobStream } from '@/api/job'
-import { getResumes, uploadResume } from '@/api/resume'
+import { matchJobStream } from '@/api/job'
 import type { HistoryRecordSummary, JobMatchHistoryDetail } from '@/types/history'
 import type { JobDescriptionRecord, JobMatchResult } from '@/types/job'
-import type { ResumeRecord } from '@/types/resume'
+import { MAX_RESUME_LENGTH, useResumeJdAssets } from '@/composables/useResumeJdAssets'
+import { notifyStreamResult, useStreamTask } from '@/composables/useStreamTask'
 import { useWorkflowStore } from '@/stores/workflow'
 import { formatDateTime } from '@/utils/format'
 import { messageBox } from '@/utils/messageBox'
 import { notify } from '@/utils/notify'
 import { buildJobMatchCopy } from '@/utils/resultCopy'
 
-const MAX_RESUME_LENGTH = 20000
 const workflowStore = useWorkflowStore()
-const route = useRoute()
 const router = useRouter()
-const loading = ref(false)
-const uploadLoading = ref(false)
-const assetsLoading = ref(false)
-const selectedFileName = ref('')
+const {
+  loading,
+  streamPreview,
+  streamStatus,
+  errorMessage,
+  run: runStream,
+  cancel: cancelStream,
+  appendDelta,
+} = useStreamTask()
 const result = ref<JobMatchResult | null>(null)
 const resultStatus = ref<'success' | 'parse_error'>('success')
-const streamPreview = ref('')
-const streamStatus = ref('')
-const errorMessage = ref('')
-const uploadError = ref('')
-const assetsError = ref('')
-const controller = ref<AbortController | null>(null)
-const resumeOptions = ref<ResumeRecord[]>([])
-const jobOptions = ref<JobDescriptionRecord[]>([])
-const selectedResumeId = ref('')
-const selectedJobDescriptionId = ref('')
-const queryApplied = ref(false)
 const historyRecords = ref<HistoryRecordSummary[]>([])
 const historyLoading = ref(false)
 const historyError = ref('')
@@ -66,6 +58,38 @@ const form = reactive({
   jobTitle: '前端开发工程师',
   companyName: '',
   jobDescription: '',
+})
+
+const {
+  resumeOptions,
+  jobOptions,
+  selectedResumeId,
+  selectedJobDescriptionId,
+  assetsLoading,
+  assetsError,
+  uploadLoading,
+  uploadError,
+  selectedFileName,
+  loadAssets,
+  applyResume,
+  applyJobDescription,
+  onResumeFileChange,
+} = useResumeJdAssets({
+  form,
+  onResumeApplied: (resume) => {
+    form.jobTitle = resume.targetRole || form.jobTitle
+  },
+  onJobDescriptionApplied: (job) => {
+    form.jobTitle = job.jobTitle
+    form.companyName = job.companyName || ''
+  },
+  onQueryApplied: (kind) =>
+    notify(kind === 'resume' ? '已带入简历管理中的简历' : '已带入 JD 管理中的岗位描述', 'success'),
+  queryMissingActionText: '继续匹配',
+  uploadConfirmMessage: '上传新文件会覆盖当前简历输入区内容，并清空已选择的已有简历。',
+  onUploadStart: () => {
+    errorMessage.value = ''
+  },
 })
 
 const dimensionItems = computed(() =>
@@ -80,10 +104,6 @@ const dimensionItems = computed(() =>
 )
 
 const resumeSuggestionText = computed(() => (result.value ? buildJobMatchCopy(result.value) : ''))
-
-onBeforeUnmount(() => {
-  controller.value?.abort()
-})
 
 onMounted(() => {
   void loadAssets()
@@ -123,8 +143,6 @@ async function applyHistoryRecord(record: HistoryRecordSummary) {
     selectedJobDescriptionId.value = ''
     result.value = detail
     resultStatus.value = 'success'
-  } catch {
-    notify('记录加载失败，请稍后重试', 'error')
   } finally {
     applyingHistoryId.value = ''
   }
@@ -149,113 +167,8 @@ async function removeHistoryRecord(record: HistoryRecordSummary) {
   }
 }
 
-async function loadAssets() {
-  assetsLoading.value = true
-  assetsError.value = ''
-  try {
-    const [resumes, jobs] = await Promise.all([getResumes(), getJobDescriptions()])
-    resumeOptions.value = resumes
-    jobOptions.value = jobs
-    applyFromQuery()
-  } catch {
-    assetsError.value = '已有简历或 JD 加载失败，你仍可以手动输入内容。'
-    notify('已有资料加载失败，可手动填写后继续分析', 'warning')
-  } finally {
-    assetsLoading.value = false
-  }
-}
-
-function readQueryId(key: 'resumeId' | 'jdId') {
-  const value = route.query[key]
-  return typeof value === 'string' ? value : ''
-}
-
-function applyFromQuery() {
-  if (queryApplied.value) return
-  queryApplied.value = true
-
-  const resumeId = readQueryId('resumeId')
-  if (resumeId) {
-    if (resumeOptions.value.some((item) => item.id === resumeId)) {
-      applyResume(resumeId)
-      notify('已带入简历管理中的简历', 'success')
-    } else {
-      notify('指定简历加载失败，可手动选择或填写后继续分析', 'warning')
-    }
-  }
-
-  const jdId = readQueryId('jdId')
-  if (jdId) {
-    if (jobOptions.value.some((item) => item.id === jdId)) {
-      applyJobDescription(jdId)
-      notify('已带入 JD 管理中的岗位描述', 'success')
-    } else {
-      notify('指定 JD 加载失败，可手动选择或填写后继续匹配', 'warning')
-    }
-  }
-}
-
-function applyResume(id: string) {
-  selectedResumeId.value = id
-  const resume = resumeOptions.value.find((item) => item.id === id)
-  if (!resume) return
-  form.resumeContent = resume.content.slice(0, MAX_RESUME_LENGTH)
-  form.jobTitle = resume.targetRole || form.jobTitle
-  uploadError.value = ''
-}
-
-function applyJobDescription(id: string) {
-  selectedJobDescriptionId.value = id
-  const job = jobOptions.value.find((item) => item.id === id)
-  if (!job) return
-  form.jobTitle = job.jobTitle
-  form.companyName = job.companyName || ''
-  form.jobDescription = job.content
-}
-
 function jobDescriptionLabel(job: JobDescriptionRecord) {
   return job.companyName ? `${job.companyName} - ${job.jobTitle}` : job.jobTitle
-}
-
-async function onResumeFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-
-  if (form.resumeContent.trim()) {
-    const confirmed = await messageBox.confirm({
-      type: 'warning',
-      title: '替换当前简历内容？',
-      message: '上传新文件会覆盖当前简历输入区内容，并清空已选择的已有简历。',
-      confirmText: '继续上传',
-    })
-    if (!confirmed) {
-      input.value = ''
-      return
-    }
-  }
-
-  uploadLoading.value = true
-  uploadError.value = ''
-  errorMessage.value = ''
-  try {
-    const parsed = await uploadResume(file)
-    selectedResumeId.value = ''
-    selectedFileName.value = parsed.fileName
-    form.resumeContent = parsed.content.slice(0, MAX_RESUME_LENGTH)
-    notify(
-      parsed.truncated || parsed.content.length > MAX_RESUME_LENGTH
-        ? '文件已解析，内容较长，已自动截断'
-        : '文件已解析',
-      'success',
-    )
-  } catch {
-    input.value = ''
-    uploadError.value = '文件解析失败，请确认格式为 PDF、DOCX、TXT 或 MD 后重试。'
-  } finally {
-    uploadLoading.value = false
-    input.value = ''
-  }
 }
 
 async function submit() {
@@ -267,57 +180,34 @@ async function submit() {
     return
   }
 
-  controller.value = new AbortController()
-  loading.value = true
-  streamPreview.value = ''
-  streamStatus.value = 'AI 正在建立连接'
-  errorMessage.value = ''
-
-  try {
-    const response = await matchJobStream(
-      {
-        ...form,
-        resumeId: selectedResumeId.value || undefined,
-        jobDescriptionId: selectedJobDescriptionId.value || undefined,
-      },
-      {
-        signal: controller.value.signal,
-        onStart: () => {
-          streamStatus.value = 'AI 正在对比简历与 JD'
+  await runStream({
+    abortText: '已取消本次匹配分析',
+    failText: '岗位匹配生成失败，请稍后重试。',
+    runner: async (signal) => {
+      const response = await matchJobStream(
+        {
+          ...form,
+          resumeId: selectedResumeId.value || undefined,
+          jobDescriptionId: selectedJobDescriptionId.value || undefined,
         },
-        onDelta: (delta) => {
-          streamStatus.value = 'AI 正在生成匹配报告'
-          streamPreview.value += delta
+        {
+          signal,
+          onStart: () => {
+            streamStatus.value = 'AI 正在对比简历与 JD'
+          },
+          onDelta: (delta) => appendDelta(delta, 'AI 正在生成匹配报告'),
         },
-      },
-    )
-    result.value = response.result
-    void loadAssets()
-    void loadHistoryRecords()
-    resultStatus.value = response.meta?.status || 'success'
-    notify(
-      resultStatus.value === 'parse_error'
-        ? 'AI 结果格式异常，已保留原文整理结果'
-        : response.cached
-          ? '命中缓存，岗位匹配结果已生成'
-          : '岗位匹配结果已生成',
-      resultStatus.value === 'parse_error' ? 'warning' : 'success',
-    )
-  } catch (error) {
-    if ((error as Error).name === 'AbortError') {
-      notify('已取消本次匹配分析', 'info')
-    } else {
-      errorMessage.value = '岗位匹配生成失败，请稍后重试。'
-    }
-  } finally {
-    loading.value = false
-    controller.value = null
-    streamStatus.value = ''
-  }
-}
-
-function cancelStream() {
-  controller.value?.abort()
+      )
+      result.value = response.result
+      void loadAssets()
+      void loadHistoryRecords()
+      resultStatus.value = response.meta?.status || 'success'
+      notifyStreamResult(response.meta, response.cached, {
+        success: '岗位匹配结果已生成',
+        cached: '命中缓存，岗位匹配结果已生成',
+      })
+    },
+  })
 }
 
 async function copyResumeSuggestions() {
@@ -326,8 +216,8 @@ async function copyResumeSuggestions() {
     await navigator.clipboard.writeText(resumeSuggestionText.value)
     notify('已复制修改建议', 'success')
   } catch {
-    errorMessage.value = '复制失败，请检查浏览器剪贴板权限后重试。'
-    notify('复制失败', 'error')
+    // 复制是瞬时动作，toast 是正确的反馈面；不写 errorMessage 以免误触发结果区的错误横幅。
+    notify('复制失败，请检查浏览器剪贴板权限后重试', 'error')
   }
 }
 
@@ -393,27 +283,12 @@ function goInterviewFromJobMatch() {
           </select>
         </label>
 
-        <label
-          class="mb-4 grid min-h-[96px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40"
-          :class="{ 'pointer-events-none opacity-70': uploadLoading || loading }"
-        >
-          <input
-            class="hidden"
-            type="file"
-            accept=".pdf,.docx,.txt,.md"
-            :disabled="uploadLoading || loading"
-            @change="onResumeFileChange"
-          />
-          <UploadCloud :size="32" class="text-indigo-500" />
-          <span class="mt-2 block text-sm font-extrabold text-[#26324f]">{{
-            uploadLoading ? '解析中...' : '上传 PDF / DOCX / TXT / MD'
-          }}</span>
-          <span
-            v-if="selectedFileName"
-            class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600"
-            >{{ selectedFileName }}</span
-          >
-        </label>
+        <ResumeUploadDropzone
+          :uploading="uploadLoading"
+          :disabled="loading"
+          :selected-file-name="selectedFileName"
+          @change="onResumeFileChange"
+        />
         <InlineStatus
           v-if="uploadError"
           class="mb-4"
@@ -509,7 +384,7 @@ function goInterviewFromJobMatch() {
         </div>
 
         <section
-          v-if="historyLoading || historyRecords.length"
+          v-if="historyLoading || historyError || historyRecords.length"
           class="mt-5 rounded-2xl border border-slate-200 bg-white/55 p-4"
         >
           <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">最近匹配记录</h3>
@@ -551,6 +426,7 @@ function goInterviewFromJobMatch() {
                 variant="danger"
                 :loading="deletingHistoryId === record.id"
                 class="h-9 w-9 !min-h-9 !p-0"
+                aria-label="删除记录"
                 @click="removeHistoryRecord(record)"
               >
                 <template #icon><Trash2 :size="16" /></template>
@@ -595,7 +471,7 @@ function goInterviewFromJobMatch() {
               </div>
             </div>
           </section>
-          <div class="grid grid-cols-[0.78fr_1fr] gap-4">
+          <div class="grid gap-4 md:grid-cols-[0.78fr_1fr]">
             <section class="section-card">
               <ScoreCard :score="result.matchScore" title="综合匹配度" :summary="result.summary" />
             </section>

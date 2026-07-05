@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   CheckCircle2,
@@ -28,10 +28,12 @@ import {
   getResumes,
   uploadResume,
 } from '@/api/resume'
+import { notifyStreamResult, useStreamTask } from '@/composables/useStreamTask'
 import { useResumeStore } from '@/stores/resume'
 import { useWorkflowStore } from '@/stores/workflow'
 import type { HistoryRecordSummary } from '@/types/history'
 import type { ResumeAnalysisResult, ResumePayload, ResumeRecord } from '@/types/resume'
+import { RESUME_DIMENSION_LABELS } from '@/utils/dimensionLabels'
 import { formatDateTime } from '@/utils/format'
 import { messageBox } from '@/utils/messageBox'
 import { notify } from '@/utils/notify'
@@ -41,18 +43,22 @@ const resumeStore = useResumeStore()
 const workflowStore = useWorkflowStore()
 const route = useRoute()
 const router = useRouter()
-const loading = ref(false)
+const {
+  loading,
+  streamPreview,
+  streamStatus,
+  errorMessage,
+  run: runStream,
+  cancel: cancelStream,
+  appendDelta,
+} = useStreamTask()
 const uploadLoading = ref(false)
 const resumesLoading = ref(false)
 const selectedFileName = ref('')
 const result = ref<ResumeAnalysisResult | null>(null)
 const resultStatus = ref<'success' | 'parse_error'>('success')
-const streamPreview = ref('')
-const streamStatus = ref('')
-const errorMessage = ref('')
 const uploadError = ref('')
 const resumesError = ref('')
-const controller = ref<AbortController | null>(null)
 const selectedResumeId = ref('')
 const selectedResumeSnapshot = ref<ResumePayload | null>(null)
 const resumeOptions = ref<ResumeRecord[]>([])
@@ -107,8 +113,6 @@ async function applyHistoryRecord(record: HistoryRecordSummary) {
     }
     result.value = detail
     resultStatus.value = 'success'
-  } catch {
-    notify('记录加载失败，请稍后重试', 'error')
   } finally {
     applyingHistoryId.value = ''
   }
@@ -132,10 +136,6 @@ async function removeHistoryRecord(record: HistoryRecordSummary) {
     deletingHistoryId.value = ''
   }
 }
-
-onBeforeUnmount(() => {
-  controller.value?.abort()
-})
 
 function readResumeIdQuery() {
   const value = route.query.resumeId
@@ -167,12 +167,9 @@ async function applyResumeFromQuery() {
   const resumeId = readResumeIdQuery()
   if (!resumeId) return
 
-  try {
-    await applyResume(resumeId, true)
-    notify('已带入简历管理中的简历，可直接开始诊断', 'success')
-  } catch {
-    notify('简历加载失败，可手动填写后继续诊断', 'warning')
-  }
+  // 失败会冒泡到 loadResumeOptions 的 catch，落 resumesError 内联提示；toast 由拦截器负责。
+  await applyResume(resumeId, true)
+  notify('已带入简历管理中的简历，可直接开始诊断', 'success')
 }
 
 async function loadResumeOptions() {
@@ -274,60 +271,37 @@ async function submit() {
     return
   }
 
-  controller.value = new AbortController()
-  loading.value = true
-  streamPreview.value = ''
-  streamStatus.value = 'AI 正在建立连接'
-  errorMessage.value = ''
-
-  try {
-    const resume = isUsingSelectedResume()
-      ? await getResume(selectedResumeId.value)
-      : await createResume({ ...form })
-    selectedResumeId.value = resume.id
-    selectedResumeSnapshot.value = {
-      title: resume.title,
-      targetRole: resume.targetRole || '',
-      experienceLevel: resume.experienceLevel || '',
-      content: resume.content,
-    }
-    resumeStore.setCurrentResume(resume)
-    const analysis = await analyzeResumeStream(resume.id, {
-      signal: controller.value.signal,
-      onStart: () => {
-        streamStatus.value = 'AI 正在分析简历结构'
-      },
-      onDelta: (delta) => {
-        streamStatus.value = 'AI 正在生成结构化诊断'
-        streamPreview.value += delta
-      },
-    })
-    result.value = analysis.result
-    void loadHistoryRecords()
-    resultStatus.value = analysis.meta?.status || 'success'
-    notify(
-      resultStatus.value === 'parse_error'
-        ? 'AI 结果格式异常，已保留原文整理结果'
-        : analysis.cached
-          ? '命中缓存，简历诊断结果已生成'
-          : '简历诊断结果已生成',
-      resultStatus.value === 'parse_error' ? 'warning' : 'success',
-    )
-  } catch (error) {
-    if ((error as Error).name === 'AbortError') {
-      notify('已取消本次分析', 'info')
-    } else {
-      errorMessage.value = '简历诊断生成失败，请稍后重试。'
-    }
-  } finally {
-    loading.value = false
-    controller.value = null
-    streamStatus.value = ''
-  }
-}
-
-function cancelStream() {
-  controller.value?.abort()
+  await runStream({
+    abortText: '已取消本次分析',
+    failText: '简历诊断生成失败，请稍后重试。',
+    runner: async (signal) => {
+      const resume = isUsingSelectedResume()
+        ? await getResume(selectedResumeId.value)
+        : await createResume({ ...form })
+      selectedResumeId.value = resume.id
+      selectedResumeSnapshot.value = {
+        title: resume.title,
+        targetRole: resume.targetRole || '',
+        experienceLevel: resume.experienceLevel || '',
+        content: resume.content,
+      }
+      resumeStore.setCurrentResume(resume)
+      const analysis = await analyzeResumeStream(resume.id, {
+        signal,
+        onStart: () => {
+          streamStatus.value = 'AI 正在分析简历结构'
+        },
+        onDelta: (delta) => appendDelta(delta, 'AI 正在生成结构化诊断'),
+      })
+      result.value = analysis.result
+      void loadHistoryRecords()
+      resultStatus.value = analysis.meta?.status || 'success'
+      notifyStreamResult(analysis.meta, analysis.cached, {
+        success: '简历诊断结果已生成',
+        cached: '命中缓存，简历诊断结果已生成',
+      })
+    },
+  })
 }
 
 async function copySuggestions() {
@@ -336,8 +310,8 @@ async function copySuggestions() {
     await navigator.clipboard.writeText(suggestionText.value)
     notify('已复制优化建议', 'success')
   } catch {
-    errorMessage.value = '复制失败，请检查浏览器剪贴板权限后重试。'
-    notify('复制失败', 'error')
+    // 复制是瞬时动作，toast 是正确的反馈面；不写 errorMessage 以免误触发结果区的错误横幅。
+    notify('复制失败，请检查浏览器剪贴板权限后重试', 'error')
   }
 }
 
@@ -407,11 +381,11 @@ function goInterviewFromResume() {
 
         <label class="field-label">上传简历</label>
         <label
-          class="mb-4 grid min-h-[110px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40"
+          class="mb-4 grid min-h-[110px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition focus-within:border-indigo-400 hover:border-indigo-300 hover:bg-indigo-50/40"
           :class="{ 'is-uploading': uploadLoading }"
         >
           <input
-            class="hidden"
+            class="sr-only"
             type="file"
             accept=".pdf,.docx,.txt,.md"
             :disabled="uploadLoading"
@@ -497,7 +471,7 @@ function goInterviewFromResume() {
             @click="submit"
           >
             <template #icon><Search :size="18" /></template>
-            {{ loading ? '分析中...' : '开始分析' }}
+            开始分析
           </LoadingButton>
           <button v-if="loading" class="btn-secondary w-full" @click="cancelStream">
             <Square :size="16" />
@@ -506,7 +480,7 @@ function goInterviewFromResume() {
         </div>
 
         <section
-          v-if="historyLoading || historyRecords.length"
+          v-if="historyLoading || historyError || historyRecords.length"
           class="mt-5 rounded-2xl border border-slate-200 bg-white/55 p-4"
         >
           <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">最近诊断记录</h3>
@@ -548,6 +522,7 @@ function goInterviewFromResume() {
                 variant="danger"
                 :loading="deletingHistoryId === record.id"
                 class="h-9 w-9 !min-h-9 !p-0"
+                aria-label="删除记录"
                 @click="removeHistoryRecord(record)"
               >
                 <template #icon><Trash2 :size="16" /></template>
@@ -625,7 +600,9 @@ function goInterviewFromResume() {
                 class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-center"
               >
                 <strong class="block text-2xl text-indigo-600">{{ score }}</strong>
-                <span class="text-xs font-bold text-[#64748b]">{{ key }}</span>
+                <span class="text-xs font-bold text-[#64748b]">{{
+                  RESUME_DIMENSION_LABELS[key] ?? key
+                }}</span>
               </div>
             </div>
           </section>

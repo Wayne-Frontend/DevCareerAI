@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AlertTriangle,
@@ -27,6 +27,7 @@ import {
   optimizeProjectStream,
 } from '@/api/project'
 import type { ProjectOptimizationRecord, ProjectOptimizationResult } from '@/types/project'
+import { notifyStreamResult, useStreamTask } from '@/composables/useStreamTask'
 import { useWorkflowStore } from '@/stores/workflow'
 import { toTagList } from '@/utils/format'
 import { messageBox } from '@/utils/messageBox'
@@ -35,16 +36,20 @@ import { buildProjectCopy } from '@/utils/resultCopy'
 
 const workflowStore = useWorkflowStore()
 const router = useRouter()
-const loading = ref(false)
+const {
+  loading,
+  streamPreview,
+  streamStatus,
+  errorMessage,
+  run: runStream,
+  cancel: cancelStream,
+  appendDelta,
+} = useStreamTask()
 const recordsLoading = ref(false)
 const deletingId = ref('')
 const result = ref<ProjectOptimizationResult | null>(null)
 const resultStatus = ref<'success' | 'parse_error'>('success')
-const streamPreview = ref('')
-const streamStatus = ref('')
-const errorMessage = ref('')
 const recordsError = ref('')
-const controller = ref<AbortController | null>(null)
 const records = ref<ProjectOptimizationRecord[]>([])
 
 const form = reactive({
@@ -55,10 +60,6 @@ const form = reactive({
 })
 
 const copyText = computed(() => (result.value ? buildProjectCopy(result.value) : ''))
-
-onBeforeUnmount(() => {
-  controller.value?.abort()
-})
 
 onMounted(() => {
   void loadRecords()
@@ -94,53 +95,34 @@ async function submit() {
     return
   }
 
-  controller.value = new AbortController()
-  loading.value = true
-  streamPreview.value = ''
-  streamStatus.value = 'AI 正在建立连接'
-  errorMessage.value = ''
-
-  try {
-    const response = await optimizeProjectStream(
-      {
-        rawContent: form.rawContent,
-        targetRole: form.targetRole,
-        techStack: toTagList(form.techStack),
-        style: form.style,
-      },
-      {
-        signal: controller.value.signal,
-        onStart: () => {
-          streamStatus.value = 'AI 正在优化项目表达'
+  await runStream({
+    abortText: '已取消本次优化',
+    failText: '项目优化生成失败，请稍后重试。',
+    runner: async (signal) => {
+      const response = await optimizeProjectStream(
+        {
+          rawContent: form.rawContent,
+          targetRole: form.targetRole,
+          techStack: toTagList(form.techStack),
+          style: form.style,
         },
-        onDelta: (delta) => {
-          streamStatus.value = 'AI 正在生成结构化项目经历'
-          streamPreview.value += delta
+        {
+          signal,
+          onStart: () => {
+            streamStatus.value = 'AI 正在优化项目表达'
+          },
+          onDelta: (delta) => appendDelta(delta, 'AI 正在生成结构化项目经历'),
         },
-      },
-    )
-    result.value = response.result
-    void loadRecords()
-    resultStatus.value = response.meta?.status || 'success'
-    notify(
-      resultStatus.value === 'parse_error'
-        ? 'AI 结果格式异常，已保留原文整理结果'
-        : response.cached
-          ? '命中缓存，项目优化结果已生成'
-          : '项目优化结果已生成',
-      resultStatus.value === 'parse_error' ? 'warning' : 'success',
-    )
-  } catch (error) {
-    if ((error as Error).name === 'AbortError') {
-      notify('已取消本次优化', 'info')
-    } else {
-      errorMessage.value = '项目优化生成失败，请稍后重试。'
-    }
-  } finally {
-    loading.value = false
-    controller.value = null
-    streamStatus.value = ''
-  }
+      )
+      result.value = response.result
+      void loadRecords()
+      resultStatus.value = response.meta?.status || 'success'
+      notifyStreamResult(response.meta, response.cached, {
+        success: '项目优化结果已生成',
+        cached: '命中缓存，项目优化结果已生成',
+      })
+    },
+  })
 }
 
 async function removeRecord(record: ProjectOptimizationRecord) {
@@ -165,18 +147,14 @@ async function removeRecord(record: ProjectOptimizationRecord) {
   }
 }
 
-function cancelStream() {
-  controller.value?.abort()
-}
-
 async function copyResult() {
   if (!copyText.value) return
   try {
     await navigator.clipboard.writeText(copyText.value)
     notify('已复制优化结果', 'success')
   } catch {
-    errorMessage.value = '复制失败，请检查浏览器剪贴板权限后重试。'
-    notify('复制失败', 'error')
+    // 复制是瞬时动作，toast 是正确的反馈面；不写 errorMessage 以免误触发结果区的错误横幅。
+    notify('复制失败，请检查浏览器剪贴板权限后重试', 'error')
   }
 }
 
@@ -207,7 +185,7 @@ function goInterviewFromProject() {
     </header>
 
     <div class="feature-workspace">
-      <section class="glass-card feature-pane-left p-5">
+      <section class="glass-card feature-pane-left">
         <div class="mb-4 flex items-center gap-3">
           <span class="icon-tile"><FileText :size="18" /></span>
           <h2 class="m-0 text-lg font-black text-[#0f172a]">项目信息</h2>
@@ -261,7 +239,7 @@ function goInterviewFromProject() {
         <div class="mt-5 grid gap-3">
           <LoadingButton class="w-full" :loading="loading" loading-text="优化中..." @click="submit">
             <template #icon><Sparkles :size="18" /></template>
-            {{ loading ? '优化中...' : '开始优化' }}
+            开始优化
           </LoadingButton>
           <button v-if="loading" class="btn-secondary w-full" @click="cancelStream">
             <Square :size="16" />
@@ -270,7 +248,7 @@ function goInterviewFromProject() {
         </div>
 
         <section
-          v-if="recordsLoading || records.length"
+          v-if="recordsLoading || recordsError || records.length"
           class="mt-5 rounded-2xl border border-slate-200 bg-white/55 p-4"
         >
           <h3 class="mb-3 mt-0 text-base font-black text-[#0f172a]">最近优化记录</h3>
@@ -304,6 +282,7 @@ function goInterviewFromProject() {
                 variant="danger"
                 :loading="deletingId === record.id"
                 class="h-9 w-9 !min-h-9 !p-0"
+                aria-label="删除记录"
                 @click="removeRecord(record)"
               >
                 <template #icon><Trash2 :size="16" /></template>
@@ -313,7 +292,7 @@ function goInterviewFromProject() {
         </section>
       </section>
 
-      <section class="glass-card feature-pane-right soft-scrollbar p-5">
+      <section class="glass-card feature-pane-right soft-scrollbar">
         <div class="mb-5 flex items-center justify-between">
           <h2 class="m-0 flex items-center gap-3 text-lg font-black text-[#0f172a]">
             <span class="icon-tile"><Sparkles :size="18" /></span>

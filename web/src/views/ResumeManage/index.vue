@@ -94,15 +94,41 @@ function fillForm(resume: ResumeRecord | null) {
   form.experienceLevel = resume?.experienceLevel || ''
 }
 
-function selectResume(resume: ResumeRecord) {
+// 编辑/新建中，表单与进入时的基准（编辑=选中简历，新建=空表单）不一致即视为有未保存修改。
+function isFormDirty() {
+  if (!isEditing.value) return false
+  const base = mode.value === 'edit' ? selectedResume.value : null
+  return (
+    form.title !== (base?.title || '') ||
+    form.content !== (base?.content || '') ||
+    form.fileName !== (base?.fileName || '') ||
+    form.fileType !== (base?.fileType || '') ||
+    form.targetRole !== (base?.targetRole || '') ||
+    form.experienceLevel !== (base?.experienceLevel || '')
+  )
+}
+
+async function confirmDiscardEdits() {
+  if (!isFormDirty()) return true
+  return messageBox.confirm({
+    type: 'warning',
+    title: '放弃未保存的修改？',
+    message: '当前编辑内容尚未保存，切换后将丢失。',
+    confirmText: '放弃修改',
+  })
+}
+
+async function selectResume(resume: ResumeRecord) {
   if (saving.value || deleting.value) return
+  if (!(await confirmDiscardEdits())) return
   selectedId.value = resume.id
   mode.value = 'view'
   uploadError.value = ''
   fillForm(resume)
 }
 
-function startCreate() {
+async function startCreate() {
+  if (!(await confirmDiscardEdits())) return
   selectedId.value = ''
   mode.value = 'create'
   uploadError.value = ''
@@ -343,11 +369,11 @@ function exportMarkdown() {
         <div v-else class="grid gap-4">
           <section v-if="isEditing" class="section-card">
             <label
-              class="mb-4 grid min-h-[102px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40"
+              class="mb-4 grid min-h-[102px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-4 text-center transition focus-within:border-indigo-400 hover:border-indigo-300 hover:bg-indigo-50/40"
               :class="{ 'pointer-events-none opacity-70': uploadLoading }"
             >
               <input
-                class="hidden"
+                class="sr-only"
                 type="file"
                 accept=".pdf,.docx,.txt,.md"
                 :disabled="uploadLoading"

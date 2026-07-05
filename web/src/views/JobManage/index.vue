@@ -82,14 +82,37 @@ function fillForm(jd: JobDescriptionRecord | null) {
   form.content = jd?.content || ''
 }
 
-function selectJd(jd: JobDescriptionRecord) {
+// 编辑/新建中，表单与进入时的基准（编辑=选中 JD，新建=空表单）不一致即视为有未保存修改。
+function isFormDirty() {
+  if (!isEditing.value) return false
+  const base = mode.value === 'edit' ? selectedJd.value : null
+  return (
+    form.jobTitle !== (base?.jobTitle || '') ||
+    form.companyName !== (base?.companyName || '') ||
+    form.content !== (base?.content || '')
+  )
+}
+
+async function confirmDiscardEdits() {
+  if (!isFormDirty()) return true
+  return messageBox.confirm({
+    type: 'warning',
+    title: '放弃未保存的修改？',
+    message: '当前编辑内容尚未保存，切换后将丢失。',
+    confirmText: '放弃修改',
+  })
+}
+
+async function selectJd(jd: JobDescriptionRecord) {
   if (saving.value || deleting.value) return
+  if (!(await confirmDiscardEdits())) return
   selectedId.value = jd.id
   mode.value = 'view'
   fillForm(jd)
 }
 
-function startCreate() {
+async function startCreate() {
+  if (!(await confirmDiscardEdits())) return
   selectedId.value = ''
   mode.value = 'create'
   fillForm(null)
