@@ -1,5 +1,101 @@
-import { describe, expect, it } from 'vitest'
-import { parseSseEvent } from '../src/api/streamRequest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { parseSseEvent, streamRequest } from '../src/api/streamRequest'
+
+const notifyApiErrorMock = vi.hoisted(() => vi.fn())
+
+vi.mock('../src/api/authRefresh', () => ({
+  ensureFreshAccessToken: vi.fn().mockResolvedValue('token'),
+}))
+vi.mock('../src/api/errors', () => ({
+  notifyApiError: notifyApiErrorMock,
+  resolveFetchErrorMessage: vi.fn().mockResolvedValue('请求失败'),
+}))
+vi.mock('../src/utils/redirectToLogin', () => ({
+  redirectToLogin: vi.fn(),
+}))
+vi.mock('../src/utils/authSession', () => ({
+  getAuthToken: () => 'token',
+}))
+
+/** 构造一个按分片吐出 SSE 文本的 200 响应 */
+function sseResponse(chunks: string[]) {
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk))
+      }
+      controller.close()
+    },
+  })
+  return new Response(stream, { status: 200 })
+}
+
+describe('streamRequest 主流程', () => {
+  beforeEach(() => {
+    notifyApiErrorMock.mockClear()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('正常流：触发 onStart/onDelta 并返回 done payload', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          sseResponse([
+            'event: start\ndata: {}\n\n',
+            'event: delta\ndata: {"delta":"A"}\n\nevent: delta\ndata: {"delta":"B"}\n\n',
+            'event: done\ndata: {"ok":1}\n\n',
+          ]),
+        ),
+    )
+    const onStart = vi.fn()
+    const deltas: string[] = []
+
+    const result = await streamRequest<{ ok: number }>('/x/stream', undefined, {
+      onStart,
+      onDelta: (delta) => deltas.push(delta),
+    })
+
+    expect(onStart).toHaveBeenCalledTimes(1)
+    expect(deltas).toEqual(['A', 'B'])
+    expect(result).toEqual({ ok: 1 })
+    expect(notifyApiErrorMock).not.toHaveBeenCalled()
+  })
+
+  it('流末 done 事件不带空行收尾也能解析（残留 buffer 兜底）', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          sseResponse(['event: delta\ndata: {"delta":"A"}\n\n', 'event: done\ndata: {"ok":2}']),
+        ),
+    )
+
+    const result = await streamRequest<{ ok: number }>('/x/stream', undefined, {})
+
+    expect(result).toEqual({ ok: 2 })
+    expect(notifyApiErrorMock).not.toHaveBeenCalled()
+  })
+
+  it('error 事件：弹一次全局错误并抛出后端 message', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(sseResponse(['event: error\ndata: {"message":"模型服务过载"}\n\n'])),
+    )
+
+    await expect(streamRequest('/x/stream', undefined, {})).rejects.toThrow('模型服务过载')
+    expect(notifyApiErrorMock).toHaveBeenCalledTimes(1)
+    expect(notifyApiErrorMock).toHaveBeenCalledWith('模型服务过载')
+  })
+})
 
 describe('parseSseEvent', () => {
   it('解析标准 event + data 块', () => {

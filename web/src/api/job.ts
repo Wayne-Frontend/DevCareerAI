@@ -16,10 +16,7 @@ export function matchJob(data: JobMatchPayload) {
   })
 }
 
-export function matchJobStream(
-  data: JobMatchPayload,
-  handlers?: StreamHandlers<JobMatchResponse & { cached?: boolean }>,
-) {
+export function matchJobStream(data: JobMatchPayload, handlers?: StreamHandlers) {
   return streamRequest<JobMatchResponse & { cached?: boolean }>(
     '/jobs/match/stream',
     data,

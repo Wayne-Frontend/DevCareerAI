@@ -5,19 +5,16 @@ import { notifyApiError, resolveFetchErrorMessage } from './errors'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
-export interface StreamHandlers<TDone> {
+export interface StreamHandlers {
   signal?: AbortSignal
   onStart?: (data: unknown) => void
   onDelta?: (delta: string) => void
-  onUsage?: (usage: unknown) => void
-  onDone?: (data: TDone) => void
-  onError?: (message: string) => void
 }
 
 export async function streamRequest<TDone>(
   url: string,
   data: unknown,
-  handlers: StreamHandlers<TDone> = {},
+  handlers: StreamHandlers = {},
 ): Promise<TDone> {
   let response: Response
 
@@ -51,7 +48,9 @@ export async function streamRequest<TDone>(
         throw error
       }
 
-      const message = await resolveFetchErrorMessage(response)
+      // 刷新失败本质是鉴权失效，与预刷新失败分支保持同一文案；
+      // 此处的 response 仍是首次 401 的响应，从它解析文案并不可靠。
+      const message = '登录状态已失效，请重新登录'
       notifyApiError(message)
       redirectToLogin()
       throw new Error(message)
@@ -74,6 +73,31 @@ export async function streamRequest<TDone>(
   let buffer = ''
   let donePayload: TDone | null = null
 
+  const handleEvent = (eventBlock: string) => {
+    const event = parseSseEvent<TDone>(eventBlock)
+    if (!event) return
+
+    if (event.event === 'start') {
+      handlers.onStart?.(event.data)
+    }
+
+    if (event.event === 'delta') {
+      const payload = event.data as { delta?: string }
+      handlers.onDelta?.(payload.delta || '')
+    }
+
+    if (event.event === 'done') {
+      donePayload = event.data as TDone
+    }
+
+    if (event.event === 'error') {
+      const payload = event.data as { message?: string }
+      const message = payload.message || '请求失败，请稍后再试'
+      notifyApiError(message)
+      throw new Error(message)
+    }
+  }
+
   try {
     while (true) {
       const { value, done } = await reader.read()
@@ -84,42 +108,19 @@ export async function streamRequest<TDone>(
       buffer = events.pop() || ''
 
       for (const eventBlock of events) {
-        const event = parseSseEvent<TDone>(eventBlock)
-        if (!event) continue
-
-        if (event.event === 'start') {
-          handlers.onStart?.(event.data)
-        }
-
-        if (event.event === 'delta') {
-          const payload = event.data as { delta?: string }
-          handlers.onDelta?.(payload.delta || '')
-        }
-
-        if (event.event === 'usage') {
-          handlers.onUsage?.(event.data)
-        }
-
-        if (event.event === 'done') {
-          donePayload = event.data as TDone
-          handlers.onDone?.(donePayload)
-        }
-
-        if (event.event === 'error') {
-          const payload = event.data as { message?: string }
-          const message = payload.message || '请求失败，请稍后再试'
-          handlers.onError?.(message)
-          notifyApiError(message)
-          throw new Error(message)
-        }
+        handleEvent(eventBlock)
       }
     }
-  } catch (error) {
-    if ((error as Error).name === 'AbortError') {
-      throw error
-    }
 
-    throw error
+    // 后端最后一个事件块可能不带 \n\n 收尾，残留在 buffer 里的 done 事件同样要解析，
+    // 否则会误报「流式响应未返回最终结果」。
+    buffer += decoder.decode()
+    if (buffer.trim()) {
+      handleEvent(buffer)
+    }
+  } finally {
+    // 错误/取消路径下显式释放底层连接，避免 reader 悬挂占用浏览器同域连接额度。
+    void reader.cancel().catch(() => undefined)
   }
 
   if (!donePayload) {

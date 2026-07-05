@@ -56,7 +56,7 @@ export function sendChatMessage(sessionId: string, content: string) {
 export function sendChatMessageStream(
   sessionId: string,
   content: string,
-  handlers?: StreamHandlers<ChatSendResponse>,
+  handlers?: StreamHandlers,
 ) {
   return streamRequest<ChatSendResponse>(
     `/chat/sessions/${sessionId}/messages/stream`,

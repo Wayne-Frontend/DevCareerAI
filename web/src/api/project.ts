@@ -21,10 +21,7 @@ export interface ProjectOptimizationStreamResponse {
   meta?: AiResponseMeta
 }
 
-export function optimizeProjectStream(
-  data: ProjectOptimizePayload,
-  handlers?: StreamHandlers<ProjectOptimizationStreamResponse>,
-) {
+export function optimizeProjectStream(data: ProjectOptimizePayload, handlers?: StreamHandlers) {
   return streamRequest<ProjectOptimizationStreamResponse>(
     '/projects/optimize/stream',
     data,

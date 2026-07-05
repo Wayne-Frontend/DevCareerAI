@@ -31,10 +31,7 @@ export function createInterview(data: InterviewCreatePayload) {
   })
 }
 
-export function createInterviewStream(
-  data: InterviewCreatePayload,
-  handlers?: StreamHandlers<InterviewCreateResponse>,
-) {
+export function createInterviewStream(data: InterviewCreatePayload, handlers?: StreamHandlers) {
   return streamRequest<InterviewCreateResponse>('/interviews/stream', data, handlers)
 }
 
@@ -49,7 +46,7 @@ export function submitInterviewAnswer(sessionId: string, answer: string) {
 export function submitInterviewAnswerStream(
   sessionId: string,
   answer: string,
-  handlers?: StreamHandlers<InterviewMessageResponse>,
+  handlers?: StreamHandlers,
 ) {
   return streamRequest<InterviewMessageResponse>(
     `/interviews/${sessionId}/messages/stream`,
@@ -65,10 +62,7 @@ export function finishInterview(sessionId: string) {
   })
 }
 
-export function finishInterviewStream(
-  sessionId: string,
-  handlers?: StreamHandlers<InterviewFinishResponse>,
-) {
+export function finishInterviewStream(sessionId: string, handlers?: StreamHandlers) {
   return streamRequest<InterviewFinishResponse>(
     `/interviews/${sessionId}/finish/stream`,
     undefined,

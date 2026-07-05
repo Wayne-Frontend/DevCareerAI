@@ -64,10 +64,7 @@ export function analyzeResume(id: string) {
   })
 }
 
-export function analyzeResumeStream(
-  id: string,
-  handlers?: StreamHandlers<ResumeAnalysisResponse & { cached?: boolean }>,
-) {
+export function analyzeResumeStream(id: string, handlers?: StreamHandlers) {
   return streamRequest<ResumeAnalysisResponse & { cached?: boolean }>(
     `/resumes/${id}/analyze/stream`,
     undefined,
