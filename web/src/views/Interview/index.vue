@@ -1,10 +1,11 @@
 ﻿<script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { Clock3, Copy, Mic, PlayCircle, Square, UploadCloud } from 'lucide-vue-next'
+import { Clock3, Copy, Mic, PlayCircle, Square } from 'lucide-vue-next'
 import ChatBox from '@/components/ChatBox/index.vue'
 import GlassCard from '@/components/GlassCard/index.vue'
 import InlineStatus from '@/components/InlineStatus/index.vue'
+import ResumeUploadDropzone from '@/components/ResumeUploadDropzone/index.vue'
 import StreamPreview from '@/components/StreamPreview/index.vue'
 import {
   createInterviewStream,
@@ -13,39 +14,30 @@ import {
   getInterviewSessions,
   submitInterviewAnswerStream,
 } from '@/api/interview'
-import { getJobDescriptions } from '@/api/job'
-import { getResumes, uploadResume } from '@/api/resume'
+import { MAX_RESUME_LENGTH, useResumeJdAssets } from '@/composables/useResumeJdAssets'
+import { notifyStreamResult, useStreamTask } from '@/composables/useStreamTask'
 import { useInterviewStore } from '@/stores/interview'
 import { useWorkflowStore } from '@/stores/workflow'
 import type { InterviewSessionSummary } from '@/types/interview'
-import type { JobDescriptionRecord } from '@/types/job'
-import type { ResumeRecord } from '@/types/resume'
 import { formatDateTime } from '@/utils/format'
-import { messageBox } from '@/utils/messageBox'
 import { notify } from '@/utils/notify'
 import { buildInterviewStudyPlanCopy } from '@/utils/resultCopy'
 
-const MAX_RESUME_LENGTH = 20000
 const interviewStore = useInterviewStore()
 const workflowStore = useWorkflowStore()
 const route = useRoute()
-const loading = ref(false)
-const uploadLoading = ref(false)
-const assetsLoading = ref(false)
-const selectedFileName = ref('')
-const streamPreview = ref('')
-const streamStatus = ref('')
-const errorMessage = ref('')
-const uploadError = ref('')
-const assetsError = ref('')
+const {
+  loading,
+  streamPreview,
+  streamStatus,
+  errorMessage,
+  run,
+  cancel: cancelStream,
+  appendDelta,
+} = useStreamTask()
 const workflowMessage = ref('')
 const finalSummary = ref<unknown>(null)
-const controller = ref<AbortController | null>(null)
-const resumeOptions = ref<ResumeRecord[]>([])
-const jobOptions = ref<JobDescriptionRecord[]>([])
-const selectedResumeId = ref('')
-const selectedJobDescriptionId = ref('')
-const queryApplied = ref(false)
+const chatBoxRef = ref<InstanceType<typeof ChatBox> | null>(null)
 const resumableSession = ref<InterviewSessionSummary | null>(null)
 const resumeSessionLoading = ref(false)
 
@@ -57,15 +49,51 @@ const form = reactive({
   difficulty: '中等',
 })
 
+const {
+  resumeOptions,
+  jobOptions,
+  selectedResumeId,
+  selectedJobDescriptionId,
+  assetsLoading,
+  assetsError,
+  uploadLoading,
+  uploadError,
+  selectedFileName,
+  loadAssets,
+  applyResume,
+  applyJobDescription,
+  onResumeFileChange,
+} = useResumeJdAssets({
+  form,
+  onResumeApplied: (resume) => {
+    form.targetRole = resume.targetRole || form.targetRole
+  },
+  onJobDescriptionApplied: (job) => {
+    form.targetRole = job.jobTitle || form.targetRole
+  },
+  // 提示语须与 start() 的校验一致：开始面试必须有简历内容，JD 是可选项。
+  // JD 分支按简历是否已就位区分文案（resumeId 与 jdId 同时带入时，简历分支先执行）。
+  onQueryApplied: (kind) => {
+    if (kind === 'resume') {
+      workflowMessage.value = '已带入简历管理中的简历，可按需补充岗位 JD 后开始面试。'
+    } else {
+      workflowMessage.value = form.resumeContent.trim()
+        ? '已带入简历和岗位 JD，可直接开始模拟面试。'
+        : '已带入 JD 管理中的岗位描述，请补充简历内容后开始面试。'
+    }
+  },
+  queryMissingActionText: '继续面试',
+  uploadConfirmMessage: '上传新文件会覆盖当前用于面试的简历或项目经历内容。',
+  onUploadStart: () => {
+    errorMessage.value = ''
+  },
+})
+
 const interviewStatus = computed(() => {
   if (interviewStore.finished) return '面试已结束'
   if (loading.value) return 'AI 思考中'
   if (interviewStore.sessionId) return '面试进行中'
   return '等待开始'
-})
-
-onBeforeUnmount(() => {
-  controller.value?.abort()
 })
 
 onMounted(async () => {
@@ -107,73 +135,11 @@ async function resumeSession(id: string) {
     resumableSession.value = null
     notify(detail.status === 'ongoing' ? '已恢复上次面试，可继续作答' : '已载入面试记录', 'success')
   } catch {
-    notify('面试会话恢复失败，可重新开始一场面试', 'warning')
+    // toast 已由拦截器弹出，这里补充「接下来怎么办」的页面内引导。
+    errorMessage.value = '面试会话恢复失败，可重新开始一场面试。'
   } finally {
     resumeSessionLoading.value = false
   }
-}
-
-async function loadAssets() {
-  assetsLoading.value = true
-  assetsError.value = ''
-  try {
-    const [resumes, jobs] = await Promise.all([getResumes(), getJobDescriptions()])
-    resumeOptions.value = resumes
-    jobOptions.value = jobs
-    applyFromQuery()
-  } catch {
-    assetsError.value = '已有简历或 JD 加载失败，你仍可以手动输入内容。'
-    notify('已有资料加载失败，可手动填写后继续面试', 'warning')
-  } finally {
-    assetsLoading.value = false
-  }
-}
-
-function readQueryId(key: 'resumeId' | 'jdId') {
-  const value = route.query[key]
-  return typeof value === 'string' ? value : ''
-}
-
-function applyFromQuery() {
-  if (queryApplied.value) return
-  queryApplied.value = true
-
-  const resumeId = readQueryId('resumeId')
-  if (resumeId) {
-    if (resumeOptions.value.some((item) => item.id === resumeId)) {
-      applyResume(resumeId)
-      workflowMessage.value = '已带入简历管理中的简历，可直接开始模拟面试。'
-    } else {
-      notify('指定简历加载失败，可手动选择或填写后继续面试', 'warning')
-    }
-  }
-
-  const jdId = readQueryId('jdId')
-  if (jdId) {
-    if (jobOptions.value.some((item) => item.id === jdId)) {
-      applyJobDescription(jdId)
-      workflowMessage.value = '已带入 JD 管理中的岗位描述，可直接开始模拟面试。'
-    } else {
-      notify('指定 JD 加载失败，可手动选择或填写后继续面试', 'warning')
-    }
-  }
-}
-
-function applyResume(id: string) {
-  selectedResumeId.value = id
-  const resume = resumeOptions.value.find((item) => item.id === id)
-  if (!resume) return
-  form.resumeContent = resume.content.slice(0, MAX_RESUME_LENGTH)
-  form.targetRole = resume.targetRole || form.targetRole
-  uploadError.value = ''
-}
-
-function applyJobDescription(id: string) {
-  selectedJobDescriptionId.value = id
-  const job = jobOptions.value.find((item) => item.id === id)
-  if (!job) return
-  form.jobDescription = job.content
-  form.targetRole = job.jobTitle || form.targetRole
 }
 
 function applyWorkflowContext() {
@@ -211,48 +177,10 @@ function applyWorkflowContext() {
   if (applied) {
     selectedResumeId.value = ''
     selectedJobDescriptionId.value = ''
-    workflowMessage.value = `已带入${context.sourceLabel || '上一步'}资料，可直接开始模拟面试。`
-  }
-}
-
-async function onResumeFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-
-  if (form.resumeContent.trim()) {
-    const confirmed = await messageBox.confirm({
-      type: 'warning',
-      title: '替换当前简历内容？',
-      message: '上传新文件会覆盖当前用于面试的简历或项目经历内容。',
-      confirmText: '继续上传',
-    })
-    if (!confirmed) {
-      input.value = ''
-      return
-    }
-  }
-
-  uploadLoading.value = true
-  uploadError.value = ''
-  errorMessage.value = ''
-  try {
-    const parsed = await uploadResume(file)
-    selectedResumeId.value = ''
-    selectedFileName.value = parsed.fileName
-    form.resumeContent = parsed.content.slice(0, MAX_RESUME_LENGTH)
-    notify(
-      parsed.truncated || parsed.content.length > MAX_RESUME_LENGTH
-        ? '文件已解析，内容较长，已自动截断'
-        : '文件已解析',
-      'success',
-    )
-  } catch {
-    input.value = ''
-    uploadError.value = '文件解析失败，请确认格式为 PDF、DOCX、TXT 或 MD 后重试。'
-  } finally {
-    uploadLoading.value = false
-    input.value = ''
+    // 与 start() 校验一致：只有简历内容就位才能开始，避免「可直接开始」误导。
+    workflowMessage.value = form.resumeContent.trim()
+      ? `已带入${context.sourceLabel || '上一步'}资料，可直接开始模拟面试。`
+      : `已带入${context.sourceLabel || '上一步'}资料，请补充简历内容后开始面试。`
   }
 }
 
@@ -265,8 +193,7 @@ async function start() {
     return
   }
 
-  errorMessage.value = ''
-  await runStream('AI 正在生成第一道面试题', async (signal) => {
+  await runInterviewStream('AI 正在生成第一道面试题', async (signal) => {
     const response = await createInterviewStream(
       {
         ...form,
@@ -282,14 +209,10 @@ async function start() {
       },
     )
     interviewStore.startSession(response.sessionId, response.firstQuestion)
-    notify(
-      response.meta?.status === 'parse_error'
-        ? 'AI 结果格式异常，已保留原文整理结果'
-        : response.cached
-          ? '命中缓存，模拟面试已开始'
-          : '模拟面试已开始',
-      response.meta?.status === 'parse_error' ? 'warning' : 'success',
-    )
+    notifyStreamResult(response.meta, response.cached, {
+      success: '模拟面试已开始',
+      cached: '命中缓存，模拟面试已开始',
+    })
   })
 }
 
@@ -305,11 +228,10 @@ async function sendAnswer(answer: string) {
     return
   }
 
-  errorMessage.value = ''
   const userMessageId = crypto.randomUUID()
   interviewStore.appendMessage({ id: userMessageId, role: 'user', content: answer })
 
-  const succeeded = await runStream('AI 正在点评回答并生成追问', async (signal) => {
+  const succeeded = await runInterviewStream('AI 正在点评回答并生成追问', async (signal) => {
     const response = await submitInterviewAnswerStream(interviewStore.sessionId, answer, {
       signal,
       onStart: () => {
@@ -328,20 +250,22 @@ async function sendAnswer(answer: string) {
         betterAnswer: response.feedback.betterAnswer,
       },
     })
-    if (response.meta?.status === 'parse_error') {
-      notify('AI 结果格式异常，已保留原文整理结果', 'warning')
-    }
+    // 追问属于持续对话，成功不弹提示，只提醒 parse_error。
+    notifyStreamResult(response.meta, response.cached)
   })
 
   if (!succeeded) {
+    // 回答已从消息列表移除，把内容回填输入框，避免长文本回答丢失。
     interviewStore.removeMessage(userMessageId)
+    chatBoxRef.value?.restoreDraft(answer)
   }
 }
 
 async function finish() {
-  if (!interviewStore.sessionId || loading.value) return
+  // finished 判断防止已结束的会话重复触发 finish 流式请求（左右两处按钮之外的调用路径同样受保护）。
+  if (!interviewStore.sessionId || loading.value || interviewStore.finished) return
 
-  await runStream('AI 正在生成面试总结', async (signal) => {
+  await runInterviewStream('AI 正在生成面试总结', async (signal) => {
     const response = await finishInterviewStream(interviewStore.sessionId, {
       signal,
       onStart: () => {
@@ -356,53 +280,26 @@ async function finish() {
       content: `${response.summary}\n\n优势：${response.strengths.join('；')}\n待提升：${response.weaknesses.join('；')}\n学习计划：${response.studyPlan.join('；')}`,
     })
     interviewStore.finishSession()
-    notify(
-      response.meta?.status === 'parse_error'
-        ? 'AI 结果格式异常，已保留原文整理结果'
-        : response.cached
-          ? '命中缓存，模拟面试已结束'
-          : '模拟面试已结束',
-      response.meta?.status === 'parse_error' ? 'warning' : 'success',
-    )
+    notifyStreamResult(response.meta, response.cached, {
+      success: '模拟面试已结束',
+      cached: '命中缓存，模拟面试已结束',
+    })
   })
 }
 
-async function runStream(initialStatus: string, runner: (signal: AbortSignal) => Promise<void>) {
-  controller.value = new AbortController()
-  loading.value = true
-  streamPreview.value = ''
-  streamStatus.value = initialStatus
-  errorMessage.value = ''
-
-  try {
-    await runner(controller.value.signal)
-    return true
-  } catch (error) {
-    if ((error as Error).name === 'AbortError') {
-      notify('已取消本次生成', 'info')
-    } else {
-      errorMessage.value = 'AI 生成失败，请稍后重试。'
-    }
-    return false
-  } finally {
-    loading.value = false
-    controller.value = null
-    streamStatus.value = ''
-  }
-}
-
-function appendDelta(delta: string) {
-  streamStatus.value = 'AI 正在流式生成'
-  streamPreview.value += delta
+// 开始/追问/总结三种操作共用同一套取消与失败文案，仅初始状态文案不同。
+function runInterviewStream(initialStatus: string, runner: (signal: AbortSignal) => Promise<void>) {
+  return run({
+    initialStatus,
+    abortText: '已取消本次生成',
+    failText: 'AI 生成失败，请稍后重试。',
+    runner,
+  })
 }
 
 const studyPlanText = computed(() =>
   finalSummary.value ? buildInterviewStudyPlanCopy(finalSummary.value) : '',
 )
-
-function cancelStream() {
-  controller.value?.abort()
-}
 
 async function copyStudyPlan() {
   if (!studyPlanText.value) return
@@ -410,8 +307,8 @@ async function copyStudyPlan() {
     await navigator.clipboard.writeText(studyPlanText.value)
     notify('已复制学习计划', 'success')
   } catch {
-    errorMessage.value = '复制失败，请检查浏览器剪贴板权限后重试。'
-    notify('复制失败', 'error')
+    // 复制是瞬时动作，toast 是正确的反馈面；不写 errorMessage 以免误触发「面试暂时无法继续」横幅。
+    notify('复制失败，请检查浏览器剪贴板权限后重试', 'error')
   }
 }
 </script>
@@ -523,27 +420,12 @@ async function copyStudyPlan() {
                 </option>
               </select>
             </label>
-            <label
-              class="mb-3 grid min-h-[90px] cursor-pointer place-items-center rounded-[14px] border border-dashed border-indigo-200 bg-white/45 p-3.5 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40"
-              :class="{ 'pointer-events-none opacity-70': uploadLoading || loading }"
-            >
-              <input
-                class="hidden"
-                type="file"
-                accept=".pdf,.docx,.txt,.md"
-                :disabled="uploadLoading || loading"
-                @change="onResumeFileChange"
-              />
-              <UploadCloud :size="30" class="text-indigo-500" />
-              <span class="mt-2 block text-sm font-extrabold text-[#26324f]">{{
-                uploadLoading ? '解析中...' : '上传 PDF / DOCX / TXT / MD'
-              }}</span>
-              <span
-                v-if="selectedFileName"
-                class="mt-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600"
-                >{{ selectedFileName }}</span
-              >
-            </label>
+            <ResumeUploadDropzone
+              :uploading="uploadLoading"
+              :disabled="loading"
+              :selected-file-name="selectedFileName"
+              @change="onResumeFileChange"
+            />
             <InlineStatus
               v-if="uploadError"
               class="mb-3"
@@ -601,7 +483,7 @@ async function copyStudyPlan() {
           </button>
           <button
             class="btn-secondary w-full"
-            :disabled="!interviewStore.sessionId || loading"
+            :disabled="!interviewStore.sessionId || loading || interviewStore.finished"
             @click="finish"
           >
             结束面试
@@ -687,6 +569,7 @@ async function copyStudyPlan() {
 
         <div class="min-h-0 flex-1 pt-4">
           <ChatBox
+            ref="chatBoxRef"
             :messages="interviewStore.messages"
             :loading="loading"
             :disabled="interviewStore.finished"

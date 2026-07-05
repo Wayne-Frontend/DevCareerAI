@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { MessagesSquare, Plus, Square, Trash2 } from 'lucide-vue-next'
 import ChatBox from '@/components/ChatBox/index.vue'
 import GlassCard from '@/components/GlassCard/index.vue'
@@ -14,6 +14,7 @@ import {
 } from '@/api/chat'
 import { getJobDescriptions } from '@/api/job'
 import { getResumes } from '@/api/resume'
+import { useStreamTask } from '@/composables/useStreamTask'
 import { useChatStore } from '@/stores/chat'
 import type { JobDescriptionRecord } from '@/types/job'
 import type { ResumeRecord } from '@/types/resume'
@@ -24,11 +25,11 @@ import { notify } from '@/utils/notify'
 const MAX_MESSAGE_LENGTH = 4000
 
 const chatStore = useChatStore()
-const loading = ref(false)
+const chatBoxRef = ref<InstanceType<typeof ChatBox> | null>(null)
+// 聊天场景不使用流式预览（增量直接写入消息），只用到 loading/errorMessage 与取消生命周期。
+const { loading, errorMessage, run, cancel: cancelStream } = useStreamTask()
 const sessionLoading = ref(false)
 const assetsError = ref('')
-const errorMessage = ref('')
-const controller = ref<AbortController | null>(null)
 const resumeOptions = ref<ResumeRecord[]>([])
 const jobOptions = ref<JobDescriptionRecord[]>([])
 const selectedResumeId = ref('')
@@ -51,10 +52,6 @@ const contextSummary = computed(() => {
     if (job) parts.push(`JD：${job.jobTitle}`)
   }
   return parts.length ? parts.join('，') : '未勾选上下文，AI 将仅根据对话内容回答。'
-})
-
-onBeforeUnmount(() => {
-  controller.value?.abort()
 })
 
 onMounted(async () => {
@@ -85,7 +82,7 @@ async function loadSessions() {
   try {
     chatStore.setSessions(await getChatSessions())
   } catch {
-    notify('会话列表加载失败', 'warning')
+    // 有意吞掉：onMounted 里与 loadAssets 并行初始化，抛出会中断默认会话的打开；错误 toast 已由拦截器弹出。
   }
 }
 
@@ -107,7 +104,8 @@ async function openSession(sessionId: string) {
     chatStore.openSession(detail.id, detail.messages)
     syncContextFromSession(detail)
   } catch {
-    notify('会话加载失败，请稍后重试', 'error')
+    // toast 已由拦截器弹出，这里补充页面内的错误横幅。
+    errorMessage.value = '会话加载失败，请稍后重试。'
   } finally {
     sessionLoading.value = false
   }
@@ -129,31 +127,23 @@ async function removeSession(sessionId: string) {
   })
   if (!confirmed) return
 
-  try {
-    await deleteChatSession(sessionId)
-    chatStore.removeSession(sessionId)
-    if (!chatStore.activeSessionId) {
-      syncContextFromSession(undefined)
-    }
-    notify('会话已删除', 'success')
-  } catch {
-    notify('删除失败，请稍后重试', 'error')
+  await deleteChatSession(sessionId)
+  chatStore.removeSession(sessionId)
+  if (!chatStore.activeSessionId) {
+    syncContextFromSession(undefined)
   }
+  notify('会话已删除', 'success')
 }
 
 // 勾选变化：已有会话立即同步到后端；草稿态则在首条消息创建会话时一并提交。
 async function onContextChange() {
   if (!chatStore.activeSessionId) return
 
-  try {
-    const session = await updateChatSession(chatStore.activeSessionId, {
-      resumeId: selectedResumeId.value || null,
-      jobDescriptionId: selectedJobDescriptionId.value || null,
-    })
-    chatStore.patchSession(session.id, session)
-  } catch {
-    notify('上下文更新失败，请稍后重试', 'error')
-  }
+  const session = await updateChatSession(chatStore.activeSessionId, {
+    resumeId: selectedResumeId.value || null,
+    jobDescriptionId: selectedJobDescriptionId.value || null,
+  })
+  chatStore.patchSession(session.id, session)
 }
 
 async function ensureSession() {
@@ -185,48 +175,41 @@ async function sendMessage(content: string) {
   chatStore.appendMessage({ id: userTempId, role: 'user', content })
   chatStore.appendMessage({ id: aiTempId, role: 'ai', content: '' })
 
-  controller.value = new AbortController()
-  loading.value = true
+  const succeeded = await run({
+    abortText: '已取消本次回复，可从输入框重新发送',
+    failText: 'AI 回复失败，可从输入框重新发送。',
+    runner: async (signal) => {
+      const response = await sendChatMessageStream(sessionId, content, {
+        signal,
+        onDelta: (delta) => chatStore.appendToMessage(aiTempId, delta),
+      })
 
-  try {
-    const response = await sendChatMessageStream(sessionId, content, {
-      signal: controller.value.signal,
-      onDelta: (delta) => chatStore.appendToMessage(aiTempId, delta),
-    })
+      chatStore.updateMessage(userTempId, { id: response.userMessage.id })
+      chatStore.updateMessage(aiTempId, {
+        id: response.aiMessage.id,
+        content: response.aiMessage.content,
+      })
 
-    chatStore.updateMessage(userTempId, { id: response.userMessage.id })
-    chatStore.updateMessage(aiTempId, {
-      id: response.aiMessage.id,
-      content: response.aiMessage.content,
-    })
+      const session = chatStore.sessions.find((item) => item.id === sessionId)
+      chatStore.upsertSession({
+        ...(session || {
+          id: sessionId,
+          createdAt: new Date().toISOString(),
+          resumeId: selectedResumeId.value || null,
+          jobDescriptionId: selectedJobDescriptionId.value || null,
+        }),
+        title: response.title,
+        updatedAt: new Date().toISOString(),
+      })
+    },
+  })
 
-    const session = chatStore.sessions.find((item) => item.id === sessionId)
-    chatStore.upsertSession({
-      ...(session || {
-        id: sessionId,
-        createdAt: new Date().toISOString(),
-        resumeId: selectedResumeId.value || null,
-        jobDescriptionId: selectedJobDescriptionId.value || null,
-      }),
-      title: response.title,
-      updatedAt: new Date().toISOString(),
-    })
-  } catch (error) {
+  if (!succeeded) {
+    // 取消/失败时移除乐观追加的两条消息，并把内容回填输入框，避免用户长文本丢失。
     chatStore.removeMessage(aiTempId)
     chatStore.removeMessage(userTempId)
-    if ((error as Error).name === 'AbortError') {
-      notify('已取消本次回复', 'info')
-    } else {
-      errorMessage.value = 'AI 回复失败，请稍后重试。'
-    }
-  } finally {
-    loading.value = false
-    controller.value = null
+    chatBoxRef.value?.restoreDraft(content)
   }
-}
-
-function cancelStream() {
-  controller.value?.abort()
 }
 </script>
 
@@ -305,12 +288,18 @@ function cancelStream() {
           >
             还没有历史会话，发出第一条消息即可创建。
           </p>
+          <!-- 行内含删除按钮，button 不能嵌套 button，因此用 role/tabindex 提供键盘可达性 -->
           <div
             v-for="session in chatStore.sessions"
             :key="session.id"
             class="group flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-[13px] border border-white/70 bg-white/55 px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_16px_rgba(31,73,125,0.05)] transition hover:-translate-y-px hover:bg-white/80"
             :class="{ 'chat-session-active': session.id === chatStore.activeSessionId }"
+            role="button"
+            tabindex="0"
+            :aria-current="session.id === chatStore.activeSessionId ? 'true' : undefined"
             @click="openSession(session.id)"
+            @keydown.enter.prevent="openSession(session.id)"
+            @keydown.space.prevent="openSession(session.id)"
           >
             <div class="min-w-0 flex-1">
               <p class="m-0 truncate text-sm font-extrabold text-[#0f172a]" :title="session.title">
@@ -321,7 +310,7 @@ function cancelStream() {
               </p>
             </div>
             <button
-              class="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-[#94a3b8] opacity-0 transition hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100"
+              class="session-delete-btn grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-[#94a3b8] opacity-0 transition hover:bg-rose-50 hover:text-rose-500 focus-visible:opacity-100 group-hover:opacity-100"
               aria-label="删除会话"
               @click.stop="removeSession(session.id)"
             >
@@ -370,14 +359,16 @@ function cancelStream() {
 
         <div class="min-h-0 flex-1 pt-4">
           <ChatBox
+            ref="chatBoxRef"
             :messages="chatStore.messages"
             :loading="loading"
+            :disabled="sessionLoading"
             :max-length="MAX_MESSAGE_LENGTH"
             markdown
             empty-title="开始对话"
             empty-description="例如：「帮我评估这份 offer 的薪资是否合理」「入职新公司前两周应该做什么」"
             placeholder="想聊点什么？求职、职业规划相关的问题都可以..."
-            disabled-hint=""
+            disabled-hint="会话加载中，请稍候"
             @send-answer="sendMessage"
           />
         </div>
@@ -404,7 +395,13 @@ function cancelStream() {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  padding-right: 22px;
+}
+
+/* 触屏设备没有 hover，删除按钮常显，否则移动端无法删除会话。 */
+@media (hover: none) {
+  .session-delete-btn {
+    opacity: 1;
+  }
 }
 
 .chat-session-active {
