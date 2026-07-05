@@ -65,6 +65,18 @@ function send() {
   void nextTick(resizeAnswerTextarea)
 }
 
+/**
+ * 发送失败/取消时由父组件调用，把已清空的输入内容回填，避免长文本回答丢失。
+ * 若用户在等待期间已重新输入，则不覆盖现有内容。
+ */
+function restoreDraft(value: string) {
+  if (answer.value.trim()) return
+  answer.value = value
+  void nextTick(resizeAnswerTextarea)
+}
+
+defineExpose({ restoreDraft })
+
 function resizeAnswerTextarea() {
   const element = answerTextarea.value
   if (!element) return

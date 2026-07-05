@@ -18,6 +18,17 @@ describe('LoadingButton', () => {
     expect(wrapper.text()).toContain('提交中...')
   })
 
+  it('传了插槽时 loading 也优先显示 loadingText（调用方无需手写三元）', () => {
+    const wrapper = mount(LoadingButton, {
+      props: { loading: true, loadingText: '保存中...' },
+      slots: { default: '保存修改' },
+    })
+
+    expect(wrapper.text()).toContain('保存中...')
+    expect(wrapper.text()).not.toContain('保存修改')
+    expect(wrapper.get('button').attributes('aria-busy')).toBe('true')
+  })
+
   it('非 loading 时不禁用、不出现 spinner，渲染插槽内容', () => {
     const wrapper = mount(LoadingButton, { slots: { default: '保存' } })
 

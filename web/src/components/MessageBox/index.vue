@@ -71,6 +71,8 @@ async function confirmBox() {
   try {
     await beforeConfirm()
     closeBox(true)
+  } catch {
+    // beforeConfirm 失败时弹窗保持打开供用户重试或取消；API 错误已由请求拦截器统一提示，此处不重复弹。
   } finally {
     confirming.value = false
   }

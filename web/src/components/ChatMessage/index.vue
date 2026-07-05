@@ -1,6 +1,12 @@
+<script lang="ts">
+import MarkdownIt from 'markdown-it'
+
+// 模块级单例：长对话有 N 条消息，避免每个消息实例各建一个解析器。
+const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
+</script>
+
 <script setup lang="ts">
 import { computed } from 'vue'
-import MarkdownIt from 'markdown-it'
 import FeedbackCard from '@/components/FeedbackCard/index.vue'
 
 const props = defineProps<{
@@ -15,8 +21,6 @@ const props = defineProps<{
   // 为 true 时 AI 消息按 Markdown 渲染（html 关闭以防 XSS）；用户/系统消息仍为纯文本。
   markdown?: boolean
 }>()
-
-const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
 
 const renderedContent = computed(() =>
   props.markdown && props.role === 'ai' ? md.render(props.content) : '',

@@ -25,12 +25,13 @@ withDefaults(
     class="loading-button"
     :class="[`loading-button--${variant}`, { 'is-loading': loading }]"
     :disabled="disabled || loading"
+    :aria-busy="loading || undefined"
   >
     <LoaderCircle v-if="loading" class="loading-button__spinner" :size="17" />
     <slot v-else name="icon" />
-    <span
-      ><slot>{{ loading && loadingText ? loadingText : '' }}</slot></span
-    >
+    <!-- loading 且传了 loadingText 时优先显示加载文案；调用方无需在插槽里手写三元 -->
+    <span v-if="loading && loadingText">{{ loadingText }}</span>
+    <span v-else><slot /></span>
   </button>
 </template>
 

@@ -35,6 +35,9 @@ function removeToast(id: number) {
 }
 
 function addToast(message: string, type: ToastType = 'info') {
+  // 相同内容的卡片还在展示时不重复叠加（如并行请求同时失败弹出同一条网络错误）。
+  if (toasts.value.some((toast) => toast.message === message && toast.type === type)) return
+
   const id = nextId++
   toasts.value = [...toasts.value, { id, message, type }].slice(-4)
   timers.set(
@@ -108,6 +111,8 @@ onBeforeUnmount(() => {
 }
 
 .toast-card {
+  /* ::before 色条按本卡片定位；缺失时会相对 fixed 的堆栈容器定位，多条 toast 时互相错位 */
+  position: relative;
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) 30px;
   align-items: start;
