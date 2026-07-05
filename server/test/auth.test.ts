@@ -1,5 +1,5 @@
 import { equal, notEqual } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import {
   extractBearerToken,
   extractCookieValue,

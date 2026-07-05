@@ -1,5 +1,5 @@
 import { deepEqual, equal, ok } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { PassThrough } from 'node:stream'
 import {
   readChatStream,

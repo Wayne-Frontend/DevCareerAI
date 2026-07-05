@@ -1,5 +1,5 @@
 import { equal, notEqual, ok, rejects } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common'
 import type { ConfigService } from '@nestjs/config'
 import { createHash } from 'crypto'

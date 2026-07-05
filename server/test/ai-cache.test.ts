@@ -1,5 +1,5 @@
 import { deepEqual, equal, notEqual, ok } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { AiCacheService, type AiGeneration } from '../src/modules/ai/ai-cache.service'
 import type { PrismaService } from '../src/prisma/prisma.service'
 

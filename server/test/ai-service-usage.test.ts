@@ -1,5 +1,5 @@
 import { deepEqual, equal, ok, rejects } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { AiStreamInterruptedError } from '../src/modules/ai/ai-errors'
 import { AiService } from '../src/modules/ai/ai.service'
 import type { AiUsageService } from '../src/modules/ai/ai-usage.service'

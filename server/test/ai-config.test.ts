@@ -1,5 +1,5 @@
 import { equal } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { isConfiguredApiKey, resolveAiConfig } from '../src/modules/ai/ai-config'
 
 function reader(env: Record<string, string | undefined>) {

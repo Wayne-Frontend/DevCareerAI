@@ -1,5 +1,5 @@
 import { deepEqual, equal } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { clampScore, toStringList } from '../src/common/utils/normalize.util'
 
 test('clampScore 限制在 0-100 并取整', () => {

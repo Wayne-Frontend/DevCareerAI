@@ -1,5 +1,5 @@
 import { equal, match, notEqual, ok, rejects } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { ForbiddenException } from '@nestjs/common'
 import { AdminUserService } from '../src/modules/admin/admin-user.service'
 import type { PrismaService } from '../src/prisma/prisma.service'

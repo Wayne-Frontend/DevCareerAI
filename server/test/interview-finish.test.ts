@@ -1,5 +1,5 @@
 import { deepEqual, equal, ok, rejects } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { ConflictException } from '@nestjs/common'
 import { InterviewService } from '../src/modules/interview/interview.service'
 import type { AiCacheService } from '../src/modules/ai/ai-cache.service'

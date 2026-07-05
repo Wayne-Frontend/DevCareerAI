@@ -1,5 +1,5 @@
 import { equal, deepEqual } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { HistoryService } from '../src/modules/history/history.service'
 import type { PrismaService } from '../src/prisma/prisma.service'
 

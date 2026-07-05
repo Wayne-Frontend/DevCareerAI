@@ -1,5 +1,5 @@
 import { equal } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { resolveThrottleTracker } from '../src/common/guards/user-throttler.guard'
 
 test('已登录按 user id 计数', () => {

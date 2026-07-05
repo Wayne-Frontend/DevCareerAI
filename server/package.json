@@ -5,8 +5,10 @@
   "description": "DevCareer AI NestJS API server.",
   "scripts": {
     "build": "nest build",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "ts-node test/run-tests.ts",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
     "start": "node dist/main",
     "start:dev": "nest start --watch",
     "prisma:generate": "prisma generate",
@@ -38,15 +40,17 @@
     "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.2.3",
     "@nestjs/testing": "^10.4.15",
+    "@swc/core": "^1.15.43",
     "@types/express": "^5.0.5",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.12.3",
     "@types/pdf-parse": "^1.1.5",
+    "@vitest/coverage-v8": "^4.1.9",
     "source-map-support": "^0.5.21",
     "ts-loader": "^9.5.4",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "unplugin-swc": "^1.5.9",
+    "vitest": "^4.1.9"
   }
 }

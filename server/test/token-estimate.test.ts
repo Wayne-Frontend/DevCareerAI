@@ -1,5 +1,5 @@
 import { equal, ok } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { estimateTokens } from '../src/common/utils/token-estimate.util'
 
 test('空文本估算为 0', () => {

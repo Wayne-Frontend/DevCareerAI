@@ -1,5 +1,5 @@
 import { deepEqual, equal } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { cleanJsonResponse, safeParseJson } from '../src/common/utils/json-response.util'
 
 test('safeParseJson 去除代码块围栏并解析', () => {

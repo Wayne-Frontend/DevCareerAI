@@ -1,5 +1,5 @@
 import { deepEqual, match } from 'node:assert/strict'
-import { test } from 'node:test'
+import { test } from 'vitest'
 import { limitText, limitTextForAi } from '../src/common/utils/text-limit.util'
 
 test('limitText 未超长原样返回', () => {
