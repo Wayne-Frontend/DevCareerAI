@@ -44,6 +44,13 @@ export const useInterviewStore = defineStore('interview', () => {
     finished.value = true
   }
 
+  // 登出/会话失效时清空，避免换账号后残留上一账号的面试问答。
+  function reset() {
+    sessionId.value = ''
+    messages.value = []
+    finished.value = false
+  }
+
   return {
     sessionId,
     messages,
@@ -53,5 +60,6 @@ export const useInterviewStore = defineStore('interview', () => {
     appendMessage,
     removeMessage,
     finishSession,
+    reset,
   }
 })

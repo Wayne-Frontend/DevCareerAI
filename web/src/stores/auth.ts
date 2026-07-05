@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue'
+import axios from 'axios'
 import { defineStore } from 'pinia'
 import { getCurrentUser } from '@/api/auth'
 import { refreshAuthSession } from '@/api/authRefresh'
@@ -59,8 +60,12 @@ export const useAuthStore = defineStore('auth', () => {
         const nextUser = await getCurrentUser()
         updateUser(nextUser)
       }
-    } catch {
-      clearSession()
+    } catch (error) {
+      // 有 HTTP 响应（401/403 等）才视为会话失效；网络/服务暂时不可用时保留本地缓存资料，
+      // 后端恢复后 refresh cookie 仍可在下次加载时静默恢复登录。
+      if (axios.isAxiosError(error) && error.response) {
+        clearSession()
+      }
     } finally {
       hydrated.value = true
     }

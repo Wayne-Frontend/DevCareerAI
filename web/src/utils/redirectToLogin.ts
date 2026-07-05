@@ -1,5 +1,6 @@
 import router from '@/router'
 import { useAuthStore } from '@/stores/auth'
+import { resetBusinessStores } from '@/stores/resetBusinessStores'
 
 // 并发的多个请求可能同时返回 401，用一个开关避免连环 replace / 跳转循环。
 let redirecting = false
@@ -19,8 +20,9 @@ export function redirectToLogin() {
 
   try {
     useAuthStore().clearSession()
+    resetBusinessStores()
   } catch {
-    // pinia 尚未就绪等极端情况的兜底，clearSession 失败不应阻断跳转。
+    // pinia 尚未就绪等极端情况的兜底，清理失败不应阻断跳转。
   }
 
   const redirect = current.fullPath && current.fullPath !== '/' ? current.fullPath : undefined

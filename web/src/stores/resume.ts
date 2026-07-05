@@ -9,8 +9,14 @@ export const useResumeStore = defineStore('resume', () => {
     currentResume.value = resume
   }
 
+  // 登出/会话失效时清空，避免换账号后残留上一账号的简历内容。
+  function reset() {
+    currentResume.value = null
+  }
+
   return {
     currentResume,
     setCurrentResume,
+    reset,
   }
 })

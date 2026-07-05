@@ -29,9 +29,15 @@ export const useWorkflowStore = defineStore('workflow', () => {
     return context
   }
 
+  // 登出/会话失效时清空，避免换账号后残留上一账号的简历/JD 上下文。
+  function reset() {
+    interviewContext.value = null
+  }
+
   return {
     interviewContext,
     setInterviewContext,
     consumeInterviewContext,
+    reset,
   }
 })

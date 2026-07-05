@@ -72,6 +72,13 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  // 登出/会话失效时清空，避免换账号后残留上一账号的对话内容。
+  function reset() {
+    sessions.value = []
+    activeSessionId.value = ''
+    messages.value = []
+  }
+
   return {
     sessions,
     activeSessionId,
@@ -86,5 +93,6 @@ export const useChatStore = defineStore('chat', () => {
     upsertSession,
     patchSession,
     removeSession,
+    reset,
   }
 })
