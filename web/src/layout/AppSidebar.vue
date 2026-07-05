@@ -127,6 +127,11 @@ watch(avatarUrl, () => {
     inset 0 1px 0 rgba(255, 255, 255, 0.96),
     14px 0 42px rgba(64, 104, 164, 0.11);
   backdrop-filter: blur(24px) saturate(132%);
+  /* 菜单项多于视口高度（如管理员菜单 + 矮屏/横屏）时允许内部滚动，保证底部入口可达 */
+  overflow-y: auto;
+  overflow-x: hidden; /* menu-item hover 有 translateX(2px)，防横向滚动条闪现 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.32) transparent;
 }
 
 .brand-link {
