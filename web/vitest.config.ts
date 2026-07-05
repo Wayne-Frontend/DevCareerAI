@@ -15,6 +15,11 @@ export default mergeConfig(
       // 显式从 'vitest' 导入 describe/it/expect，无需全局注入。
       globals: false,
       root: fileURLToPath(new URL('./', import.meta.url)),
+      coverage: {
+        provider: 'v8',
+        include: ['src/**/*.{ts,vue}'],
+        exclude: ['src/main.ts', 'src/types/**', 'src/**/*.d.ts'],
+      },
     },
   }),
 )

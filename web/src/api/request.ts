@@ -58,6 +58,9 @@ service.interceptors.response.use(
   },
 )
 
+// 仅供测试替换 adapter 验证拦截器行为使用，业务代码一律走下方 request()
+export const httpClient = service
+
 export async function request<T>(config: AxiosRequestConfig): Promise<T> {
   const response = await service.request<T>(config)
   return response.data
