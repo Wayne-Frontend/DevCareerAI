@@ -8,7 +8,10 @@ node_modules
 .claude
 .agents
 docs
-server/prisma/dev.db*
 server/uploads
 *.md
 !packages/**/*.md
+# 环境变量文件含真实密钥，绝不能进入任何镜像层（.env.example 除外）
+**/.env
+**/.env.*
+!**/.env.example

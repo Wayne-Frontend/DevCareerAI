@@ -30,6 +30,7 @@
     "mammoth": "^1.11.0",
     "multer": "^2.0.2",
     "pdf-parse": "^1.1.1",
+    "prisma": "^6.19.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -42,7 +43,6 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^24.12.3",
     "@types/pdf-parse": "^1.1.5",
-    "prisma": "^6.19.0",
     "source-map-support": "^0.5.21",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
