@@ -69,7 +69,7 @@ styles        Tailwind 与主题变量
 VITE_API_BASE_URL=/api
 ```
 
-开发环境走 Vite 代理：前端请求 `/api` 由 `vite.config.ts` 中的 `server.proxy` 转发到 `http://localhost:3000`，因此不必依赖后端 CORS。部署到生产环境时把 `VITE_API_BASE_URL` 改成真实的 API 地址。
+开发环境走 Vite 代理：前端请求 `/api` 由 `vite.config.ts` 中的 `server.proxy` 转发到 `http://localhost:3000`，因此不必依赖后端 CORS。推荐的同源 Docker 部署（nginx 反代，见 `docs/deployment.md`）无需改动此项；只有跨域部署时才需要把 `VITE_API_BASE_URL` 改成真实的 API 地址。
 
 后端复制 `server/.env.example` 为 `server/.env`。AI 服务用通用的 `AI_*` 变量，指向任意 OpenAI 兼容端点：
 
@@ -101,10 +101,11 @@ AI_SEND_THINKING="false"
 npm install
 ```
 
-初始化数据库（需先在本机准备好 PostgreSQL 并建库，见 `docs/database-setup.md`）。首次拉取代码或换机器时，用 `prisma:deploy` 按已有迁移建表；只有在修改了 `schema.prisma` 需要生成新迁移时才用 `prisma:migrate`：
+初始化数据库（需先在本机准备好 PostgreSQL 并建库，见 `docs/database-setup.md`）。首次拉取代码或换机器时，用 `prisma:deploy` 按已有迁移建表，再生成 Prisma Client（`deploy` 不会生成 client，monorepo 下 `npm install` 也不会自动生成）；只有在修改了 `schema.prisma` 需要生成新迁移时才用 `prisma:migrate`：
 
 ```bash
 npm --prefix server run prisma:deploy
+npm run prisma:generate
 ```
 
 同时启动前后端：

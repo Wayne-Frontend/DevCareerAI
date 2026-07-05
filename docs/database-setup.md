@@ -53,11 +53,14 @@ cp server/.env.example server/.env
 # 3. 初始化数据库：按已有迁移顺序建出全部表（纯建库用 deploy，无需 shadow database）
 npm --prefix server run prisma:deploy
 
-# 4. 启动
+# 4. 生成 Prisma Client（deploy 只建表，不会生成 client；monorepo 下 npm install 也不会自动生成）
+npm run prisma:generate
+
+# 5. 启动
 npm run dev
 ```
 
-第 3 步执行时 Prisma 发现库是空的，会从头跑完全部迁移，结束后数据库结构就和最新代码完全一致了。
+第 3 步执行时 Prisma 发现库是空的，会从头跑完全部迁移，结束后数据库结构就和最新代码完全一致了。第 4 步不可省略：跳过它直接启动会报 `@prisma/client did not initialize yet. Please run "prisma generate"`。
 
 > 首个注册的用户会自动成为管理员，无需额外配置。
 
@@ -150,11 +153,11 @@ npm run prisma:generate
 
 ## 五、速查表
 
-| 场景                  | 命令（项目根目录）                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------------- |
-| 新设备首次搭建        | 装 PostgreSQL 并建库 → `npm install` → 建 `server/.env` → `npm --prefix server run prisma:deploy` |
-| pull 到别人的结构改动 | `npm run prisma:migrate`                                                                          |
-| 自己要改表结构        | 改 `schema.prisma` → `cd server && npx prisma migrate dev --name xxx` → 提交迁移文件              |
-| 本机库坏了/对不上     | `cd server && npx prisma migrate reset`（清空本机数据）                                           |
-| 类型/字段提示不对     | `npm run prisma:generate`                                                                         |
-| 数据库连不上          | 确认本机 PostgreSQL 服务在运行（见症状 E）                                                        |
+| 场景                  | 命令（项目根目录）                                                                                                            |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 新设备首次搭建        | 装 PostgreSQL 并建库 → `npm install` → 建 `server/.env` → `npm --prefix server run prisma:deploy` → `npm run prisma:generate` |
+| pull 到别人的结构改动 | `npm run prisma:migrate`                                                                                                      |
+| 自己要改表结构        | 改 `schema.prisma` → `cd server && npx prisma migrate dev --name xxx` → 提交迁移文件                                          |
+| 本机库坏了/对不上     | `cd server && npx prisma migrate reset`（清空本机数据）                                                                       |
+| 类型/字段提示不对     | `npm run prisma:generate`                                                                                                     |
+| 数据库连不上          | 确认本机 PostgreSQL 服务在运行（见症状 E）                                                                                    |

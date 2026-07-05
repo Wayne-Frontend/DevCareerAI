@@ -14,9 +14,7 @@
 ## 快速开始
 
 ```bash
-# 1. 准备环境变量（compose 会读取项目根目录的 .env）
-cp server/.env.example .env
-#    编辑 .env，至少填好：POSTGRES_PASSWORD、JWT_ACCESS_SECRET、AI_API_KEY、AI_BASE_URL、AI_MODEL_FAST、AI_MODEL_QUALITY
+# 1. 在项目根目录新建 .env（compose 读取的是根目录 .env，不是 server/.env），内容见下方模板
 
 # 2. 构建并启动
 docker compose up -d --build
@@ -24,13 +22,34 @@ docker compose up -d --build
 # 3. 访问 http://<主机>:8080（端口可用 WEB_PORT 覆盖）
 ```
 
+根目录 `.env` 模板（必填项缺失时 compose 会启动失败并提示）：
+
+```dotenv
+# 数据库密码：会被原样拼进连接串，请只用字母数字，避免 @ : / % # 等 URL 特殊字符
+POSTGRES_PASSWORD=change_me_alphanumeric
+
+# access token 签名密钥，至少 32 位随机字符（openssl rand -base64 48）
+JWT_ACCESS_SECRET=replace_with_at_least_32_random_chars
+
+# AI 服务：任意 OpenAI 兼容端点
+AI_API_KEY=sk-...
+AI_BASE_URL=https://api.deepseek.com
+AI_MODEL_FAST=deepseek-chat
+AI_MODEL_QUALITY=deepseek-reasoner
+
+# 可选：POSTGRES_USER / POSTGRES_DB（默认 devcareer）、WEB_PORT（默认 8080）、
+#       AI_SEND_THINKING、ACCESS_TOKEN_TTL_MINUTES、CORS_ORIGIN（见下表）
+```
+
+> 注意：`server/.env.example` 面向本地开发（`DATABASE_URL`、`PORT` 等），其中的连接串在 compose 部署下**不生效**——compose 会用 `POSTGRES_*` 变量自行拼好指向 db 容器的 `DATABASE_URL`，不要试图通过根目录 `.env` 里的 `DATABASE_URL` 覆盖它。
+
 server 容器启动时会自动执行 `prisma migrate deploy`（幂等），首次启动即完成建库。**空库中第一个注册的用户自动成为管理员**，部署完成后请立即注册，避免管理员位置被他人抢注。
 
 ## 环境变量
 
 | 变量                                 | 必填 | 说明                                                                                                     |
 | ------------------------------------ | ---- | -------------------------------------------------------------------------------------------------------- |
-| `POSTGRES_PASSWORD`                  | ✅   | PostgreSQL 密码（db 容器初始化和 server 连接串共用）                                                     |
+| `POSTGRES_PASSWORD`                  | ✅   | PostgreSQL 密码（db 容器初始化和 server 连接串共用）。会被原样拼进 `DATABASE_URL`，请只用字母数字        |
 | `POSTGRES_USER` / `POSTGRES_DB`      |      | PostgreSQL 用户与库名，默认均为 `devcareer`                                                              |
 | `JWT_ACCESS_SECRET`                  | ✅   | access token 签名密钥，至少 32 位随机字符（`openssl rand -base64 48`）                                   |
 | `AI_API_KEY` / `AI_BASE_URL`         | ✅   | 任意 OpenAI 兼容端点（DeepSeek、OpenAI、vLLM 等）                                                        |
@@ -74,5 +93,7 @@ docker compose up -d      # server 启动时自动执行新增 migration
 
 - **启动即退出，日志报 `Invalid environment configuration`**：`.env` 缺少必填项，按报错列表补齐。
 - **前端正常但接口 502**：server 容器还在启动（等待 db 健康检查、首次 migrate），或健康检查未过，`docker compose logs server` 查看。
+- **单独重建/重启 server 容器后接口一直 502**：nginx 在启动时解析并缓存了 server 容器的 IP，容器重建后 IP 变化会导致反代打到旧地址，`docker compose restart web` 即可恢复。
+- **healthcheck 显示 healthy 但接口报数据库错误**：server 的健康检查探测 `/api/auth/me`，在鉴权守卫处即返回 401，不校验数据库连通性；数据库故障时容器仍可能显示 healthy，排障以 `docker compose logs server` 为准。
 - **跨域部署时浏览器报 CORS 错误**：配置 `CORS_ORIGIN` 为前端完整 origin（含协议与端口），多个用逗号分隔。
 - **SSE 流式接口无响应/一次性返回**：确认反代层未开启缓冲（自带 nginx.conf 已配置 `proxy_buffering off`；若外层还有 CDN/网关，需同样放行流式响应）。
