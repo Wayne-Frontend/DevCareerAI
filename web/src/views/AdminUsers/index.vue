@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { Ban, CircleCheck, RefreshCw, Search, Users, KeyRound } from 'lucide-vue-next'
 import EmptyState from '@/components/EmptyState/index.vue'
+import InlineStatus from '@/components/InlineStatus/index.vue'
 import LoadingButton from '@/components/LoadingButton/index.vue'
 import SkeletonCard from '@/components/SkeletonCard/index.vue'
 import { getAdminUsers, resetUserPassword, updateUserRole, updateUserStatus } from '@/api/admin'
@@ -15,6 +16,7 @@ const PAGE_SIZE = 20
 
 const authStore = useAuthStore()
 const loading = ref(true)
+const loadError = ref(false)
 const keyword = ref('')
 const page = ref(1)
 const total = ref(0)
@@ -28,6 +30,7 @@ const currentUserId = computed(() => authStore.user?.id || '')
 
 async function load() {
   loading.value = true
+  loadError.value = false
   try {
     const result = await getAdminUsers({
       page: page.value,
@@ -37,9 +40,8 @@ async function load() {
     items.value = result.items
     total.value = result.total
   } catch {
-    // 请求层已统一弹错，这里保持空数据。
-    items.value = []
-    total.value = 0
+    // 接口失败时保留上一次列表，仅置错误态；具体错误提示已由响应拦截器弹出。
+    loadError.value = true
   } finally {
     loading.value = false
   }
@@ -80,8 +82,6 @@ async function onToggleRole(user: AdminUserItem) {
     const updated = await updateUserRole(user.id, nextRole)
     user.role = updated.role
     notify('角色已更新', 'success')
-  } catch {
-    // 请求层已弹错（如“至少保留一名管理员”）。
   } finally {
     pendingId.value = ''
   }
@@ -109,8 +109,6 @@ async function onResetPassword(user: AdminUserItem) {
       closeOnOverlay: false,
       closeOnEsc: false,
     })
-  } catch {
-    // 请求层已弹错（如“不能重置其他管理员的密码”）。
   } finally {
     pendingId.value = ''
   }
@@ -133,8 +131,6 @@ async function onToggleStatus(user: AdminUserItem) {
     const updated = await updateUserStatus(user.id, nextStatus)
     user.status = updated.status
     notify(nextStatus === 'disabled' ? '已封禁该用户' : '已解封该用户', 'success')
-  } catch {
-    // 请求层已弹错。
   } finally {
     pendingId.value = ''
   }
@@ -163,7 +159,7 @@ onMounted(load)
         @click="load"
       >
         <template #icon><RefreshCw :size="17" /></template>
-        {{ loading ? '刷新中...' : '刷新' }}
+        刷新
       </LoadingButton>
     </header>
 
@@ -191,6 +187,17 @@ onMounted(load)
     <section v-if="loading" class="grid gap-4">
       <SkeletonCard v-for="index in 4" :key="index" />
     </section>
+
+    <InlineStatus
+      v-else-if="loadError"
+      type="error"
+      title="用户列表加载失败"
+      description="可能是网络或服务异常，请重试。"
+    >
+      <button type="button" class="btn-secondary mt-3 min-h-9 text-sm" @click="load">
+        重新加载
+      </button>
+    </InlineStatus>
 
     <EmptyState
       v-else-if="!hasData"

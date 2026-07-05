@@ -15,6 +15,7 @@ import { useRouter } from 'vue-router'
 import LoadingButton from '@/components/LoadingButton/index.vue'
 import { changePassword, logout as logoutRequest, updateProfile, uploadAvatar } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { resetBusinessStores } from '@/stores/resetBusinessStores'
 import { resolveAssetUrl } from '@/utils/assetUrl'
 import { messageBox } from '@/utils/messageBox'
 import { notify } from '@/utils/notify'
@@ -169,6 +170,7 @@ async function logout() {
     // 即使远端会话已失效，也要清理本地登录态。
   } finally {
     authStore.clearSession()
+    resetBusinessStores()
     notify('已退出登录', 'success')
     logoutLoading.value = false
     await router.push('/login')
@@ -293,7 +295,7 @@ async function logout() {
               loading-text="保存中..."
             >
               <template #icon><Save :size="18" /></template>
-              {{ loading ? '保存中...' : '保存修改' }}
+              保存修改
             </LoadingButton>
             <LoadingButton
               variant="danger"
@@ -303,7 +305,7 @@ async function logout() {
               @click="logout"
             >
               <template #icon><LogOut :size="18" /></template>
-              {{ logoutLoading ? '退出中...' : '退出登录' }}
+              退出登录
             </LoadingButton>
           </div>
         </form>
@@ -362,7 +364,7 @@ async function logout() {
               loading-text="修改中..."
             >
               <template #icon><KeyRound :size="18" /></template>
-              {{ passwordLoading ? '修改中...' : '修改密码' }}
+              修改密码
             </LoadingButton>
           </div>
         </form>

@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Clock3,
@@ -47,6 +47,7 @@ const loadError = ref(false)
 const records = ref<HistoryRecordSummary[]>([])
 const keyword = ref('')
 const activeDetail = ref<HistoryRecord | null>(null)
+const detailSection = ref<HTMLElement | null>(null)
 const detailLoadingId = ref('')
 const deletingId = ref('')
 
@@ -122,8 +123,9 @@ async function openDetail(record: HistoryRecordSummary) {
   detailLoadingId.value = record.id
   try {
     activeDetail.value = await getHistoryRecord(record.id)
-  } catch {
-    notify('详情加载失败，请稍后重试', 'error')
+    // 详情面板渲染在列表下方，滚动定位过去，否则记录较多时点击后视口毫无变化。
+    await nextTick()
+    detailSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   } finally {
     detailLoadingId.value = ''
   }
@@ -366,7 +368,7 @@ onMounted(() => load())
         @click="load(activeType)"
       >
         <template #icon><RefreshCw :size="17" /></template>
-        {{ loading ? '刷新中...' : '刷新' }}
+        刷新
       </LoadingButton>
     </header>
 
@@ -429,7 +431,7 @@ onMounted(() => load())
       <article
         v-for="record in displayRecords"
         :key="record.id"
-        class="section-card flex h-[250px] flex-col p-5"
+        class="section-card flex h-[250px] flex-col"
       >
         <div class="flex items-center justify-between">
           <span
@@ -452,7 +454,12 @@ onMounted(() => load())
           >
         </div>
 
-        <h2 class="mb-3 mt-5 text-lg font-black text-[#0f172a]">{{ displayTitle(record) }}</h2>
+        <h2
+          class="mb-3 mt-5 line-clamp-2 text-lg font-black text-[#0f172a]"
+          :title="displayTitle(record)"
+        >
+          {{ displayTitle(record) }}
+        </h2>
         <p class="m-0 flex items-center gap-1.5 text-sm font-semibold text-[#64748b]">
           <Clock3 :size="15" />
           {{ formatDateTime(record.createdAt) }}
@@ -473,13 +480,13 @@ onMounted(() => load())
             @click="remove(record)"
           >
             <template #icon><Trash2 :size="16" /></template>
-            {{ deletingId === record.id ? '删除中...' : '删除' }}
+            删除
           </LoadingButton>
         </div>
       </article>
     </section>
 
-    <section v-if="activeDetail" class="glass-card p-5">
+    <section v-if="activeDetail" ref="detailSection" class="glass-card p-5">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 class="m-0 text-xl font-black text-[#0f172a]">{{ displayTitle(activeDetail) }}</h2>
         <div class="flex flex-wrap gap-3">
@@ -509,7 +516,7 @@ onMounted(() => load())
 
       <div class="grid gap-4">
         <div
-          class="grid grid-cols-[120px_1fr] gap-4 rounded-2xl border border-slate-200 bg-white/70 p-4"
+          class="grid gap-4 rounded-2xl border border-slate-200 bg-white/70 p-4 md:grid-cols-[120px_1fr]"
         >
           <div
             v-if="detailScore(activeDetail) !== undefined"
@@ -534,7 +541,7 @@ onMounted(() => load())
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid gap-4 md:grid-cols-2">
           <section
             v-for="section in detailSections(activeDetail)"
             :key="section.title"

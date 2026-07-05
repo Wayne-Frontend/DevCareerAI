@@ -4,6 +4,7 @@ import { getInstanceByDom, graphic, init } from '@/utils/echarts'
 import type { ECharts, EChartsCoreOption } from '@/utils/echarts'
 import { Activity, Coins, Gauge, Layers, RefreshCw, Sparkles } from 'lucide-vue-next'
 import EmptyState from '@/components/EmptyState/index.vue'
+import InlineStatus from '@/components/InlineStatus/index.vue'
 import LoadingButton from '@/components/LoadingButton/index.vue'
 import SkeletonCard from '@/components/SkeletonCard/index.vue'
 import { getAiUsageSummary } from '@/api/aiUsage'
@@ -25,6 +26,7 @@ const FEATURE_LABELS: Record<string, string> = {
 }
 
 const loading = ref(true)
+const loadError = ref(false)
 const activeDays = ref(30)
 const summary = ref<AiUsageSummary | null>(null)
 
@@ -72,12 +74,16 @@ function featureLabel(key: string) {
 }
 
 async function load(days = activeDays.value) {
+  // loading 骨架屏会卸载图表容器（v-if），先释放绑定在旧 DOM 上的实例，
+  // 否则每次刷新/切换范围都会泄漏 4 个 ECharts 实例。
+  disposeCharts()
   loading.value = true
+  loadError.value = false
   try {
     summary.value = await getAiUsageSummary(days)
   } catch {
-    // 请求层已统一弹错，这里保持空数据。
-    summary.value = null
+    // 接口失败时保留上一次数据，仅置错误态；具体错误提示已由响应拦截器弹出。
+    loadError.value = true
   } finally {
     loading.value = false
   }
@@ -272,7 +278,7 @@ onBeforeUnmount(() => {
         @click="load(activeDays)"
       >
         <template #icon><RefreshCw :size="17" /></template>
-        {{ loading ? '刷新中...' : '刷新' }}
+        刷新
       </LoadingButton>
     </header>
 
@@ -300,6 +306,17 @@ onBeforeUnmount(() => {
       <SkeletonCard v-for="index in 4" :key="index" />
     </section>
 
+    <InlineStatus
+      v-else-if="loadError"
+      type="error"
+      title="用量数据加载失败"
+      description="可能是网络或服务异常，请重试。"
+    >
+      <button type="button" class="btn-secondary mt-3 min-h-9 text-sm" @click="load()">
+        重新加载
+      </button>
+    </InlineStatus>
+
     <EmptyState
       v-else-if="!hasData"
       title="暂无用量数据"
@@ -311,7 +328,7 @@ onBeforeUnmount(() => {
         <article
           v-for="card in kpiCards"
           :key="card.label"
-          class="section-card flex items-center gap-4 p-5"
+          class="section-card flex items-center gap-4"
         >
           <span
             class="grid h-14 w-14 place-items-center rounded-[16px]"

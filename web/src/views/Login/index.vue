@@ -322,9 +322,12 @@ function switchMode(nextMode: 'login' | 'register') {
 .login-page {
   position: relative;
   display: grid;
-  min-height: 100dvh;
-  overflow: hidden;
-  place-items: center;
+  /* 固定为视口高度并允许内部纵向滚动：注册态内容较高时（矮视口如 1366×768），
+     配合 .login-shell 的 margin:auto 居中，溢出内容可以完整滚到（place-items:center
+     + overflow:hidden 会把上下两端裁掉且无法滚动）。 */
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 28px;
   background:
     linear-gradient(115deg, rgba(255, 255, 255, 0.72) 0 18%, transparent 18% 100%),
@@ -376,6 +379,8 @@ function switchMode(nextMode: 'login' | 'register') {
   position: relative;
   z-index: 1;
   display: grid;
+  /* grid item 的 auto margin 优先于 stretch 对齐：内容矮于视口时居中，高于视口时可完整滚动。 */
+  margin: auto;
   width: min(100%, 1040px);
   min-height: 620px;
   grid-template-columns: minmax(0, 0.9fr) minmax(390px, 0.72fr);
