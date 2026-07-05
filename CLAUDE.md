@@ -39,8 +39,9 @@
 
 ## 验证命令(按改动范围选最小验证)
 
-- 前端:`npm --prefix web run typecheck` / `build` / `test`
-- 后端:`npm --prefix server run typecheck` / `test` / `build`
+- 前端:`npm --prefix web run typecheck` / `build` / `test`;跑单个用例 → `npm --prefix web run test -- <文件名或用例名>`(vitest 过滤)
+- 后端:`npm --prefix server run typecheck` / `test` / `build`;跑单个用例文件 → `npm --prefix server run test -- test/<name>.test.ts`(vitest 过滤,新增测试文件按 glob 自动发现)
+- 后端接口层 e2e:`npm run test:e2e`(需本地 PostgreSQL 建好 `devcareer_test` 库,可用 `E2E_DATABASE_URL` 覆盖连接串;不在 `npm run check` 内,CI 有独立 job)
 - Lint:`npm run lint`(零警告基线,`--max-warnings 0`);格式化:`npm run format`
 - Prisma:改了 schema → `npm --prefix server run prisma:migrate`;仅同步已有迁移 → `prisma:deploy`
 - 全量:`npm run check`(typecheck + lint + test + build);本地开发:`npm run dev`

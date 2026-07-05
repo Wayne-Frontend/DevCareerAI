@@ -132,14 +132,21 @@ npm run dev:server
 npm run typecheck   # 前后端类型检查
 npm run lint        # ESLint（零警告基线，--max-warnings 0）
 npm run format      # Prettier 格式化
-npm run test        # 后端测试
+npm run test        # 前后端单元测试（离线，无需数据库）
+npm run test:e2e    # 后端接口层 e2e（需要 PostgreSQL 测试库，见下）
 npm run build       # 前后端构建
 npm run check       # 依次执行 typecheck、lint、test、build
 ```
 
 代码风格由 Prettier 统一（无分号、单引号、行宽 100），ESLint 用扁平配置管前后端，两者靠 `eslint-config-prettier` 分工，格式问题只归 Prettier。提交时 husky + lint-staged 只对暂存文件跑 `eslint --fix` 和 `prettier --write`，commitlint 校验提交信息为 Conventional Commits 格式。
 
-后端测试用 Node 内置的 `node:test`（无额外依赖），用例在 `server/test/*.test.ts`，由 `test/run-tests.ts` 汇总运行。当前覆盖：JSON 清洗与解析、文本长度限制、各 `normalize*` 的降级与分数 clamp、缓存键稳定性与 `AiCacheService.resolve` 的命中/未命中/解析失败三条路径、密码哈希往返、限流计数维度解析。
+前后端测试统一使用 vitest（后端经 unplugin-swc 转译以支持 Nest 装饰器元数据）。分三层：
+
+- **后端单测**（`server/test/*.test.ts`）：手写 stub 冒充 Prisma/AI 服务，离线可跑。覆盖鉴权与会话轮换、AI 缓存与用量、面试收口并发、各 `normalize*` 降级、聊天/看板/文件解析/维护清理等 service 分支。
+- **前端测试**（`web/test/**/*.test.ts`）：纯函数与 store 单测，加上组件测试（@vue/test-utils + happy-dom，覆盖 ChatBox 交互、ChatMessage 的 Markdown/XSS 转义、Toast 通知等）与 `request.ts` 401 刷新拦截器测试。
+- **后端接口层 e2e**（`server/test/e2e/*.e2e.ts`，`npm run test:e2e`）：supertest 驱动真实请求管道，连 PostgreSQL 测试库，AI 已替换为离线 stub。覆盖首用户成管理员、refresh cookie 轮换与复用吊销、守卫 401、登录限流 429、DTO 校验 400、跨用户数据边界。本地先建库 `CREATE DATABASE devcareer_test;`（默认连 `postgresql://postgres:postgres@localhost:5432/devcareer_test`，可用环境变量 `E2E_DATABASE_URL` 覆盖）；每次运行会自动执行迁移并清空该库，库名必须含 `_test`。
+
+覆盖率：`npm --prefix server run test:cov` / `npm --prefix web run test:cov`（v8 provider，报告输出到各自 `coverage/`）。
 
 后端启动时设置全局前缀 `api`、全局校验管道、全局异常过滤器，启用 CORS，并把 `/uploads` 作为静态目录用于头像访问。
 

@@ -38,4 +38,8 @@ NestJS + TypeScript + Prisma + PostgreSQL。全局 API 前缀 `/api`。
 
 ## 测试
 
-- 测试入口 `npm run test`(`test/run-tests.ts`,ts-node 自研 runner,非 jest)。
+- 框架为 vitest(经 unplugin-swc 转译以保留 Nest 装饰器元数据,配置在 `vitest.config.ts`);命令:`npm run test` / `test:watch` / `test:cov`,单文件 → `npm run test -- test/<name>.test.ts`,新文件按 `test/**/*.test.ts` glob 自动发现。
+- 单测保持离线可跑:手写 stub 冒充 `PrismaService`/`AiService` 后直接 `new` 出 service(参照 `test/history-remove.test.ts`),不连库、不读 `.env`。
+- 接口层 e2e 在 `test/e2e/**/*.e2e.ts`(独立配置 `vitest.e2e.config.ts`,命令 `npm run test:e2e`):连真实 PostgreSQL 测试库(默认 `devcareer_test`,`E2E_DATABASE_URL` 可覆盖,库名必须含 `_test` 否则拒绝启动),经 `createE2eApp()`(`test/e2e/create-app.ts`)创建与生产同管道的应用,AI provider 已替换为离线 stub。
+- 新增 e2e 文件必须:经 `createE2eApp` 建应用、`afterAll` 里 `await app.close()`(否则 ScheduleModule 定时器挂住进程)、用 `truncateAll` 清库而不是手删单表。
+- 全局管道配置(前缀/过滤器/CORS/校验)在 `src/app.setup.ts` 的 `setupApp()`,bootstrap 与 e2e 共用;改管道行为只改这一处。
