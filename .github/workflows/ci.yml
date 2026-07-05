@@ -36,3 +36,20 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # 仅构建镜像不启动，用于抓 Dockerfile / compose 与代码的漂移（如依赖被 prune 后运行期命令失效）
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        # compose 解析时会对 ${VAR:?} 必填变量插值，给占位值即可（构建阶段不会用到这些值）
+        run: docker compose build
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          JWT_ACCESS_SECRET: ci-placeholder-secret-at-least-32-chars
+          AI_API_KEY: ci-placeholder
+          AI_BASE_URL: https://example.com/v1
+          AI_MODEL_FAST: placeholder
+          AI_MODEL_QUALITY: placeholder
