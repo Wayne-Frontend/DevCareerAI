@@ -15,3 +15,6 @@ server/uploads
 **/.env
 **/.env.*
 !**/.env.example
+# web/.env.production 只含构建期公开常量（相对路径 /api），不含密钥，
+# 且必须随镜像构建进入 build context，否则生产构建会退回硬编码的 localhost 兜底地址
+!web/.env.production
