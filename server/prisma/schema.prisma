@@ -1,5 +1,8 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Docker 多阶段构建的 node:22-slim 基础镜像标签会随时间漂移（OpenSSL 1.1.x → 3.0.x），
+  // 显式声明两个 target 避免 builder/runtime 阶段基础镜像不一致导致查询引擎二进制找不到。
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
